@@ -108,7 +108,7 @@ export default function PhotosScreen() {
         </Text>
 
         <View className="mt-2 mb-6">
-          <Animated.View style={progressStyle} />
+          <Animated.View style={progressStyle as any} />
           <View className="flex-row items-center justify-between mt-2">
             <Text className="text-indigo-600 font-medium">
               {photos.length}/6 photos
