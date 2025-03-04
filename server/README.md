@@ -375,63 +375,62 @@ Common HTTP Status Codes:
   - Get all districts sorted by name
   - Response:
     ```json
-    {
-  "data": [
-    "Adilabad",
-    "Agar Malwa",
-    "Agra",
-    "Ahmedabad",
-    "Ahmednagar",
-    "Aizawl",
-    "Ajmer",
-    "Akola",
-    "Alappuzha",
-    "Aligarh",
-    "Alipurduar",
-    "Alirajpur",
-    "Alluri Sitharama Raju",
-    "Almora",
-    "Alwar",
-    "Ambala",
-    "Ambedkar Nagar",
-    ....]
-    }
+      {
+    "data": [
+      "Adilabad",
+      "Agar Malwa",
+      "Agra",
+      "Ahmedabad",
+      "Ahmednagar",
+      "Aizawl",
+      "Ajmer",
+      "Akola",
+      "Alappuzha",
+      "Aligarh",
+      "Alipurduar",
+      "Alirajpur",
+      "Alluri Sitharama Raju",
+      "Almora",
+      "Alwar",
+      "Ambala",
+      "Ambedkar Nagar",
+      ....]
+      }
     ```
 
 - `GET /api/users/me`
   - Get data of the logged in user
   - Requires: JWT Token
   - Response:
-    ```json
-
-  {
-    "status": "success",
-    "user": {
-        "age": 24,
-        "bio": "fuck you",
-        "created_at": "Tue, 04 Mar 2025 15:34:02 GMT",
-        "email": "shery3@.com",
-        "gender": "female",
-        "interest": "chess, football",
-        "location": "mumbai",
-        "occupation": "student",
-        "profile_photo": null,
-        "prompts": {
-            "prompts": [
-                {
-                    "answer": "Waking up by the beach, exploring local culture, and ending the day with a sunset dinner.",
-                    "question": "My perfect travel day looks like..."
-                },
-                {
-                    "answer": "Backpacking solo through Europe for three months.",
-                    "question": "My biggest adventure was..."
-                }
-            ]
-        },
-        "user_id": 2,
-        "username": "shrey3"
+     ```json
+    {
+      "status": "success",
+      "user": {
+          "age": 24,
+          "bio": "fuck you",
+          "created_at": "Tue, 04 Mar 2025 15:34:02 GMT",
+          "email": "shery3@.com",
+          "gender": "female",
+          "interest": "chess, football",
+          "location": "mumbai",
+          "occupation": "student",
+          "profile_photo": null,
+          "prompts": {
+              "prompts": [
+                  {
+                      "answer": "Waking up by the beach, exploring local culture, and ending the day with a sunset dinner.",
+                      "question": "My perfect travel day looks like..."
+                  },
+                  {
+                      "answer": "Backpacking solo through Europe for three months.",
+                      "question": "My biggest adventure was..."
+                  }
+              ]
+          },
+          "user_id": 2,
+          "username": "shrey3"
+      }
     }
-  }
     ```
 
 
