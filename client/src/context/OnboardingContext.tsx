@@ -126,7 +126,9 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
           answer: p.answer.trim()
         }))
       }, { headers });
+      console.log('Update prompts response:', response.data);
       return response.data.status === 'success';
+
     } catch (error: any) {
       console.error('Update prompts error:', {
         message: error.message,
