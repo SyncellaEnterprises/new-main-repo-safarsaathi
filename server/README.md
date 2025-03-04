@@ -416,39 +416,24 @@ CREATE TABLE user_db (
 stores basic data of a user like age, gender, location etc.
 ```SQL
 -- First, create the ENUM type for gender
-CREATE TYPE gender_enum AS ENUM ('male','female','Male', 'Female', 'Other');
+CREATE TYPE gender_enum AS ENUM ('Non-Binary', 'non-binary', 'male', 'female', 'Male', 'Female', 'Other', 'other');
 
 -- Now, create the user_profile table
 CREATE TABLE user_profile (
     id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL UNIQUE,
+    user_id INT NOT NULL UNIQUE,  -- Each user has a unique profile
     age INT DEFAULT NULL,
     bio TEXT DEFAULT NULL,
-    gender gender_enum DEFAULT NULL,  -- Use ENUM type
+    gender gender_enum DEFAULT NULL,  -- Using ENUM type for gender
     interest TEXT DEFAULT NULL,
     location VARCHAR(255) DEFAULT NULL,
     occupation VARCHAR(100) DEFAULT NULL,
-    videos JSON DEFAULT NULL,
-    prompt TEXT DEFAULT NULL,
-    profile_photo JSON DEFAULT NULL,
+    videos JSON DEFAULT NULL,  -- Can store multiple video URLs or objects
+    prompts JSON DEFAULT NULL,  -- Updated: Now stores an array of prompts & answers
+    profile_photo JSON DEFAULT NULL,  -- Can store multiple profile pictures
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Track profile creation time
     FOREIGN KEY (user_id) REFERENCES user_db(id) ON DELETE CASCADE
 );
-```
-
-### user_recommendation_entries: 
-recommendation model data for recommeding users with similar interests and location
-```SQL
-CREATE TABLE user_recommendation_entries (
-    id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL,  -- The user for whom recommendations are generated
-    recommended_user_id INT NOT NULL,  -- The recommended user
-    similarity_score FLOAT DEFAULT NULL,  -- Optional similarity score
-    rank INT NOT NULL,  -- Rank of the recommendation
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Track when the recommendation was generated
-    FOREIGN KEY (user_id) REFERENCES user_db(id) ON DELETE CASCADE,
-    FOREIGN KEY (recommended_user_id) REFERENCES user_db(id) ON DELETE CASCADE,
-    UNIQUE (user_id, recommended_user_id)  -- Ensures a user can't have duplicate recommendations
-); 
 ```
 
 ### swipe_logs: 
