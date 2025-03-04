@@ -25,26 +25,29 @@ jwt = JWTManager(app)
 #supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Connect to PostgreSQL database
-try:
-    conn = psycopg2.connect(
-        dbname=POSTGRES_DB,
-        user=POSTGRES_USER,
-        password=POSTGRES_PASSWORD,
-        host=POSTGRES_HOST,
-        port=POSTGRES_PORT
-    )
-    cursor = conn.cursor()
-    logging.info("Connected to PostgreSQL database")
-except Exception as e:
-    logging.error(f"Database connection failed: {e}")
-    raise CustomException(e)
-
+def get_db_connection():
+    try:
+        conn = psycopg2.connect(
+            dbname=POSTGRES_DB,
+            user=POSTGRES_USER,
+            password=POSTGRES_PASSWORD,
+            host=POSTGRES_HOST,
+            port=POSTGRES_PORT
+        )
+        cursor = conn.cursor()
+        logging.info("Connected to PostgreSQL database")
+    except Exception as e:
+        logging.error(f"Database connection failed: {e}")
+        raise CustomException(e)
+get_db_connection()
+    
 with app.app_context():
     from controllers.user_auth_controller import *
     from controllers.user_onboarding_controller import *
     #from controllers.swipe_controller import *
     from controllers.recommendations_controller import *
     from controllers.districts_get_controller import *
+    from database.user_db_get_controller import *
     #from controllers.chat_controller import * 
     
 

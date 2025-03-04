@@ -1,8 +1,8 @@
 from app import app
 from flask import jsonify
+from utils.logger import logging
 import json
 import os
-
 # Load the JSON file
 def load_districts_data():
     try:
@@ -61,16 +61,27 @@ def get_districts(state):
 def get_all_districts():
     try:
         districts_data = load_districts_data()
-        if districts_data:
+        if not districts_data:
             return jsonify({
-                "status": "success",
-                "data": districts_data
-            }), 200
+                "status": "error",
+                "message": "Unable to load data"
+            }), 500
+
+        # Extract all districts from all states
+        all_districts = []
+        for state, districts in districts_data.items():
+            all_districts.extend(districts)
+            
+        # Sort all districts alphabetically
+        sorted_districts = sorted(all_districts)
+        
         return jsonify({
-            "status": "error",
-            "message": "Unable to load data"
-        }), 500
+            "status": "success",
+            "data": sorted_districts
+        }), 200
+
     except Exception as e:
+        logging.error(f"Error in get_all_districts: {str(e)}")
         return jsonify({
             "status": "error",
             "message": str(e)
