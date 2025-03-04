@@ -44,6 +44,7 @@ export default function GenderScreen() {
     const success = await updateGender(selectedGender);
     if (success) {
       router.push('/onboarding/prompts');
+      console.log(selectedGender)
     } else {
       toast.show("Failed to save gender. Please try again.", "error");
     }

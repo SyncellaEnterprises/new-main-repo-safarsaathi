@@ -51,8 +51,8 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     setIsLoading(true);
     try {
       const response = await axios.post(`${API_URL}/gender`, { 
-        gender: gender.toLowerCase()
-      }, { headers });
+        gender : gender.toLowerCase()
+       }, { headers });
       return response.data.status === 'success';
     } catch (error: any) {
       console.error('Update gender error:', {
