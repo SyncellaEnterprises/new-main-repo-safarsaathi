@@ -255,50 +255,31 @@ def onboarding_videos():
 def onboarding_prompts():
     try:
         data = request.get_json()
-        prompt = data.get('prompt')
-        
-        if not prompt:
+        prompts = data.get('prompts')
+
+        if not prompts or not isinstance(prompts, list):
             return jsonify({
                 "status": "error",
-                "message": "Prompt is required"
+                "message": "Invalid format. 'prompts' must be a non-empty list."
             }), 400
-            
-        user_onboarding_model = UserOnboardingmodel()
-        result = user_onboarding_model.add_prompt(prompt)
         
+        user_onboarding_model = UserOnboardingmodel()
+        result = user_onboarding_model.add_prompt(prompts)
+
         if result["status"] == "success":
             return jsonify({
                 "status": "success",
-                "message": "Prompt updated successfully"
+                "message": "Prompts updated successfully"
             }), 200
+
         return jsonify({
             "status": "error",
             "message": result["message"]
         }), 400
+
     except Exception as e:
         logging.error(f"Error in onboarding_prompts: {e}")
         return jsonify({
             "status": "error",
-            "message": "An error occurred while updating prompt"
-        }), 500
-
-@app.route('/user/logout', methods=['POST'])
-@jwt_required()
-def logout():
-    try:
-        jti = get_jwt()["jti"]
-        jwt_blacklist.add(jti)
-        
-        response = jsonify({
-            "status": "success",
-            "message": "Logged out successfully"
-        })
-        response.delete_cookie('access_token_cookie')
-        return response, 200
-        
-    except Exception as e:
-        logging.error(f"Error in logout: {e}")
-        return jsonify({
-            "status": "error",
-            "message": "An error occurred during logout"
+            "message": "An error occurred while updating prompts"
         }), 500

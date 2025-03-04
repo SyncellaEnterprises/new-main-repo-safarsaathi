@@ -416,7 +416,7 @@ CREATE TABLE user_db (
 stores basic data of a user like age, gender, location etc.
 ```SQL
 -- First, create the ENUM type for gender
-CREATE TYPE gender_enum AS ENUM ('Male', 'Female', 'Other');
+CREATE TYPE gender_enum AS ENUM ('male','female','Male', 'Female', 'Other');
 
 -- Now, create the user_profile table
 CREATE TABLE user_profile (
