@@ -213,27 +213,30 @@ class UserOnboardingmodel:
             logging.error(f"Error in update_videos: {e}")
             raise CustomException(e,sys)
 
-    def add_prompt(self, prompt):
+    def add_prompt(self, prompts):
         try:
-            logging.info("adding prompts")
-            user_id = self.get_user_id()
+            logging.info("Adding prompts")
+            user_id = self.get_user_id()  # Fetch the logged-in user's ID
             if not user_id:
                 return {"status": "error", "message": "User not found"}
         except Exception as e:
-            logging.error(f"Error in update_prompt: {e}")
-            raise CustomException(e,sys)
-        
+            logging.error(f"Error in add_prompt: {e}")
+            raise CustomException(e, sys)
+
         try:
-            logging.info("adding prompt to user_profile")
+            logging.info("Adding prompts to user_profile")
+            prompts_json = json.dumps({"prompts": prompts})  # Convert to JSON format
+
             self.cursor.execute('''
-                INSERT INTO user_profile (user_id, prompt) 
+                INSERT INTO user_profile (user_id, prompts) 
                 VALUES (%s, %s)
                 ON CONFLICT (user_id) 
-                DO UPDATE SET prompt = EXCLUDED.prompt
-            ''', (user_id, prompt))
+                DO UPDATE SET prompts = EXCLUDED.prompts
+            ''', (user_id, prompts_json))
+
             self.connection.commit()
-            logging.info("Prompt updated successfully")
+            logging.info("Prompts updated successfully")
             return {"status": "success"}
         except Exception as e:
-            logging.error(f"Error in update_prompt: {e}")
-            raise CustomException(e,sys)
+            logging.error(f"Error in add_prompt: {e}")
+            raise CustomException(e, sys)
