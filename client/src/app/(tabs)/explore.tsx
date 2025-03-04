@@ -4,11 +4,13 @@ import Swiper from 'react-native-deck-swiper';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { UserCard } from '@/src/components/explore/UserCard';
 import { SwipeButtons } from '@/src/components/explore/SwipeButtons';
-import { mockUsers } from '@/src/utils/mockData';
 import TabHeader from '@/src/components/shared/TabHeader';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { useSwipeLimit } from '@/src/hooks/useSwipeLimit';
+import axios from 'axios';
+import { API_URL } from '@/src/constants/config';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ExploreScreen() {
   const router = useRouter();
@@ -42,6 +44,28 @@ export default function ExploreScreen() {
     }
   };
 
+  const handleRecommendations = async () => {
+    const token = await AsyncStorage.getItem('token');
+    console.log(token);
+    if (!token) {
+      console.log('No token found');
+      return;
+    }
+    try {
+      const recommendations = await axios.get(`${API_URL}/user/recommendations`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      setRecommendations(recommendations.data);
+      console.log(recommendations.data);
+    } catch (error) {
+        console.error('Error fetching recommendations:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-[#1a237e]">
       <TabHeader
@@ -57,7 +81,7 @@ export default function ExploreScreen() {
       <View className="flex-1">
         <Swiper
           ref={swiperRef}
-          cards={mockUsers}
+          cards={recommendations}
           renderCard={(user) => <UserCard user={user} />}
           
           onSwipedLeft={(cardIndex) => {

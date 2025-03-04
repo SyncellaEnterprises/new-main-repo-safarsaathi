@@ -6,6 +6,7 @@ import { useToast } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Use localhost for iOS simulator, 10.0.2.2 for Android emulator, or your machine's IP for physical device
 const API_URL = __DEV__ 
@@ -33,42 +34,46 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     try {
       setIsSubmitting(true);
-
+  
       if (!formData.email || !formData.password) {
         toast.show("Please fill in all fields", "error");
         return;
       }
-
+  
       if (!validateEmail(formData.email)) {
         toast.show("Please enter a valid email", "error");
         return;
       }
-
+  
       if (formData.password.length < 6) {
         toast.show("Password must be at least 6 characters", "error");
         return;
       }
-
+  
       console.log('Attempting login with:', {
         email: formData.email.trim()
       });
-
-
+  
       const response = await axios.post(`${API_URL}/login`, {
         email: formData.email.trim(),
         password: formData.password
       }, {
         headers: {
-          'Content-Type': 'application/json',
-          // Authorization: `Bearer ${accessToken}`
+          'Content-Type': 'application/json'
         },
         timeout: 10000 // 10 second timeout
       });
-
+  
       console.log('Login response:', response.data);
-
+  
       if (response.data.access_token && response.data.user) {
+        // Store accessToken in AsyncStorage
+        await AsyncStorage.setItem('accessToken', response.data.access_token);
+        await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
+  
+        // Sign in the user
         await signIn(response.data.access_token, response.data.user);
+  
         toast.show("Login successful!", "success");
         router.replace("/(tabs)/home");
       } else {
@@ -82,27 +87,25 @@ export default function LoginScreen() {
         status: error.response?.status,
         headers: error.response?.headers
       });
-
+  
       let errorMessage = "Login failed. Please check your credentials.";
-
+  
       if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
         if (error.response.status === 401) {
           errorMessage = "Invalid email or password.";
         } else if (error.response.data?.message) {
           errorMessage = error.response.data.message;
         }
       } else if (error.request) {
-        // The request was made but no response was received
         errorMessage = "Network error. Please check your internet connection.";
       }
-
+  
       toast.show(errorMessage, "error");
     } finally {
       setIsSubmitting(false);
     }
   };
+  
 
   const isLoading = isSubmitting || authLoading;
 

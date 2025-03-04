@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // API URL configuration
 const API_URL = __DEV__ 
@@ -14,7 +15,6 @@ interface User {
   id: string;
   username: string;
   email: string;
-  // Add other user fields as needed
 }
 
 interface AuthContextType {
@@ -47,10 +47,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password
       });
-
+  
       if (response.data.status === 'success') {
-        setAccessToken(response.data.access_token);
-        setUser(response.data.user);
+        const token = response.data.access_token;
+        const userData = response.data.user;
+  
+        setAccessToken(token);
+        setUser(userData);
+  
+        // Store in AsyncStorage
+        await AsyncStorage.setItem('accessToken', token);
+        await AsyncStorage.setItem('user', JSON.stringify(userData));
+  
         return true;
       }
       return false;
@@ -61,6 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     }
   };
+  
 
   const signUp = async (username: string, email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
@@ -70,37 +79,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password,
         confirmPassword: password
-      }, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
       });
-
+  
       if (response.data.status === 'success') {
-        setAccessToken(response.data.access_token);
-        setUser(response.data.user);
+        const token = response.data.access_token;
+        const userData = response.data.user;
+  
+        setAccessToken(token);
+        setUser(userData);
+  
+        // Store in AsyncStorage
+        await AsyncStorage.setItem('accessToken', token);
+        await AsyncStorage.setItem('user', JSON.stringify(userData));
+  
         return true;
       }
       return false;
-    } catch (error: any) {
-      console.error('Sign up error:', {
-        message: error.message,
-        response: error.response?.data
-      });
+    } catch (error) {
+      console.error('Sign up error:', error);
       return false;
     } finally {
       setIsLoading(false);
     }
   };
+  
 
   const signOut = async () => {
     setIsLoading(true);
     try {
       if (accessToken) {
         await axios.post(`${API_URL}/logout`, {}, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`
-          }
+          headers: { Authorization: `Bearer ${accessToken}` }
         });
       }
     } catch (error) {
@@ -108,9 +117,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setAccessToken(null);
       setUser(null);
+  
+      // Remove from AsyncStorage
+      await AsyncStorage.removeItem('accessToken');
+      await AsyncStorage.removeItem('user');
+  
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const loadStoredUser = async () => {
+      setIsLoading(true);
+      try {
+        const token = await AsyncStorage.getItem('accessToken');
+        const userData = await AsyncStorage.getItem('user');
+  
+        if (token && userData) {
+          setAccessToken(token);
+          setUser(JSON.parse(userData));
+        }
+      } catch (error) {
+        console.error('Error loading stored user:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+  
+    loadStoredUser();
+  }, []);
+  
 
   return (
     <AuthContext.Provider value={{
