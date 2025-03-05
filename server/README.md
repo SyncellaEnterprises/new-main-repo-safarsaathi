@@ -407,7 +407,7 @@ Common HTTP Status Codes:
       "status": "success",
       "user": {
           "age": 24,
-          "bio": "fuck you",
+          "bio": "love you",
           "created_at": "Tue, 04 Mar 2025 15:34:02 GMT",
           "email": "shery3@.com",
           "gender": "female",

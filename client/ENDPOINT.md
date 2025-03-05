@@ -191,7 +191,7 @@ All onboarding endpoints require JWT Token in header: `Authorization: Bearer <to
     }
     ```
 
-<!-- - `POST /api/onboarding/videos`
+- `POST /api/onboarding/videos`
   - Upload user video
   - Body: Form-data with key "video" and file upload
   - Response:
@@ -201,7 +201,7 @@ All onboarding endpoints require JWT Token in header: `Authorization: Bearer <to
         "message": "Video uploaded successfully",
         "video_url": "/static/uploads/username_video.extension"
     }
-    ``` -->
+    ```
 
 - `POST /api/onboarding/prompts`
   - Update user prompts
@@ -347,6 +347,106 @@ Common HTTP Status Codes:
 - 401: Unauthorized (invalid or missing token)
 - 500: Internal Server Error
 
+
+### Districts Endpoints
+
+- `GET /api/states`
+  - Get list of all states
+  - Response:
+    ```json
+    {
+        "status": "success",
+        "data": ["State1", "State2", "State3", ...]
+    }
+    ```
+
+- `GET /api/districts/<state>`
+  - Get districts for a specific state
+  - Response:
+    ```json
+    {
+        "status": "success",
+        "state": "State Name",
+        "districts": ["District1", "District2", "District3", ...]
+    }
+    ```
+
+- `GET /api/all-districts`
+  - Get all districts sorted by name
+  - Response:
+    ```json
+      {
+    "data": [
+      "Adilabad",
+      "Agar Malwa",
+      "Agra",
+      "Ahmedabad",
+      "Ahmednagar",
+      "Aizawl",
+      "Ajmer",
+      "Akola",
+      "Alappuzha",
+      "Aligarh",
+      "Alipurduar",
+      "Alirajpur",
+      "Alluri Sitharama Raju",
+      "Almora",
+      "Alwar",
+      "Ambala",
+      "Ambedkar Nagar",
+      ....]
+      }
+    ```
+
+- `GET /api/users/me`
+  - Get data of the logged in user
+  - Requires: JWT Token
+  - Response:
+     ```json
+    {
+      "status": "success",
+      "user": {
+          "age": 24,
+          "bio": "love you",
+          "created_at": "Tue, 04 Mar 2025 15:34:02 GMT",
+          "email": "shery3@.com",
+          "gender": "female",
+          "interest": "chess, football",
+          "location": "mumbai",
+          "occupation": "student",
+          "profile_photo": null,
+          "prompts": {
+              "prompts": [
+                  {
+                      "answer": "Waking up by the beach, exploring local culture, and ending the day with a sunset dinner.",
+                      "question": "My perfect travel day looks like..."
+                  },
+                  {
+                      "answer": "Backpacking solo through Europe for three months.",
+                      "question": "My biggest adventure was..."
+                  }
+              ]
+          },
+          "user_id": 2,
+          "username": "shrey3"
+      }
+    }
+    ```
+
+
+Common Error Responses:
+```json
+{
+    "status": "error",
+    "message": "Error description"
+}
+```
+
+Status Codes:
+- 200: Success
+- 404: State not found
+- 500: Server error
+
 ## Database Table schemas
 ### user_db: 
 stores data during user registration
@@ -365,39 +465,24 @@ CREATE TABLE user_db (
 stores basic data of a user like age, gender, location etc.
 ```SQL
 -- First, create the ENUM type for gender
-CREATE TYPE gender_enum AS ENUM ('Male', 'Female', 'Other');
+CREATE TYPE gender_enum AS ENUM ('Non-Binary', 'non-binary', 'male', 'female', 'Male', 'Female', 'Other', 'other');
 
 -- Now, create the user_profile table
 CREATE TABLE user_profile (
     id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL UNIQUE,
+    user_id INT NOT NULL UNIQUE,  -- Each user has a unique profile
     age INT DEFAULT NULL,
     bio TEXT DEFAULT NULL,
-    gender gender_enum DEFAULT NULL,  -- Use ENUM type
+    gender gender_enum DEFAULT NULL,  -- Using ENUM type for gender
     interest TEXT DEFAULT NULL,
     location VARCHAR(255) DEFAULT NULL,
     occupation VARCHAR(100) DEFAULT NULL,
-    videos JSON DEFAULT NULL,
-    prompt TEXT DEFAULT NULL,
-    profile_photo JSON DEFAULT NULL,
+    videos JSON DEFAULT NULL,  -- Can store multiple video URLs or objects
+    prompts JSON DEFAULT NULL,  -- Updated: Now stores an array of prompts & answers
+    profile_photo JSON DEFAULT NULL,  -- Can store multiple profile pictures
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Track profile creation time
     FOREIGN KEY (user_id) REFERENCES user_db(id) ON DELETE CASCADE
 );
-```
-
-### user_recommendation_entries: 
-recommendation model data for recommeding users with similar interests and location
-```SQL
-CREATE TABLE user_recommendation_entries (
-    id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL,  -- The user for whom recommendations are generated
-    recommended_user_id INT NOT NULL,  -- The recommended user
-    similarity_score FLOAT DEFAULT NULL,  -- Optional similarity score
-    rank INT NOT NULL,  -- Rank of the recommendation
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Track when the recommendation was generated
-    FOREIGN KEY (user_id) REFERENCES user_db(id) ON DELETE CASCADE,
-    FOREIGN KEY (recommended_user_id) REFERENCES user_db(id) ON DELETE CASCADE,
-    UNIQUE (user_id, recommended_user_id)  -- Ensures a user can't have duplicate recommendations
-); 
 ```
 
 ### swipe_logs: 

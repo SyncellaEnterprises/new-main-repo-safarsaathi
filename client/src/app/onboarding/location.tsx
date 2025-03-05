@@ -13,11 +13,11 @@ import { useToast } from "../../context/ToastContext";
 import { useOnboarding } from "../../context/OnboardingContext";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from 'expo-location';
+import axios from 'axios';
+import { API_URL } from '@/src/constants/config';
 
 interface District {
-  id: string;
   name: string;
-  state: string;
 }
 
 export default function LocationScreen() {
@@ -25,24 +25,30 @@ export default function LocationScreen() {
   const toast = useToast();
   const { updateLocation, isLoading } = useOnboarding();
   const [searchQuery, setSearchQuery] = useState("");
-  const [districts, setDistricts] = useState<District[]>([]);
-  const [selectedDistrict, setSelectedDistrict] = useState<District | null>(null);
+  const [districts, setDistricts] = useState<string[]>([]);
+  const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [address, setAddress] = useState<string>('');
+  const [fetchingDistricts, setFetchingDistricts] = useState(true);
   const scale = useSharedValue(1);
 
   useEffect(() => {
-    fetchLocations();
+    fetchDistricts();
     requestLocation();
   }, []);
 
-  const fetchLocations = async () => {
+  const fetchDistricts = async () => {
     try {
-      const response = await fetch('https://api.example.com/india/districts');
-      const data = await response.json();
-      setDistricts(data);
+      setFetchingDistricts(true);
+      const response = await axios.get(`${API_URL}/all-districts`);
+      if (response.data.data) {
+        setDistricts(response.data.data);
+      }
     } catch (error) {
-      toast.show("Failed to load locations", "error");
+      toast.show("Failed to load districts", "error");
+      console.error('Error fetching districts:', error);
+    } finally {
+      setFetchingDistricts(false);
     }
   };
 
@@ -63,19 +69,28 @@ export default function LocationScreen() {
       });
 
       if (addressResult) {
-        const formattedAddress = `${addressResult.city}, ${addressResult.region}`;
+        const formattedAddress = `${addressResult.city || ''}, ${addressResult.region || ''}`.trim();
         setAddress(formattedAddress);
+        
+        // Try to find and select the matching district
+        const matchingDistrict = districts.find(district => 
+          addressResult.city && district.toLowerCase().includes(addressResult.city.toLowerCase())
+        );
+        if (matchingDistrict) {
+          setSelectedDistrict(matchingDistrict);
+        }
       }
     } catch (error) {
+      console.error('Error getting location:', error);
       toast.show('Error getting location', 'error');
     }
   };
 
   const filteredDistricts = districts.filter(district =>
-    district.name.toLowerCase().includes(searchQuery.toLowerCase())
+    district.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleSelectDistrict = (district: District) => {
+  const handleSelectDistrict = (district: string) => {
     scale.value = withSpring(1.05, {}, () => {
       scale.value = withSpring(1);
     });
@@ -89,8 +104,7 @@ export default function LocationScreen() {
     }
 
     const locationData = {
-      district: selectedDistrict.name,
-      state: selectedDistrict.state,
+      district: selectedDistrict,
       ...(location && {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
@@ -105,6 +119,15 @@ export default function LocationScreen() {
       toast.show("Failed to save location. Please try again.", "error");
     }
   };
+
+  if (fetchingDistricts) {
+    return (
+      <View className="flex-1 bg-primary-light items-center justify-center">
+        <ActivityIndicator size="large" color="#6366f1" />
+        <Text className="text-slate-600 mt-4">Loading districts...</Text>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-primary-light">
@@ -135,34 +158,27 @@ export default function LocationScreen() {
           <View className="space-y-2">
             {filteredDistricts.map((district, index) => (
               <Animated.View
-                key={district.id}
+                key={district}
                 entering={SlideInRight.delay(index * 100)}
               >
                 <TouchableOpacity
                   onPress={() => handleSelectDistrict(district)}
                   className={`p-4 rounded-xl border shadow-sm ${
-                    selectedDistrict?.id === district.id
+                    selectedDistrict === district
                       ? 'bg-indigo-600 border-indigo-500'
                       : 'bg-white border-indigo-100'
                   }`}
                   style={{
-                    elevation: selectedDistrict?.id === district.id ? 4 : 1,
+                    elevation: selectedDistrict === district ? 4 : 1,
                   }}
                   disabled={isLoading}
                 >
                   <Text 
                     className={`text-lg font-medium ${
-                      selectedDistrict?.id === district.id ? 'text-white' : 'text-slate-700'
+                      selectedDistrict === district ? 'text-white' : 'text-slate-700'
                     }`}
                   >
-                    {district.name}
-                  </Text>
-                  <Text 
-                    className={`text-sm ${
-                      selectedDistrict?.id === district.id ? 'text-indigo-100' : 'text-slate-500'
-                    }`}
-                  >
-                    {district.state}
+                    {district}
                   </Text>
                 </TouchableOpacity>
               </Animated.View>
