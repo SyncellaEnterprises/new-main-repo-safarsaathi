@@ -44,7 +44,7 @@ export default function OccupationScreen() {
 
     const success = await updateOccupation(selectedOccupation);
     if (success) {
-      router.push('/onboarding/interests');
+      router.push('/onboarding/location');
     } else {
       toast.show("Failed to save occupation. Please try again.", "error");
     }
