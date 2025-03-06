@@ -141,7 +141,7 @@ export default function ProfileScreen() {
             <Text className="text-lg font-semibold text-slate-800 mb-4">
               Interests
             </Text>
-            <View className="flex-row flex-wrap gap-2">
+            {/* <View className="flex-row flex-wrap gap-2">
               {profile?.interest?.map((interest, index) => (
                 <View 
                   key={index}
@@ -153,7 +153,7 @@ export default function ProfileScreen() {
               {(!profile?.interest || profile.interest.length === 0) && (
                 <Text className="text-slate-500">Add your interests</Text>
               )}
-            </View>
+            </View> */}
           </View>
         </Animated.View>
 
