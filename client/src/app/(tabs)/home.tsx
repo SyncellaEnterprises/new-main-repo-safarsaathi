@@ -7,7 +7,6 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from "expo-blur";
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import Stories from '@/src/components/home/Stories';
 import React from "react";
 
 // Mock Data
@@ -203,18 +202,12 @@ export default function HomeScreen() {
           onRightPress={() => router.push("/notifications")}
           gradientColors={['#3B82F6', '#60A5FA']}
         />
-        
+      
         <ScrollView 
           className="flex-1"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ padding: 16 }}
-        >
-          {/* Stories Section */}
-          <Stories 
-            onAddStory={() => router.push("/stories/create")}
-            onViewStory={(story) => router.push(`/stories/${story.id}`)}
-          />
-
+        >   
           {/* Custom Trip Card */}
           <TouchableOpacity 
             onPress={() => router.push("/(icon)/custom-trip")}

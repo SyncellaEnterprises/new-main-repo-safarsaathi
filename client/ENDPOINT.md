@@ -399,39 +399,39 @@ Common HTTP Status Codes:
     ```
 
 - `GET /api/users/me`
-  - Get data of the logged in user
+  - Get current user details
   - Requires: JWT Token
   - Response:
-     ```json
-    {
-      "status": "success",
-      "user": {
-          "age": 24,
-          "bio": "love you",
-          "created_at": "Tue, 04 Mar 2025 15:34:02 GMT",
-          "email": "shery3@.com",
-          "gender": "female",
-          "interest": "chess, football",
-          "location": "mumbai",
-          "occupation": "student",
-          "profile_photo": null,
-          "prompts": {
-              "prompts": [
-                  {
-                      "answer": "Waking up by the beach, exploring local culture, and ending the day with a sunset dinner.",
-                      "question": "My perfect travel day looks like..."
-                  },
-                  {
-                      "answer": "Backpacking solo through Europe for three months.",
-                      "question": "My biggest adventure was..."
-                  }
-              ]
-          },
-          "user_id": 2,
-          "username": "shrey3"
-      }
+  ```json
+  {
+    "status": "success",
+    "user": {
+      "age": 24,
+      "bio": "love you",
+      "created_at": "Tue, 04 Mar 2025 15:34:02 GMT",
+      "email": "shery3@.com",
+      "gender": "female",
+      "interest": "chess, football",
+      "location": "{\"state\":\"Gujarat\",\"city\":\"Vadodara\",\"latitude\":37.4219983,\"longitude\":-122.084,\"address\":\"Mountain View, California\"}",
+      "occupation": "student",
+      "profile_photo": null,
+      "prompts": {
+          "prompts": [
+              {
+                  "answer": "Waking up by the beach, exploring local culture, and ending the day with a sunset dinner.",
+                  "question": "My perfect travel day looks like..."
+              },
+              {
+                  "answer": "Backpacking solo through Europe for three months.",
+                  "question": "My biggest adventure was..."
+              }
+          ]
+      },
+      "user_id": 2,
+      "username": "shrey3"
     }
-    ```
+  }
+  ```
 
 
 Common Error Responses:
