@@ -1,24 +1,59 @@
+import os
+import sys
+import psycopg2
+from psycopg2.extras import DictCursor
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores import FAISS
-from sqlalchemy import text
+from langchain.schema import Document
+from langchain_pinecone import PineconeVectorStore
 from config.config import *
 from utils.exception import CustomException
 from utils.logger import logging
-import sys
-import psycopg2
-from langchain.schema import Document
-from psycopg2.extras import DictCursor
-import json
+from langchain_pinecone import PineconeVectorStore
 
+from pinecone import Pinecone, ServerlessSpec
 
 class RecommendationModel:
-    DEFAULT_RECOMMENDATION_LIMIT = 50  # Fixed limit for recommendations
-    
+    DEFAULT_RECOMMENDATION_LIMIT = 50
+
     def __init__(self):
         try:
-            self.embed_model = HuggingFaceEmbeddings(
-                model_name="sentence-transformers/all-mpnet-base-v2"
-            )            
+            self.embeddeding_model= HuggingFaceEmbeddings(
+                                    model_name="sentence-transformers/all-mpnet-base-v2"
+                                    )
+            logging.info("model: %s" % self.embeddeding_model)
+
+            # Define the index name and embedding dimension
+            self.INDEX_NAME = "travel-mate"
+            self.INDEX_DIMENSION = 1024
+            logging.info(f"Index name: {self.INDEX_NAME} & Index dimension: {self.INDEX_DIMENSION}")
+
+            # Initialize Pinecone
+            if not PINECONE_API_KEY:
+                raise CustomException("PINECONE_API_KEY not found in environment variables", sys)
+            
+            # Initialize Pinecone client
+            self.pc = Pinecone(api_key=PINECONE_API_KEY)
+
+            logging.info("Pinecone initalized")
+            
+            # Get list of existing indexes
+            existing_indexes = self.pc.list_indexes()
+
+            logging.info(f"existing indexes {existing_indexes}")
+
+            # Create the index if it doesn't exist
+            if self.INDEX_NAME not in [idx['name'] for idx in existing_indexes]:
+                logging.info(f"Creating new Pinecone index: {self.INDEX_NAME}")
+                self.pc.create_index(
+                    name=self.INDEX_NAME,
+                    dimension=self.INDEX_DIMENSION,
+                    metric='cosine',
+                    spec=ServerlessSpec(cloud="aws", region="us-east-1")
+                )
+            else:
+                logging.info(f"Pinecone index {self.INDEX_NAME} already exists")
+
+            # Connect to PostgreSQL
             self.connection = psycopg2.connect(
                 host=POSTGRES_HOST,
                 database=POSTGRES_DB,
@@ -27,155 +62,80 @@ class RecommendationModel:
                 port=POSTGRES_PORT
             )
             self.cursor = self.connection.cursor(cursor_factory=DictCursor)
+            logging.info("Database connection established")
+
         except Exception as e:
-            logging.info(f"Error while connecting to PostgreSQL or loading faiss index: {e}")
+            logging.error(f"Error during RecommendationModel initialization: {str(e)}")
             raise CustomException(e, sys)
-    
-    def get_user_id(self, username):
-        """Get user ID from username"""
-        try:
-            query = "SELECT id FROM user_db WHERE username = %s"
-            self.cursor.execute(query, (username,))
-            result = self.cursor.fetchone()
-            return result['id'] if result else None
-        except Exception as e:
-            logging.error(f"Error getting user ID for username {username}: {str(e)}")
-            return None
-    
-    def store_recommendations(self, username, recommendations):
-        try:
-            # Get user_id for the current user
-            user_id = self.get_user_id(username)
-            if not user_id:
-                logging.error(f"User ID not found for username: {username}")
-                return False
-            
-            # First, delete existing recommendations for this user
-            delete_query = """
-                DELETE FROM user_recommendation_entries 
-                WHERE user_id = %s;
-            """
-            self.cursor.execute(delete_query, (user_id,))
-            
-            # Insert new recommendations
-            insert_query = """
-                INSERT INTO user_recommendation_entries 
-                (user_id, recommended_user_id, similarity_score, rank)
-                VALUES (%s, %s, %s, %s);
-            """
-            
-            for idx, rec in enumerate(recommendations):
-                recommended_user_id = self.get_user_id(rec['username'])
-                if recommended_user_id:
-                    self.cursor.execute(
-                        insert_query, 
-                        (
-                            user_id, 
-                            recommended_user_id, 
-                            rec['similarity_score'],
-                            idx + 1  # rank starts from 1
-                        )
-                    )
-            
-            self.connection.commit()
-            logging.info(f"Stored recommendations for user: {username}")
-            return True
-            
-        except Exception as e:
-            logging.error(f"Error storing recommendations: {str(e)}")
-            self.connection.rollback()
-            return False
-        
-    def get_recommendations(self, username):
-        try:
-            # Get user profile data from PostgreSQL
-            query = """
-                SELECT up.location, up.interest, ud.id as user_id
-                FROM user_profile up
-                JOIN user_db ud ON up.user_id = ud.id
-                WHERE ud.username = %s;
-            """
-            logging.info(f"Querying user profile for username: {username}")
-            self.cursor.execute(query, (username,))
-            result = self.cursor.fetchone()
-            logging.info(f"User profile found: {result}")
-            
-            if not result:
-                return {"error": "User profile not found"}, 404
-                
-            # Format query string similar to training data
-            city, interests = result['location'], result['interest']
-            
-            # Convert list to comma-separated string if needed
-            if isinstance(interests, (list, set)):
-                interests = ', '.join(interests)
-            query_string = f"user has city {city} and love {interests}"
-            logging.info(f"Query string for FAISS: {query_string}")
-            
-            # Get all users for recommendations
-            self.cursor.execute("""
-                SELECT ud.username, ud.id, up.location, up.interest
-                FROM user_profile up
-                JOIN user_db ud ON up.user_id = ud.id
-                WHERE ud.username != %s;
-            """, (username,))
 
-            users = self.cursor.fetchall()
-            logging.info(f"Found {len(users)} users for recommendations")
+    def create_vector_db(self):
+        try:
+            logging.info("Creating and populating vector database...")
+            
+            # Query to get user data from user_profile table
+            query = '''
+                SELECT 
+                    user_id,
+                    location,
+                    interest as interests
+                FROM user_profile 
+                WHERE location IS NOT NULL 
+                OR interest IS NOT NULL
+            '''
+
+            
+            self.cursor.execute(query)
+            user_profiles = self.cursor.fetchall()
+
+            
+            
+            if not user_profiles:
+                logging.warning("No user profiles found with location or interests")
+                return None
+            else:
+                logging.info(f"User profile {user_profiles}")
+
+            # Create documents for vector store
             documents = []
+            for profile in user_profiles:
+                profile_dict = dict(profile)
+                
+                # Create content string combining location and interests
+                content = f"Location: {profile_dict.get('location', 'Not specified')}, "
+                content += f"Interests: {profile_dict.get('interests', 'Not specified')}"
+                
+                # Create Document object with metadata
+                doc = Document(
+                    page_content=content,
+                    metadata={
+                        "user_id": profile_dict['user_id'],
+                        "location": profile_dict.get('location'),
+                        "interests": profile_dict.get('interests')
+                    }
+                )
+                documents.append(doc)
+                
+            logging.info(f"Created {len(documents)} documents from user profiles")
 
-            # Convert user data to FAISS-compatible format
-            for user in users:
-                user_username = user['username']
-                user_city = user['location']
-                user_interests = user['interest']
-                user_id = user['id']
+            vector_store = PineconeVectorStore.from_documents(
+                documents=documents,
+                index_name=self.INDEX_NAME,
+                embedding=self.embeddeding_model
+            )   
+            logging.info(f"vector_store successfully created")
+            
+            return vector_store
 
-                if user_city and user_interests:  # Ensure data is not null
-                    doc = Document(
-                        page_content=f"user has city {user_city} and love {user_interests}",
-                        metadata={
-                            "username": user_username,
-                            "user_id": user_id,
-                            "city": user_city,
-                            "interests": user_interests
-                        }
-                    )
-                    documents.append(doc)
-            
-            logging.info(f"Created {len(documents)} documents for FAISS")
-
-            # Create and save vector store
-            vector_store = FAISS.from_documents(documents, self.embed_model)
-            # Get top N most similar users (N = min(DEFAULT_LIMIT, total_users))
-            k = min(self.DEFAULT_RECOMMENDATION_LIMIT, len(documents))
-            results = vector_store.similarity_search_with_score(query_string, k=k)
-            logging.info(f"Found top {k} similar users out of {len(documents)} total users")
-            
-            # Format recommendations and sort by similarity score
-            recommendations = []
-            for doc, score in results:
-                metadata = doc.metadata
-                recommendations.append({
-                    "username": metadata["username"],
-                    "user_id": metadata["user_id"],
-                    "city": metadata["city"],
-                    "interests": metadata["interests"],
-                    "similarity_score": round(1 - score, 3)  # Convert distance to similarity score
-                })
-            
-            # Sort recommendations by similarity score in descending order
-            recommendations.sort(key=lambda x: x['similarity_score'], reverse=True)
-            
-            # Store recommendations in database
-            self.store_recommendations(username, recommendations)
-            
-            # Add rank to recommendations
-            for idx, rec in enumerate(recommendations):
-                rec['rank'] = idx + 1
-            
-            return {"recommendations": recommendations}, 200
-            
         except Exception as e:
-            logging.error(f"Error in get_recommendations: {str(e)}")
-            return {"error": str(e)}, 500 
+            logging.error(f"Error creating vector database: {str(e)}")
+            raise CustomException(e, sys)
+
+    def __del__(self):
+        try:
+            if hasattr(self, 'cursor') and self.cursor:
+                self.cursor.close()
+            if hasattr(self, 'connection') and self.connection:
+                self.connection.close()
+        except Exception as e:
+            logging.error(f"Error closing database connections: {str(e)}")
+        

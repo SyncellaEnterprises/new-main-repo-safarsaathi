@@ -13,5 +13,6 @@ faiss-cpu>=1.10.0
 sentence-transformers>=2.2.2
 torch>=2.1.0
 flask_socketio
+pinecone
 redis
 eventlet
