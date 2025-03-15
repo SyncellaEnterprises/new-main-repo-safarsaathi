@@ -48,7 +48,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password
       });
   
-      if (response.data.status === 'success') {
+      // Handle both response formats (status-based and direct token-based)
+      if (response.data.status === 'success' || (response.data.access_token && response.data.user)) {
         const token = response.data.access_token;
         const userData = response.data.user;
   
@@ -62,8 +63,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return true;
       }
       return false;
-    } catch (error) {
-      console.error('Sign in error:', error);
+    } catch (error: any) {
+      console.error('Sign in error:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
       return false;
     } finally {
       setIsLoading(false);

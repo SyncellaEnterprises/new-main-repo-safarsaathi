@@ -54,70 +54,93 @@ export default function ProfileScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Header Card */}
+        {/* Profile Header */}
         <Animated.View 
           entering={FadeInDown.duration(500)}
-          className="m-4 bg-white rounded-3xl overflow-hidden shadow-sm"
+          className="relative h-48"
         >
-          <View className="p-6">
-            <View className="flex-row justify-between items-start">
-              <View className="flex-1">
-                <Text className="text-2xl font-bold text-slate-800">
-                  {profile?.username}
-                </Text>
-                <Text className="text-slate-500 mt-1">
-                  {profile?.occupation || 'Add occupation'}
-                </Text>
-                <Text className="text-slate-500">
-                  {profile?.location || 'Add location'}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setShowSettings(true)}
-                className="w-10 h-10 bg-slate-100 rounded-full items-center justify-center"
-              >
-                <Ionicons name="menu" size={24} color="#64748b" />
-              </TouchableOpacity>
-            </View>
-
-            <View className="mt-6">
-              <Text className="text-slate-600 leading-relaxed">
-                {profile?.bio || 'Add a bio to tell others about yourself'}
-              </Text>
-            </View>
-
-            <TouchableOpacity 
+          <LinearGradient
+            colors={['#6366f1', '#818cf8']}
+            className="absolute w-full h-full"
+          />
+          <View className="flex-row justify-between items-start p-4">
+            <TouchableOpacity
               onPress={() => setShowEditProfile(true)}
-              className="mt-6 bg-indigo-600 py-3 rounded-xl"
+              className="bg-white/20 px-4 py-2 rounded-full flex-row items-center"
             >
-              <Text className="text-white text-center font-semibold">
-                Edit Profile
-              </Text>
+              <Ionicons name="pencil" size={16} color="white" />
+              <Text className="text-white ml-2 font-medium">Edit Profile</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setShowSettings(true)}
+              className="w-10 h-10 bg-white/20 rounded-full items-center justify-center"
+            >
+              <Ionicons name="menu" size={24} color="white" />
             </TouchableOpacity>
           </View>
         </Animated.View>
 
-        {/* Stats Card */}
+        {/* Profile Info Card */}
         <Animated.View 
-          entering={FadeInDown.delay(100).duration(500)}
-          className="mx-4 bg-white rounded-3xl overflow-hidden shadow-sm"
+          entering={FadeInDown.delay(100)}
+          className="mx-4 -mt-20 bg-white rounded-3xl shadow-lg overflow-hidden"
         >
           <View className="p-6">
-            <Text className="text-lg font-semibold text-slate-800 mb-4">
-              Your Profile Stats
-            </Text>
-            <View className="flex-row justify-between">
+            <View className="items-center">
+              <View className="w-24 h-24 bg-slate-100 rounded-full border-4 border-white shadow-sm mb-4">
+                {profile?.profile_photo ? (
+                  <Image
+                    source={{ uri: profile.profile_photo }}
+                    className="w-full h-full rounded-full"
+                  />
+                ) : (
+                  <View className="w-full h-full rounded-full bg-indigo-100 items-center justify-center">
+                    <Ionicons name="person" size={40} color="#6366f1" />
+                  </View>
+                )}
+                <View className="absolute right-0 bottom-0 bg-indigo-600 rounded-full p-1">
+                  <Ionicons name="camera" size={14} color="white" />
+                </View>
+              </View>
+              <Text className="text-2xl font-bold text-slate-800">
+                {profile?.username}
+              </Text>
+              <Text className="text-slate-500 mt-1">
+                {profile?.occupation || 'Add occupation'}
+              </Text>
+              <Text className="text-slate-500">
+                {profile?.location || 'Add location'}
+              </Text>
+              
+              {/* Verification Badge */}
+              <TouchableOpacity 
+                onPress={() => router.push("/(profile)/verification")}
+                className="mt-4 flex-row items-center bg-indigo-50 px-4 py-2 rounded-full"
+              >
+                <Ionicons name="shield-checkmark" size={16} color="#6366f1" />
+                <Text className="text-indigo-600 ml-2 font-medium">Get Verified</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View className="mt-6">
+              <Text className="text-slate-600 text-center leading-relaxed">
+                {profile?.bio || 'Add a bio to tell others about yourself'}
+              </Text>
+            </View>
+
+            {/* Quick Stats */}
+            <View className="flex-row justify-around mt-6 pt-6 border-t border-slate-100">
               <View className="items-center">
                 <Text className="text-2xl font-bold text-indigo-600">
                   {profile?.interest?.length || 0}
                 </Text>
-                <Text className="text-slate-500 mt-1">Interests</Text>
+                <Text className="text-slate-500">Interests</Text>
               </View>
               <View className="items-center">
                 <Text className="text-2xl font-bold text-indigo-600">
                   {profile?.prompts?.prompts?.length || 0}
                 </Text>
-                <Text className="text-slate-500 mt-1">Prompts</Text>
+                <Text className="text-slate-500">Prompts</Text>
               </View>
               <View className="items-center">
                 <Text className="text-2xl font-bold text-indigo-600">
@@ -126,23 +149,29 @@ export default function ProfileScreen() {
                     : 0
                   }
                 </Text>
-                <Text className="text-slate-500 mt-1">Days Active</Text>
+                <Text className="text-slate-500">Days Active</Text>
               </View>
             </View>
           </View>
         </Animated.View>
 
         {/* Interests Section */}
-        <Animated.View 
-          entering={FadeInDown.delay(200).duration(500)}
-          className="m-4 bg-white rounded-3xl overflow-hidden shadow-sm"
+        {/* <Animated.View 
+          entering={FadeInDown.delay(200)}
+          className="m-4 bg-white rounded-3xl shadow-sm"
         >
-          <View className="p-6">
-            <Text className="text-lg font-semibold text-slate-800 mb-4">
-              Interests
-            </Text>
-            {/* <View className="flex-row flex-wrap gap-2">
-              {profile?.interest?.map((interest, index) => (
+          <TouchableOpacity 
+            onPress={() => router.push("/(profile)/edit-interests")}
+            className="p-6"
+          >
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-lg font-semibold text-slate-800">
+                Interests
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+            </View>
+            <View className="flex-row flex-wrap gap-2">
+              {profile?.interest?.slice(0, 6).map((interest, index) => (
                 <View 
                   key={index}
                   className="bg-indigo-50 px-4 py-2 rounded-full"
@@ -153,20 +182,31 @@ export default function ProfileScreen() {
               {(!profile?.interest || profile.interest.length === 0) && (
                 <Text className="text-slate-500">Add your interests</Text>
               )}
-            </View> */}
-          </View>
-        </Animated.View>
+              {profile?.interest && profile.interest.length > 6 && (
+                <View className="bg-indigo-50 px-4 py-2 rounded-full">
+                  <Text className="text-indigo-600">+{profile.interest.length - 6} more</Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+        </Animated.View> */}
 
         {/* Prompts Section */}
         <Animated.View 
-          entering={FadeInDown.delay(300).duration(500)}
-          className="m-4 bg-white rounded-3xl overflow-hidden shadow-sm"
+          entering={FadeInDown.delay(300)}
+          className="m-4 bg-white rounded-3xl shadow-sm"
         >
-          <View className="p-6">
-            <Text className="text-lg font-semibold text-slate-800 mb-4">
-              Prompts
-            </Text>
-            {profile?.prompts?.prompts?.map((prompt, index) => (
+          <TouchableOpacity 
+            onPress={() => router.push("/(profile)/edit-prompts")}
+            className="p-6"
+          >
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-lg font-semibold text-slate-800">
+                Prompts
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+            </View>
+            {profile?.prompts?.prompts?.slice(0, 2).map((prompt, index) => (
               <View key={index} className="mb-4 last:mb-0">
                 <Text className="text-indigo-600 font-medium mb-2">
                   {prompt.question}
@@ -179,17 +219,23 @@ export default function ProfileScreen() {
             {(!profile?.prompts?.prompts || profile.prompts.prompts.length === 0) && (
               <Text className="text-slate-500">Add prompts to tell your story</Text>
             )}
-          </View>
+            {profile?.prompts?.prompts && profile.prompts.prompts.length > 2 && (
+              <Text className="text-indigo-600 mt-4 font-medium">
+                +{profile.prompts.prompts.length - 2} more prompts
+              </Text>
+            )}
+          </TouchableOpacity>
         </Animated.View>
 
         {/* Premium Card */}
-        <Animated.View entering={FadeInDown.delay(400).duration(500)}>
+        <Animated.View entering={FadeInDown.delay(400)}>
           <PremiumCard />
         </Animated.View>
 
         <View className="h-20" />
       </ScrollView>
 
+      {/* Edit Profile Modal */}
       <EditProfileModal 
         visible={showEditProfile}
         onClose={() => setShowEditProfile(false)}
@@ -200,6 +246,7 @@ export default function ProfileScreen() {
         userData={profile}
       />
 
+      {/* Settings Menu */}
       <SettingsMenu 
         visible={showSettings} 
         onClose={() => setShowSettings(false)} 

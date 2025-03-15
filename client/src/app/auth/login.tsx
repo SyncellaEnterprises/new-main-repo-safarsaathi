@@ -53,41 +53,17 @@ export default function LoginScreen() {
       console.log('Attempting login with:', {
         email: formData.email.trim()
       });
+
+      const success = await signIn(formData.email.trim(), formData.password);
   
-      const response = await axios.post(`${API_URL}/login`, {
-        email: formData.email.trim(),
-        password: formData.password
-      }, {
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        timeout: 10000 // 10 second timeout
-      });
-  
-      console.log('Login response:', response.data);
-  
-      if (response.data.access_token && response.data.user) {
-        // Store accessToken in AsyncStorage
-        await AsyncStorage.setItem('accessToken', response.data.access_token);
-        await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
-  
-        // Sign in the user
-        await signIn(response.data.access_token, response.data.user);
-  
+      if (success) {
         toast.show("Login successful!", "success");
         router.replace("/(tabs)/home");
       } else {
-        console.error('Invalid response structure:', response.data);
-        toast.show("Server response missing required data", "error");
+        toast.show("Login failed. Please check your credentials.", "error");
       }
     } catch (error: any) {
-      console.error('Login error:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        headers: error.response?.headers
-      });
-  
+      console.error('Login error:', error);
       let errorMessage = "Login failed. Please check your credentials.";
   
       if (error.response) {

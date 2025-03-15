@@ -1,141 +1,141 @@
-import React from "react";
-import { View, Text, TouchableOpacity, Modal, Animated } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { router, useRouter } from "expo-router";
-import { BlurView } from "expo-blur";
-import { useState, useRef, useEffect } from "react";
-
-interface SettingsMenuItem {
-  icon: string;
-  label: string;
-  route?: string;
-  action?: () => void;
-  color?: string;
-}
-
-const MENU_ITEMS: SettingsMenuItem[] = [
-//   {
-//     icon: "person-circle-outline",
-//     label: "Edit Profile",
-//     route: "/(tabs)/profile/edit"
-//   },
-  {
-    icon: "settings-outline",
-    label: "Settings",
-    route: "/(icon)/settings"
-  },
-  {
-    icon: "shield-checkmark-outline",
-    label: "Privacy",
-    route: "/(settings)/privacy"
-  },
-  {
-    icon: "notifications-outline",
-    label: "Notifications",
-    route: "/(settings)/notifications"
-  },
-  {
-    icon: "help-circle-outline",
-    label: "Help Center",
-    route: "/(icon)/help"
-  },
-  {
-    icon: "lock-closed-outline",
-    label: "Account Security",
-    route: "/(help)/account-security"
-  },
-  {
-    icon: "log-out-outline",
-    label: "Log Out",
-    color: "#ef4444",
-    action: () => {router.push("/auth/login")}
-  },
-];
+import React from 'react';
+import { View, Text, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 interface SettingsMenuProps {
   visible: boolean;
   onClose: () => void;
 }
 
+type RouteType = 
+  | '/(profile)/edit-photos'
+  | '/(profile)/edit-info'
+  | '/(profile)/edit-location'
+  | '/(profile)/edit-interests'
+  | '/(profile)/edit-prompts'
+  | '/(profile)/verification'
+  | '/(profile)/(settings)/app-permissions'
+  | '/(profile)/(settings)/language'
+  | '/(profile)/(settings)/privacy'
+  | '/(help)/account-issues'
+  | '/(help)/account-security'
+  | '/(help)/finding-matches'
+  | '/(help)/data-usage'
+  | '/(help)/payment-questions'
+  | '/(help)/privacy-settings'
+  | '/(help)/profile-setup'
+  | '/(help)/safety-tips'
+  | '/(help)/technical-problems';
+
+interface MenuItem {
+  label: string;
+  icon: string;
+  route: RouteType;
+}
+
+interface MenuSection {
+  title: string;
+  items: MenuItem[];
+}
+
 export default function SettingsMenu({ visible, onClose }: SettingsMenuProps) {
   const router = useRouter();
-  const slideAnim = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    if (visible) {
-      Animated.spring(slideAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        useNativeDriver: true,
-      }).start();
+  const settingsOptions: MenuSection[] = [
+    {
+      title: 'Profile Settings',
+      items: [
+        { label: 'Edit Photos', icon: 'images', route: '/(profile)/edit-photos' },
+        { label: 'Edit Info', icon: 'person', route: '/(profile)/edit-info' },
+        { label: 'Edit Location', icon: 'location', route: '/(profile)/edit-location' },
+        { label: 'Edit Interests', icon: 'heart', route: '/(profile)/edit-interests' },
+        { label: 'Edit Prompts', icon: 'chatbubble', route: '/(profile)/edit-prompts' },
+        { label: 'Verification', icon: 'shield-checkmark', route: '/(profile)/verification' },
+      ]
+    },
+    {
+      title: 'App Settings',
+      items: [
+        { label: 'App Permissions', icon: 'settings', route: '/(profile)/(settings)/app-permissions' },
+        { label: 'Language', icon: 'language', route: '/(profile)/(settings)/language' },
+        { label: 'Privacy', icon: 'lock-closed', route: '/(profile)/(settings)/privacy' },
+      ]
+    },
+    {
+      title: 'Help & Support',
+      items: [
+        { label: 'Account Issues', icon: 'person-circle', route: '/(help)/account-issues' },
+        { label: 'Account Security', icon: 'shield', route: '/(help)/account-security' },
+        { label: 'Finding Matches', icon: 'people', route: '/(help)/finding-matches' },
+        { label: 'Data Usage', icon: 'analytics', route: '/(help)/data-usage' },
+        { label: 'Payment Questions', icon: 'card', route: '/(help)/payment-questions' },
+        { label: 'Privacy Settings', icon: 'lock-closed', route: '/(help)/privacy-settings' },
+        { label: 'Profile Setup', icon: 'create', route: '/(help)/profile-setup' },
+        { label: 'Safety Tips', icon: 'warning', route: '/(help)/safety-tips' },
+        { label: 'Technical Problems', icon: 'construct', route: '/(help)/technical-problems' },
+      ]
     }
-  }, [visible]);
-  
+  ];
 
-  const handlePress = (item: SettingsMenuItem) => {
+  const handleOptionPress = (route: RouteType) => {
     onClose();
-    if (item.route) {
-      router.push(item.route);
-    } else if (item.action) {
-      item.action();
-    }
+    router.push(route);
   };
 
   return (
     <Modal
       visible={visible}
-      transparent
       animationType="fade"
-      onRequestClose={onClose}
+      transparent
     >
-      <BlurView intensity={20} className="flex-1">
-        <TouchableOpacity 
-          className="flex-1" 
-          onPress={onClose}
-          activeOpacity={1}
+      <BlurView intensity={20} tint="dark" className="flex-1">
+        <Animated.View
+          entering={FadeInDown}
+          className="flex-1 mt-20 bg-white rounded-t-3xl"
         >
-          <Animated.View
-            className="absolute right-4 top-20 w-72 rounded-2xl overflow-hidden bg-[#1a237e]/95"
-            style={{
-              transform: [
-                {
-                  translateY: slideAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [-20, 0],
-                  }),
-                },
-              ],
-              opacity: slideAnim,
-            }}
-          >
-            {MENU_ITEMS.map((item, index) => (
-              <TouchableOpacity
-                key={item.label}
-                onPress={() => handlePress(item)}
-                className={`flex-row items-center p-4 ${
-                  index !== MENU_ITEMS.length - 1 ? "border-b border-white/10" : ""
-                }`}
-              >
-                <Ionicons 
-                  name={item.icon as any} 
-                  size={24} 
-                  color={item.color || "#fff"} 
-                />
-                <Text 
-                  className={`ml-3 text-base ${
-                    item.color ? `text-[${item.color}]` : "text-white"
-                  }`}
-                >
-                  {item.label}
+          {/* Header */}
+          <View className="flex-row justify-between items-center p-4 border-b border-slate-100">
+            <Text className="text-lg font-semibold text-slate-800">Settings</Text>
+            <TouchableOpacity 
+              onPress={onClose}
+              className="w-8 h-8 items-center justify-center rounded-full bg-slate-100"
+            >
+              <Ionicons name="close" size={20} color="#64748b" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Settings List */}
+          <ScrollView className="flex-1">
+            {settingsOptions.map((section, sectionIndex) => (
+              <View key={section.title} className={sectionIndex > 0 ? 'mt-6' : ''}>
+                <Text className="px-4 py-2 text-sm font-medium text-slate-400 uppercase">
+                  {section.title}
                 </Text>
-              </TouchableOpacity>
+                <View className="bg-white">
+                  {section.items.map((item, index) => (
+                    <TouchableOpacity
+                      key={item.label}
+                      onPress={() => handleOptionPress(item.route)}
+                      className={`flex-row items-center px-4 py-3 ${
+                        index !== section.items.length - 1 ? 'border-b border-slate-100' : ''
+                      }`}
+                    >
+                      <View className="w-8 h-8 bg-indigo-50 rounded-full items-center justify-center">
+                        <Ionicons name={item.icon as any} size={16} color="#6366f1" />
+                      </View>
+                      <Text className="flex-1 ml-3 text-slate-700">{item.label}</Text>
+                      <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
             ))}
-          </Animated.View>
-        </TouchableOpacity>
+            <View className="h-8" />
+          </ScrollView>
+        </Animated.View>
       </BlurView>
     </Modal>
   );
