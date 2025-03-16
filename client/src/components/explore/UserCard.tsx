@@ -12,43 +12,31 @@ const DEFAULT_PROFILE_IMAGE = 'https://via.placeholder.com/400x600?text=No+Image
 interface UserCardProps {
   user: {
     username: string;
-    city?: string;
-    interests?: string | string[];
-    similarity_score?: number;
-    age?: number;
-    bio?: string;
-    gender?: string;
-    occupation?: string;
-    profile_photo?: string | null;
-    prompts?: {
+    location: string;
+    interests: string[];
+    similarity_score: number;
+    age: number;
+    bio: string;
+    gender: string;
+    occupation: string;
+    profile_photo: string | null;
+    prompts: {
       prompts: Array<{
         question: string;
         answer: string;
       }>;
     };
-    location?: string;
-    lifestyle?: string;
-    budget?: string;
-    drinking?: string;
-    smoking?: string;
-    religion?: string;
-    height?: string;
   };
 }
 
 export function UserCard({ user }: UserCardProps) {
+  console.log('Rendering user card:', user.username);
+  
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [imageLoadError, setImageLoadError] = useState<string[]>([]);
   const [isScrolling, setIsScrolling] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const scale = useSharedValue(1);
-
-  // Convert string interests to array if needed
-  const interests = typeof user.interests === 'string' 
-    ? user.interests.split(',').map(i => i.trim())
-    : Array.isArray(user.interests) 
-      ? user.interests 
-      : [];
 
   // Create an array of images (in this case just one from profile_photo)
   const images = user.profile_photo ? [user.profile_photo] : [DEFAULT_PROFILE_IMAGE];
@@ -79,6 +67,16 @@ export function UserCard({ user }: UserCardProps) {
 
     return () => clearInterval(interval);
   }, [activeImageIndex, isScrolling, images.length]);
+
+  // Add this inside the component to debug props
+  useEffect(() => {
+    console.log('User data received:', {
+      username: user.username,
+      interests: user.interests,
+      similarity_score: user.similarity_score,
+      profile_photo: user.profile_photo
+    });
+  }, [user]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }]
@@ -174,56 +172,45 @@ export function UserCard({ user }: UserCardProps) {
         {/* User Info */}
         <View className="px-5 py-6">
           <Text className="text-3xl font-bold">
-            {user.username}{user.age ? `, ${user.age}` : ''}
+            {user.username}, {user.age}
           </Text>
-          <Text className="text-lg text-gray-600">
-            {user.location || user.city || 'Location not specified'}
-          </Text>
-          {user.occupation && (
-            <Text className="text-lg text-gray-600">{user.occupation}</Text>
-          )}
           
-          {/* Lifestyle Section */}
-          {(user.lifestyle || user.budget || user.gender) && (
-            <View className="mb-8 bg-gray-50 rounded-2xl p-5 mt-4">
-              <Text className="text-xl font-semibold mb-4 text-gray-800">Lifestyle</Text>
-              <View className="flex-row justify-around">
-                {user.budget && (
-                  <View className="items-center">
-                    <Ionicons name="wallet-outline" size={24} color="#4B5563" />
-                    <Text className="text-gray-600 mt-2">{user.budget}</Text>
-                  </View>
-                )}
-                {user.lifestyle && (
-                  <View className="items-center">
-                    <Ionicons name="home-outline" size={24} color="#4B5563" />
-                    <Text className="text-gray-600 mt-2">{user.lifestyle}</Text>
-                  </View>
-                )}
-                {user.gender && (
-                  <View className="items-center">
-                    <Ionicons name="heart-outline" size={24} color="#4B5563" />
-                    <Text className="text-gray-600 mt-2">{user.gender}</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          )}
+          <View className="flex-row items-center mt-2">
+            <Ionicons name="location-outline" size={20} color="#4B5563" />
+            <Text className="text-lg text-gray-600 ml-1">
+              {user.location}
+            </Text>
+          </View>
+
+          <View className="flex-row items-center mt-2">
+            <Ionicons name="briefcase-outline" size={20} color="#4B5563" />
+            <Text className="text-lg text-gray-600 ml-1">
+              {user.occupation}
+            </Text>
+          </View>
+
+          {/* Gender */}
+          <View className="flex-row items-center mt-2">
+            <Ionicons name="person-outline" size={20} color="#4B5563" />
+            <Text className="text-lg text-gray-600 ml-1 capitalize">
+              {user.gender}
+            </Text>
+          </View>
 
           {/* About Section */}
           {user.bio && (
-            <>
-              <Text className="text-xl font-semibold text-gray-800 mb-4">About</Text>
+            <View className="mt-6">
+              <Text className="text-xl font-semibold text-gray-800 mb-2">About</Text>
               <Text className="text-gray-600">{user.bio}</Text>
-            </>
+            </View>
           )}
 
           {/* Interests Section */}
-          {interests.length > 0 && (
-            <View className="mb-8 mt-6">
-              <Text className="text-xl font-semibold mb-4 text-gray-800">Interests</Text>
+          {user.interests && user.interests.length > 0 && (
+            <View className="mt-6">
+              <Text className="text-xl font-semibold mb-3 text-gray-800">Interests</Text>
               <View className="flex-row flex-wrap gap-2">
-                {interests.map((interest, index) => (
+                {user.interests.map((interest, index) => (
                   <View key={index} className="bg-gray-100 rounded-full px-4 py-2">
                     <Text className="text-gray-700">{interest}</Text>
                   </View>
@@ -234,8 +221,8 @@ export function UserCard({ user }: UserCardProps) {
 
           {/* Prompts Section */}
           {user.prompts && user.prompts.prompts && user.prompts.prompts.length > 0 && (
-            <View className="mb-8 bg-gray-50 rounded-2xl p-5">
-              <Text className="text-xl font-semibold mb-3 text-gray-800">Prompts</Text>
+            <View className="mt-6 bg-gray-50 rounded-2xl p-5">
+              <Text className="text-xl font-semibold mb-4 text-gray-800">Prompts</Text>
               {user.prompts.prompts.map((prompt, index) => (
                 <View key={index} className="mb-4 last:mb-0">
                   <Text className="text-indigo-600 font-medium mb-2">{prompt.question}</Text>
@@ -245,44 +232,13 @@ export function UserCard({ user }: UserCardProps) {
             </View>
           )}
 
-          {/* Additional Details */}
-          {(user.drinking || user.smoking || user.religion || user.height) && (
-            <View className="mb-8">
-              {user.drinking && (
-                <View className="flex-row items-center justify-between mb-4">
-                  <Text className="text-xl font-semibold text-gray-800">Drinking</Text>
-                  <Text className="text-gray-600">{user.drinking}</Text>
-                </View>
-              )}
-              {user.smoking && (
-                <View className="flex-row items-center justify-between mb-4">
-                  <Text className="text-xl font-semibold text-gray-800">Smoking</Text>
-                  <Text className="text-gray-600">{user.smoking}</Text>
-                </View>
-              )}
-              {user.religion && (
-                <View className="flex-row items-center justify-between mb-4">
-                  <Text className="text-xl font-semibold text-gray-800">Religion</Text>
-                  <Text className="text-gray-600">{user.religion}</Text>
-                </View>
-              )}
-              {user.height && (
-                <View className="flex-row items-center justify-between mb-4">
-                  <Text className="text-xl font-semibold text-gray-800">Height</Text>
-                  <Text className="text-gray-600">{user.height}</Text>
-                </View>
-              )}
-            </View>
-          )}
-
-          {user.similarity_score !== undefined && (
-            <View className="mb-8 bg-indigo-50 rounded-2xl p-5">
-              <Text className="text-xl font-semibold mb-2 text-indigo-800">Match Score</Text>
-              <Text className="text-indigo-600">
-                {Math.round(user.similarity_score * 100)}% Compatible
-              </Text>
-            </View>
-          )}
+          {/* Match Score */}
+          <View className="mt-6 bg-indigo-50 rounded-2xl p-5">
+            <Text className="text-xl font-semibold mb-2 text-indigo-800">Match Score</Text>
+            <Text className="text-indigo-600 text-lg">
+              {Math.round(user.similarity_score * 100)}% Compatible
+            </Text>
+          </View>
 
           <View className="h-20" />
         </View>

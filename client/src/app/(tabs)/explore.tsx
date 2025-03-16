@@ -9,29 +9,57 @@ import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { useSwipeLimit } from '@/src/hooks/useSwipeLimit';
 import axios from 'axios';
-import { API_URL } from '@/src/constants/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import type { Explosion } from 'react-native-confetti-cannon';
+import Explosion from 'react-native-confetti-cannon';
+import { API_URL } from '@/src/constants/config';
 
-interface Recommendation {
-  username: string;
-  city: string;
-  interests: string;
-  similarity_score: number;
-  // Additional fields from user profile
-  age?: number;
-  bio?: string;
-  gender?: string;
-  occupation?: string;
-  profile_photo?: string | null;
-  prompts?: {
+interface RecommendationResponse {
+  recommended_user_age: number;
+  recommended_user_bio: string;
+  recommended_user_created_at: string;
+  recommended_user_gender: string;
+  recommended_user_interest: string;
+  recommended_user_location: string | null;
+  recommended_user_occupation: string;
+  recommended_user_photo: string | null;
+  recommended_user_profile_id: number;
+  recommended_user_prompts: {
     prompts: Array<{
       question: string;
       answer: string;
     }>;
   };
+  similarity_score: number;
+}
+
+interface LocationData {
+  state?: string;
+  city?: string;
+  district?: string;
+  latitude: number;
+  longitude: number;
+  address: string;
+}
+
+interface TransformedProfile {
+  username: string;
+  age: number;
+  bio: string;
+  gender: string;
+  interests: string[];
+  location: string;
+  occupation: string;
+  profile_photo: string | null;
+  prompts: {
+    prompts: Array<{
+      question: string;
+      answer: string;
+    }>;
+  };
+  similarity_score: number;
+  recommended_user_profile_id: number;
 }
 
 interface SwiperRef {
@@ -43,13 +71,19 @@ interface ConfettiRef {
   start: () => void;
 }
 
+interface RecommendationIds {
+  recommended_users: number[];
+  similarity_scores: number[];
+  status: string;
+}
+
 export default function ExploreScreen() {
   const router = useRouter();
-  const swiperRef = useRef<Swiper<Recommendation>>(null);
+  const swiperRef = useRef<Swiper<TransformedProfile>>(null);
   const confettiRef = useRef<Explosion>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const { swipesLeft, timeUntilReset, isLimited, decrementSwipes } = useSwipeLimit(10);
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [recommendations, setRecommendations] = useState<TransformedProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,38 +101,116 @@ export default function ExploreScreen() {
         throw new Error('No access token found');
       }
 
-      const response = await axios.get(`${API_URL}/user/recommendations`, {
-        headers: {
-          Authorization: `Bearer ${token}`
+      // Step 1: Get recommended user IDs and similarity scores
+      console.log('Fetching initial recommendations...');
+      const recommendationResponse = await axios.post(
+        `${API_URL}/user/recommendation`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 15000 // 15 seconds
         }
+      );
+
+      console.log('Initial recommendation IDs:', recommendationResponse.data);
+      
+      if (recommendationResponse.data.status !== 'success') {
+        throw new Error('Failed to get initial recommendations');
+      }
+
+      // Create a map of profile IDs to similarity scores
+      const profileMap = new Map<number, number>();
+      recommendationResponse.data.recommended_users.forEach((id: number, index: number) => {
+        profileMap.set(id, recommendationResponse.data.similarity_scores[index]);
       });
 
-      if (response.data.recommendations) {
-        // Fetch detailed profile for each recommendation
-        const detailedProfiles = await Promise.all(
-          response.data.recommendations.map(async (rec: Recommendation) => {
-            try {
-              const userResponse = await axios.get(`${API_URL}/users/${rec.username}`, {
-                headers: { Authorization: `Bearer ${token}` }
-              });
-              return {
-                ...rec,
-                ...userResponse.data.user
-              };
-            } catch (error) {
-              console.error(`Error fetching profile for ${rec.username}:`, error);
-              return rec;
-            }
-          })
-        );
-        setRecommendations(detailedProfiles);
+      // Step 2: Get detailed user profiles
+      console.log('Fetching detailed profiles...');
+      const detailedResponse = await axios.get(
+        `${API_URL}/api/recommended_users/me`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('Detailed profiles raw data:', detailedResponse.data);
+
+      if (!detailedResponse.data?.recommended_users?.length) {
+        throw new Error('No recommendations available');
       }
+
+      // Transform the data
+      const transformedProfiles = detailedResponse.data.recommended_users.map(
+        (rec: RecommendationResponse) => {
+          // Parse location data
+          let locationText = 'Location not specified';
+          if (rec.recommended_user_location) {
+            try {
+              const locationData: LocationData = JSON.parse(rec.recommended_user_location);
+              locationText = locationData.city || locationData.district || 
+                           locationData.state || locationData.address || 
+                           'Location not specified';
+            } catch (e) {
+              console.error('Error parsing location:', e);
+            }
+          }
+
+          // Parse interests
+          const interestsStr = rec.recommended_user_interest || '{}';
+          const rawInterests = interestsStr.replace(/[{}]/g, '');
+          const interests = rawInterests.split(',')
+            .map(i => i.trim().replace(/^"|"$/g, ''))
+            .filter(i => i);
+
+          // Get similarity score from the map
+          const similarity_score = profileMap.get(rec.recommended_user_profile_id) || 0;
+
+          return {
+            username: `User${rec.recommended_user_profile_id}`,
+            age: rec.recommended_user_age,
+            bio: rec.recommended_user_bio,
+            gender: rec.recommended_user_gender,
+            interests: interests,
+            location: locationText,
+            occupation: rec.recommended_user_occupation,
+            profile_photo: rec.recommended_user_photo,
+            prompts: rec.recommended_user_prompts || { prompts: [] },
+            similarity_score: similarity_score,
+            recommended_user_profile_id: rec.recommended_user_profile_id
+          };
+        }
+      );
+
+      // Sort by similarity score
+      const sortedProfiles = transformedProfiles.sort(
+        (a: TransformedProfile, b: TransformedProfile) => 
+          b.similarity_score - a.similarity_score
+      );
+
+      console.log('Transformed profiles:', sortedProfiles);
+      setRecommendations(sortedProfiles);
+
     } catch (error: any) {
-      setError(error.message || 'Failed to fetch recommendations');
+      console.error('Fetch error:', {
+        message: error.message,
+        code: error.code,
+        config: error.config,
+        response: error.response?.data
+      });
+      const errorMessage = error.response?.data?.message || 
+                         error.code === 'ECONNABORTED' ? 'Request timed out' :
+                         error.message || 'Network error';
+      setError(errorMessage);
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: error.message || 'Failed to fetch recommendations'
+        text2: errorMessage
       });
     } finally {
       setLoading(false);
@@ -123,23 +235,44 @@ export default function ExploreScreen() {
       if (!token) throw new Error('No access token found');
 
       // Record the swipe
-      await axios.post(`${API_URL}/swipe`, {
-        target_username: currentUser.username,
+      console.log('Making swipe request:', {
+        target_profile_id: currentUser.recommended_user_profile_id,
         direction: direction === 'right' ? 'right' : 'left'
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
+
+      await axios.post(
+        `${API_URL}/api/swipe`,
+        {
+          target_profile_id: currentUser.recommended_user_profile_id,
+          direction: direction === 'right' ? 'right' : 'left'
+        },
+        {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 5000
+        }
+      );
 
       decrementSwipes();
 
       // If it's a right swipe, check for a match
       if (direction === 'right') {
-        const matchResponse = await axios.get(`${API_URL}/matches`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const matchResponse = await axios.get(
+          `${API_URL}/api/matches`,
+          {
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        console.log('Match response:', matchResponse.data);
 
         const isMatch = matchResponse.data.matches.some(
-          (match: any) => match.matched_username === currentUser.username
+          (match: any) => match.matched_profile_id === currentUser.recommended_user_profile_id
         );
 
         if (isMatch) {
@@ -166,6 +299,7 @@ export default function ExploreScreen() {
           break;
       }
     } catch (error: any) {
+      console.error('Error in handleSwipe:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -181,12 +315,8 @@ export default function ExploreScreen() {
           title="Explore"
           leftIcon="people-outline"
           rightIcon="filter-outline"
-          onLeftPress={() => router.push({
-            pathname: "/(icon)/connections"
-          })}
-          onRightPress={() => router.push({
-            pathname: "/(icon)/filters"
-          })}
+          onLeftPress={() => router.push("/(tabs)/connections" as any)}
+          onRightPress={() => router.push("/(tabs)/filters" as any)}
           gradientColors={['#1a237e', '#283593']}
         />
         <View className="flex-1 items-center justify-center">
@@ -203,12 +333,8 @@ export default function ExploreScreen() {
           title="Explore"
           leftIcon="people-outline"
           rightIcon="filter-outline"
-          onLeftPress={() => router.push({
-            pathname: "/(icon)/connections"
-          })}
-          onRightPress={() => router.push({
-            pathname: "/(icon)/filters"
-          })}
+          onLeftPress={() => router.push("/(tabs)/connections" as any)}
+          onRightPress={() => router.push("/(tabs)/filters" as any)}
           gradientColors={['#1a237e', '#283593']}
         />
         <View className="flex-1 items-center justify-center p-6">
@@ -235,12 +361,8 @@ export default function ExploreScreen() {
         title="Explore"
         leftIcon="people-outline"
         rightIcon="filter-outline"
-        onLeftPress={() => router.push({
-          pathname: "/(icon)/connections"
-        })}
-        onRightPress={() => router.push({
-          pathname: "/(icon)/filters"
-        })}
+        onLeftPress={() => router.push("/(tabs)/connections" as any)}
+        onRightPress={() => router.push("/(tabs)/filters" as any)}
         gradientColors={['#1a237e', '#283593']}
         subtitle={isLimited ? `Reset in ${timeUntilReset}` : `${swipesLeft} swipes left`}
       />
@@ -317,6 +439,7 @@ export default function ExploreScreen() {
         <SwipeButtons
           className="absolute bottom-20 w-full z-10"
           onSwipe={handleSwipe}
+          disabled={isLimited}
         />
 
         <ConfettiCannon

@@ -83,7 +83,6 @@ def login():
                 httponly=True,
                 secure=True,
                 samesite='Lax',
-                max_age=86400  # 24 hours
             )
             return response, 200
         else:

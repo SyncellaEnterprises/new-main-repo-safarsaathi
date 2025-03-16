@@ -8,6 +8,7 @@ import '@/global.css';
 // import { ProfileProvider } from "@/context/ProfileContext";
 import React from "react";
 import { StatusBar } from "react-native";
+import { useAuth } from "@/src/context/AuthContext";
 
 // Keep splash screen visible while loading resources
 SplashScreen.preventAutoHideAsync();
