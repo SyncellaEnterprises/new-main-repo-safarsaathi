@@ -47,7 +47,8 @@ with app.app_context():
     #from controllers.swipe_controller import *
     from controllers.recommendations_controller import *
     from controllers.districts_get_controller import *
-    from database.user_db_get_controller import *
+    from database.user_db_get_controller import *   
+    from database.recommendations_db_get_controller import * 
     #from controllers.chat_controller import * 
     
 

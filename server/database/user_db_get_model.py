@@ -4,7 +4,6 @@ from utils.logger import logging
 from utils.exception import CustomException
 import json
 import sys
-import psycopg2
 from psycopg2.extras import DictCursor
 
 class GetUserData:

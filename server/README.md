@@ -226,15 +226,27 @@ All onboarding endpoints require JWT Token in header: `Authorization: Bearer <to
   - Response:
     ```json
     {
-        "recommendations": [
-            {
-                "username": "string",
-                "city": "string",
-                "interests": "string",
-                "similarity_score": "float"
-            }
-        ]
+    "recommended_users": [
+        1,
+        8,
+        4,
+        3,
+        7,
+        5,
+        6
+    ],
+    "similarity_scores": [
+        0.6919771432876587,
+        0.45753663778305054,
+        0.43995487689971924,
+        0.40719473361968994,
+        0.38178613781929016,
+        0.31774523854255676,
+        0.26357322931289673
+    ],
+    "status": "success"
     }
+
     ```
 
 ### Swipe and Match Enpoints
@@ -397,6 +409,7 @@ Common HTTP Status Codes:
       ....]
       }
     ```
+### Get Endpoints
 
 - `GET /api/users/me`
   - Get data of the logged in user
@@ -430,6 +443,40 @@ Common HTTP Status Codes:
           "user_id": 2,
           "username": "shrey3"
       }
+    }
+    ```
+- `GET /api/recommended_users/me`
+  - Get data of the logged in user
+  - Requires: JWT Token
+  - Response:
+     ```json
+    {
+    "recommended_users": [
+        {
+            "recommended_user_age": 28,
+            "recommended_user_bio": "Naa bahi afhsahfshfhsdjfdaf asas",
+            "recommended_user_created_at": "Thu, 06 Mar 2025 13:16:07 GMT",
+            "recommended_user_gender": "male",
+            "recommended_user_interest": "{Camping,Dance,\"Street Food\"}",
+            "recommended_user_location": "Patna",
+            "recommended_user_occupation": "student",
+            "recommended_user_photo": null,
+            "recommended_user_profile_id": 43,
+            "recommended_user_prompts": {
+                "prompts": [
+                    {
+                        "answer": "tumhe hamre bare me nh ijanafsa",
+                        "question": "The one thing I want to know about you is..."
+                    },
+                    {
+                        "answer": "stay away from contteojoij",
+                        "question": "My most controversial opinion is..."
+                    }
+                ]
+            },
+            "similarity_score": 0.5441601276397705
+        },
+        ................
     }
     ```
 
@@ -485,6 +532,25 @@ CREATE TABLE user_profile (
 );
 ```
 
+### user_recommendations_db: 
+User recommendations data is stored in this table.
+```SQL
+-- Create user_recommendations_db table
+CREATE TABLE user_recommendations_db (
+    id SERIAL PRIMARY KEY,                  -- Auto-incrementing ID for the table
+    user_id INT NOT NULL,          -- References user_db.user_id
+	recommended_user_id INT NOT NULL, -- Recommended user ID
+    similarity_score FLOAT NOT NULL,        -- Cosine similarity score
+    rank INT NOT NULL,                      -- Rank of the recommendation (1 to N)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Timestamp for tracking
+    FOREIGN KEY (user_id) REFERENCES user_db(id) ON DELETE CASCADE,
+	FOREIGN KEY (recommended_user_id) REFERENCES user_db(id) ON DELETE CASCADE
+);
+
+-- Create an index for faster lookups by user_id
+CREATE INDEX idx_user_recommendations_user_id ON user_recommendations_db(user_id);
+```
+
 ### swipe_logs: 
 user swipe logs data
 ```SQL
@@ -521,7 +587,6 @@ CREATE TABLE matches (
 - Flask
 - PostgreSQL
 - JWT Authentication
-- FAISS Vector Database
 - HuggingFace Embeddings
 - Sentence Transformers
 
