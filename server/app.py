@@ -44,7 +44,7 @@ get_db_connection()
 with app.app_context():
     from controllers.user_auth_controller import *
     from controllers.user_onboarding_controller import *
-    #from controllers.swipe_controller import *
+    from controllers.swipe_controller import *
     from controllers.recommendations_controller import *
     from controllers.districts_get_controller import *
     from database.user_db_get_controller import *   
