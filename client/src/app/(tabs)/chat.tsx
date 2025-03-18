@@ -20,7 +20,7 @@ interface ChatPreview {
   isOnline: boolean;
   isTyping: boolean;
   lastMessageType: 'text' | 'image' | 'audio' | 'document';
-  type: 'group' | 'one-to-one'; // Added type for group or individual chats
+  type: 'group' | 'one-to-one';
 }
 
 export default function ChatScreen() {
@@ -213,7 +213,7 @@ export default function ChatScreen() {
 
         {/* New Chat FAB */}
         <TouchableOpacity
-          onPress={() => router.push("/new-message")}
+          onPress={() => router.push("/chat/new-message")}
           className="absolute bottom-6 right-6 w-14 h-14 bg-blue-500 rounded-full items-center justify-center shadow-lg"
           style={{
             shadowColor: '#1a237e',

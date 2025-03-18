@@ -6,19 +6,24 @@ const SocketContext = createContext<Socket | null>(null);
 
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [token, setToken] = useState<string | null>(null);
 
-  const token = AsyncStorage.getItem('accessToken');
-  console.log('token', token);
+  useEffect(() => {
+    const getToken = async () => {
+      const storedToken = await AsyncStorage.getItem('accessToken');
+      setToken(storedToken);
+    };
+    getToken();
+  }, []);
+
   useEffect(() => {
     if (token) {
       const newSocket = io(process.env.EXPO_PUBLIC_WS_URL!, {
         transports: ['websocket'],
-        auth: {
-          token: token
-        },
-        // query: {
-        //   db_container_name: process.env.DB_CONTAINER_NAME
-        // }
+        auth: { token },
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
       });
 
       setSocket(newSocket);
@@ -27,7 +32,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         newSocket.disconnect();
       };
     }
-  }, [token]);
+  }, [token]); // Only re-run if token changes
 
   return (
     <SocketContext.Provider value={socket}>
