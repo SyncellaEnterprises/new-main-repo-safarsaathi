@@ -9,6 +9,7 @@ from utils.logger import logging
 from utils.exception import CustomException
 from flask_socketio import SocketIO 
 import eventlet 
+from model.socket_chat import ChatHandler, get_db_connection
 
 #eventlet.monkey_patch()
 app = Flask(__name__)
@@ -18,8 +19,9 @@ app.config["JWT_SECRET_KEY"] = JWT_SECRET_KEY
 jwt = JWTManager(app)
 
 # Initialize SocketIO
-#socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet') 
-#logging.info("SocketIO initialized") 
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+chat_handler = ChatHandler(socketio)
+logging.info("SocketIO initialized") 
 
 # Initialize Supabase client
 #supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -53,4 +55,4 @@ with app.app_context():
     
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000) 
+    socketio.run(app) 

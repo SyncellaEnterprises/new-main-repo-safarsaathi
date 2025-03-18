@@ -1,31 +1,27 @@
-# Use Python 3.11 slim image as base
-FROM python:3.11-slim
-
-# Set working directory
-WORKDIR /app
-
-# Install system dependencies required for psycopg2 and other packages
-RUN apt-get update && apt-get install -y \
-    gcc \
-    python3-dev \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements first to leverage Docker cache
-COPY requirements.txt .
-
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy the rest of the application
-COPY . .
-
-# Expose port 8000
-EXPOSE 8000
+# Use the official Python image from the Docker Hub
+FROM python:3.11
 
 # Set environment variables
-ENV FLASK_APP=app.py
-ENV FLASK_ENV=production
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-# Run gunicorn with eventlet worker
-CMD ["gunicorn", "--worker-class", "eventlet", "--workers", "4", "--bind", "0.0.0.0:8000", "app:app"]
+# Install system dependencies for PostgreSQL
+RUN apt-get update && apt-get install -y \
+    libpq-dev gcc && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set the working directory to /app
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the entire project into the container
+COPY . /app/
+
+# Expose the port used by Gunicorn
+EXPOSE 5000
+
+# Start the server using Gunicorn
+CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:5000", "--timeout", "500", "api.app:app"]

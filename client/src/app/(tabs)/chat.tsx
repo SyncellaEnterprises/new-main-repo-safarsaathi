@@ -1,12 +1,14 @@
 import { View, Text, SafeAreaView, FlatList, TouchableOpacity, Image, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import TabHeader from '@/src/components/shared/TabHeader';
 import { SearchBar } from '@/src/components/shared/SearchBar';
 import { format } from 'date-fns';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
+import { useSocket } from '@/src/context/SocketContext';
+import { useAuth } from '@/src/context/AuthContext';
 
 interface ChatPreview {
   id: string;
@@ -25,13 +27,45 @@ export default function ChatScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const [chats, setChats] = useState<ChatPreview[]>([]); // Replace with your chat data
+  const [chats, setChats] = useState<ChatPreview[]>([]);
+  const socket = useSocket();
+  const { user } = useAuth();
+  const [activeTyping, setActiveTyping] = useState<{ [key: string]: boolean }>({});
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     // Fetch new chats here
     setTimeout(() => setRefreshing(false), 2000);
   }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    // Listen for new messages
+    socket.on('new_message', (message) => {
+      setChats(prev => prev.map(chat => {
+        if (chat.id === message.sender || chat.id === message.receiver) {
+          return {
+            ...chat,
+            lastMessage: message.content,
+            timestamp: message.sent_at,
+            unreadCount: chat.unreadCount + 1
+          };
+        }
+        return chat;
+      }));
+    });
+
+    // Listen for typing indicators
+    socket.on('typing', ({ senderId, isTyping }) => {
+      setActiveTyping(prev => ({ ...prev, [senderId]: isTyping }));
+    });
+
+    return () => {
+      socket.off('new_message');
+      socket.off('typing');
+    };
+  }, [socket]);
 
   const renderLastMessage = (chat: ChatPreview) => {
     switch (chat.lastMessageType) {
@@ -95,7 +129,7 @@ export default function ChatScreen() {
 
         <View className="flex-row items-center justify-between mt-1">
           <View className="flex-1 flex-row items-center">
-            {chat.isTyping ? (
+            {activeTyping[chat.id] ? (
               <Text className="text-blue-500 text-sm">typing...</Text>
             ) : (
               renderLastMessage(chat)
@@ -152,7 +186,7 @@ export default function ChatScreen() {
         <View className="px-4 py-2">
           <SearchBar
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onSearch={setSearchQuery}
             placeholder="Search messages..."
           />
         </View>
