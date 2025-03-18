@@ -88,9 +88,8 @@ const SETTINGS_SECTIONS = [
   }
 ];
 
-const { user } = useAuth();
-
 export default function SettingsScreen() {
+  const { user } = useAuth();
   const router = useRouter();
   const [toggles, setToggles] = useState<{ [key: string]: boolean }>({
     Notifications: true,
@@ -156,7 +155,7 @@ export default function SettingsScreen() {
                       }`}
                     onPress={() => {
                       if (item.type === 'link') {
-                        router.push(item.route);  // Navigate to the route defined in the item
+                        router.push(item.route as any);  // Navigate to the route defined in the item
                       }
                     }}
                   >

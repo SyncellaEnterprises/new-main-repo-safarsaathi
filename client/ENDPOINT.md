@@ -445,13 +445,11 @@ Common HTTP Status Codes:
       }
     }
     ```
-
-    
 - `GET /api/recommended_users/me`
   - Get data of the logged in user
   - Requires: JWT Token
   - Response:
-  ```json
+     ```json
     {
     "recommended_users": [
         {

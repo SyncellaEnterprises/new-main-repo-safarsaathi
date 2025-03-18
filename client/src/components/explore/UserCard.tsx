@@ -13,7 +13,7 @@ interface UserCardProps {
   user: {
     username: string;
     location: string;
-    interests: string[];
+    interests: string[] | string;
     similarity_score: number;
     age: number;
     bio: string;
@@ -26,6 +26,7 @@ interface UserCardProps {
         answer: string;
       }>;
     };
+    recommended_user_profile_id?: number;
   };
 }
 
@@ -39,7 +40,13 @@ export function UserCard({ user }: UserCardProps) {
   const scale = useSharedValue(1);
 
   // Create an array of images (in this case just one from profile_photo)
-  const images = user.profile_photo ? [user.profile_photo] : [DEFAULT_PROFILE_IMAGE];
+  const profilePhoto = user.profile_photo ? 
+    // Handle if profile_photo is a JSON string
+    (typeof user.profile_photo === 'string' && user.profile_photo.startsWith('{') ? 
+      JSON.parse(user.profile_photo).url : user.profile_photo) 
+    : null;
+
+  const images = profilePhoto ? [profilePhoto] : [DEFAULT_PROFILE_IMAGE];
 
   // Auto-slide images with error handling
   useEffect(() => {
@@ -92,6 +99,11 @@ export function UserCard({ user }: UserCardProps) {
       <Text className="text-white text-sm ml-1 font-medium">Verified</Text>
     </BlurView>
   );
+
+  // Make sure interests is always an array
+  const interestsArray: string[] = Array.isArray(user.interests) ? 
+    user.interests : 
+    (typeof user.interests === 'string' ? user.interests.split(',').map((i: string) => i.trim()) : []);
 
   return (
     <Animated.View style={animatedStyle} className="flex-1">
@@ -172,20 +184,20 @@ export function UserCard({ user }: UserCardProps) {
         {/* User Info */}
         <View className="px-5 py-6">
           <Text className="text-3xl font-bold">
-            {user.username}, {user.age}
+            {user.username}, {user.age || 'N/A'}
           </Text>
           
           <View className="flex-row items-center mt-2">
             <Ionicons name="location-outline" size={20} color="#4B5563" />
             <Text className="text-lg text-gray-600 ml-1">
-              {user.location}
+              {user.location || 'Location not specified'}
             </Text>
           </View>
 
           <View className="flex-row items-center mt-2">
             <Ionicons name="briefcase-outline" size={20} color="#4B5563" />
             <Text className="text-lg text-gray-600 ml-1">
-              {user.occupation}
+              {user.occupation || 'Occupation not specified'}
             </Text>
           </View>
 
@@ -193,7 +205,7 @@ export function UserCard({ user }: UserCardProps) {
           <View className="flex-row items-center mt-2">
             <Ionicons name="person-outline" size={20} color="#4B5563" />
             <Text className="text-lg text-gray-600 ml-1 capitalize">
-              {user.gender}
+              {user.gender || 'Not specified'}
             </Text>
           </View>
 
@@ -206,11 +218,11 @@ export function UserCard({ user }: UserCardProps) {
           )}
 
           {/* Interests Section */}
-          {user.interests && user.interests.length > 0 && (
+          {interestsArray.length > 0 && (
             <View className="mt-6">
               <Text className="text-xl font-semibold mb-3 text-gray-800">Interests</Text>
               <View className="flex-row flex-wrap gap-2">
-                {user.interests.map((interest, index) => (
+                {interestsArray.map((interest: string, index: number) => (
                   <View key={index} className="bg-gray-100 rounded-full px-4 py-2">
                     <Text className="text-gray-700">{interest}</Text>
                   </View>
@@ -236,7 +248,7 @@ export function UserCard({ user }: UserCardProps) {
           <View className="mt-6 bg-indigo-50 rounded-2xl p-5">
             <Text className="text-xl font-semibold mb-2 text-indigo-800">Match Score</Text>
             <Text className="text-indigo-600 text-lg">
-              {Math.round(user.similarity_score * 100)}% Compatible
+              {Math.round((user.similarity_score || 0) * 100)}% Compatible
             </Text>
           </View>
 
