@@ -18,6 +18,7 @@ interface ChatPreview {
   isOnline: boolean;
   isTyping: boolean;
   lastMessageType: 'text' | 'image' | 'audio' | 'document';
+  type: 'group' | 'one-to-one'; // Added type for group or individual chats
 }
 
 export default function ChatScreen() {
@@ -69,7 +70,7 @@ export default function ChatScreen() {
 
   const renderChatItem = ({ item: chat }: { item: ChatPreview }) => (
     <TouchableOpacity
-      onPress={() => router.push(`/chat/${chat.id}`)}
+      onPress={() => router.push(`/chat/${chat.id}`)} // Navigate to chat screen
       className="flex-row items-center px-4 py-3 bg-white"
     >
       <View className="relative">

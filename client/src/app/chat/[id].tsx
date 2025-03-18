@@ -1,11 +1,15 @@
-import { View, Text } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
 import React from 'react';
-export default function ChatScreen() {
-  const { id } = useLocalSearchParams();
+import { SafeAreaView, Text } from 'react-native';
+import { useRouter } from 'expo-router';
+
+export default function ChatDetailScreen() {
+  const router = useRouter();
+  const { id } = router.query;
+
   return (
-    <View>
-      <Text>Chat {id}</Text>
-    </View>
+    <SafeAreaView>
+      <Text>Chat ID: {id}</Text>
+      {/* Fetch and display chat messages for the group or one-to-one chat here */}
+    </SafeAreaView>
   );
-} 
+}
