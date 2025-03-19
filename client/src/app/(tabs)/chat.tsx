@@ -9,18 +9,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { useSocket } from '@/src/context/SocketContext';
 import { useAuth } from '@/src/context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface ChatPreview {
   id: string;
-  userName: string;
-  userImage: string;
+  name: string;
+  image: string;
   lastMessage: string;
-  timestamp: string;
+  last_active: string;
   unreadCount: number;
+  type: 'group' | 'private';
   isOnline: boolean;
-  isTyping: boolean;
-  lastMessageType: 'text' | 'image' | 'audio' | 'document';
-  type: 'group' | 'one-to-one';
 }
 
 export default function ChatScreen() {
@@ -30,6 +29,7 @@ export default function ChatScreen() {
   const [chats, setChats] = useState<ChatPreview[]>([]);
   const socket = useSocket();
   const { user } = useAuth();
+  const { isConnected } = useSocket();
   const [activeTyping, setActiveTyping] = useState<{ [key: string]: boolean }>({});
 
   const onRefresh = useCallback(() => {
@@ -39,33 +39,56 @@ export default function ChatScreen() {
   }, []);
 
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || !isConnected) return;
 
-    // Listen for new messages
-    socket.on('new_message', (message) => {
+    const messageHandler = (message: any) => {
       setChats(prev => prev.map(chat => {
-        if (chat.id === message.sender || chat.id === message.receiver) {
+        if (chat.id === message.group_id || chat.id === message.receiver_id) {
           return {
             ...chat,
             lastMessage: message.content,
-            timestamp: message.sent_at,
+            last_active: message.sent_at,
             unreadCount: chat.unreadCount + 1
           };
         }
         return chat;
       }));
-    });
+    };
 
-    // Listen for typing indicators
-    socket.on('typing', ({ senderId, isTyping }) => {
-      setActiveTyping(prev => ({ ...prev, [senderId]: isTyping }));
-    });
+    const typingHandler = ({ users, chat_id }: any) => {
+      setActiveTyping(prev => ({
+        ...prev,
+        [chat_id]: users.length > 0
+      }));
+    };
+
+    socket.on('new_message', messageHandler);
+    socket.on('typing_status', typingHandler);
 
     return () => {
-      socket.off('new_message');
-      socket.off('typing');
+      socket.off('new_message', messageHandler);
+      socket.off('typing_status', typingHandler);
     };
-  }, [socket]);
+  }, [socket, isConnected]);
+
+  useEffect(() => {
+    const fetchChats = async () => {
+      try {
+        const response = await fetch('http://10.0.2.2:4000/api/chats', {
+          headers: {
+            'Authorization': `Bearer ${await AsyncStorage.getItem('accessToken')}`
+          }
+        });
+        const data = await response.json();
+        setChats(data);
+        console.log(data);
+      } catch (error) {
+        console.error('Failed to fetch chats:', error);
+      }
+    };
+    
+    fetchChats();
+  }, [refreshing]);
 
   const renderLastMessage = (chat: ChatPreview) => {
     switch (chat.lastMessageType) {
@@ -104,12 +127,12 @@ export default function ChatScreen() {
 
   const renderChatItem = ({ item: chat }: { item: ChatPreview }) => (
     <TouchableOpacity
-      onPress={() => router.push(`/chat/${chat.id}`)} // Navigate to chat screen
+      onPress={() => router.push(`/chat/${chat.id}`)}
       className="flex-row items-center px-4 py-3 bg-white"
     >
       <View className="relative">
         <Image
-          source={{ uri: chat.userImage }}
+          source={{ uri: chat.image }}
           className="w-14 h-14 rounded-full"
         />
         {chat.isOnline && (
@@ -120,27 +143,25 @@ export default function ChatScreen() {
       <View className="flex-1 ml-3">
         <View className="flex-row items-center justify-between">
           <Text className="text-lg font-semibold text-gray-800">
-            {chat.userName}
+            {chat.name}
           </Text>
           <Text className="text-xs text-gray-500">
-            {format(new Date(chat.timestamp), 'HH:mm')}
+            {format(new Date(chat.last_active), 'HH:mm')}
           </Text>
         </View>
-
-        <View className="flex-row items-center justify-between mt-1">
-          <View className="flex-1 flex-row items-center">
-            {activeTyping[chat.id] ? (
-              <Text className="text-blue-500 text-sm">typing...</Text>
-            ) : (
-              renderLastMessage(chat)
-            )}
-          </View>
-
+        
+        <View className="flex-row items-center justify-between">
+          <Text 
+            className={`text-sm ${
+              chat.unreadCount > 0 ? 'text-gray-800 font-medium' : 'text-gray-500'
+            }`}
+            numberOfLines={1}
+          >
+            {chat.lastMessage}
+          </Text>
           {chat.unreadCount > 0 && (
-            <View className="bg-blue-500 rounded-full min-w-[20px] h-5 items-center justify-center px-1">
-              <Text className="text-xs text-white font-medium">
-                {chat.unreadCount}
-              </Text>
+            <View className="bg-blue-500 rounded-full w-5 h-5 items-center justify-center">
+              <Text className="text-white text-xs">{chat.unreadCount}</Text>
             </View>
           )}
         </View>
@@ -164,7 +185,7 @@ export default function ChatScreen() {
   );
 
   const filteredChats = chats.filter(chat => 
-    chat.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     chat.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
