@@ -31,6 +31,17 @@ interface UserCardProps {
 }
 
 export function UserCard({ user }: UserCardProps) {
+  // If user is undefined, show a placeholder
+  if (!user) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white rounded-3xl p-8">
+        <Text className="text-xl text-gray-500 text-center">
+          No more profiles available. Check back later!
+        </Text>
+      </View>
+    );
+  }
+
   console.log('Rendering user card:', user.username);
   
   const [activeImageIndex, setActiveImageIndex] = useState(0);

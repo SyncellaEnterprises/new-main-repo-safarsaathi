@@ -268,90 +268,18 @@ export default function ExploreScreen() {
       return;
     }
 
-    try {
-      const currentUser = recommendations[currentIndex];
-      if (!currentUser) return;
-
-      const token = await AsyncStorage.getItem('accessToken');
-      if (!token) throw new Error('No access token found');
-
-      // Record the swipe with correct payload format
-      console.log('Making swipe request:', {
-        target_username: currentUser.username,
-        direction: direction === 'right' ? 'right' : 'left'
-      });
-
-      const swipeResponse = await axios.post<SwipeResponse>(
-        `${API_URL}/api/swipe`,
-        {
-          target_username: currentUser.username,
-          direction: direction === 'right' ? 'right' : 'left'
-        },
-        {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: 5000
-        }
-      );
-
-      // Update remaining swipes from response
-      if (swipeResponse.data.status === 'success') {
-        setSwipesRemaining(swipeResponse.data.remaining_swipes);
-        setTotalLimit(swipeResponse.data.total_limit);
-        setIsLimited(swipeResponse.data.remaining_swipes <= 0);
-      }
-
-      // If it's a right swipe, check for a match
-      if (direction === 'right') {
-        const matchResponse = await axios.post(
-          `${API_URL}/api/matches`,
-          {},
-          {
-            headers: { 
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-
-        console.log('Match response:', matchResponse.data);
-
-        const isMatch = matchResponse.data.matches.some(
-          (match: any) => match.matched_username === currentUser.username
-        );
-
-        if (isMatch) {
-          confettiRef.current?.start();
-          Toast.show({
-            type: 'success',
-            text1: 'It\'s a Match! 🎉',
-            text2: `You matched with ${currentUser.username}!`
-          });
-        }
-      }
-
-      // Trigger the swipe animation
-      switch (direction) {
-        case 'left':
-          swiperRef.current?.swipeLeft();
-          break;
-        case 'right':
-          swiperRef.current?.swipeRight();
-          break;
-        case 'superlike':
-          confettiRef.current?.start();
-          swiperRef.current?.swipeRight();
-          break;
-      }
-    } catch (error: any) {
-      console.error('Error in handleSwipe:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: error.response?.data?.message || error.message || 'Failed to process swipe'
-      });
+    // Only trigger the swipe animation here
+    switch (direction) {
+      case 'left':
+        swiperRef.current?.swipeLeft();
+        break;
+      case 'right':
+        swiperRef.current?.swipeRight();
+        break;
+      case 'superlike':
+        confettiRef.current?.start();
+        swiperRef.current?.swipeRight();
+        break;
     }
   };
 
@@ -422,11 +350,10 @@ export default function ExploreScreen() {
           onSwipedLeft={(cardIndex) => {
             console.log('Disliked', cardIndex);
             setCurrentIndex(cardIndex + 1);
-            handleSwipe('left');
           }}
           onSwipedRight={(cardIndex) => {
             console.log('Liked', cardIndex);
-            handleSwipe('right');
+            setCurrentIndex(cardIndex + 1);
           }}
           onSwipedAll={() => {
             Toast.show({
@@ -488,6 +415,14 @@ export default function ExploreScreen() {
           className="absolute bottom-20 w-full z-10"
           onSwipe={handleSwipe}
           disabled={isLimited}
+          currentUser={recommendations[currentIndex]}
+          apiUrl={API_URL}
+          confettiRef={confettiRef}
+          updateSwipesRemaining={(remaining, total) => {
+            setSwipesRemaining(remaining);
+            setTotalLimit(total);
+            setIsLimited(remaining <= 0);
+          }}
         />
 
         <ConfettiCannon
