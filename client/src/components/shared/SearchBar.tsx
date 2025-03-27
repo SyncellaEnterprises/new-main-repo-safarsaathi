@@ -19,7 +19,7 @@ export function SearchBar({
   onSearch, 
   placeholder = "Search...",
   value,
-  style 
+  style,
 }: SearchBarProps) {
   return (
     <Animated.View 

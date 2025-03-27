@@ -97,5 +97,3 @@ class UserAuthModel:
         except Exception as e:
             logging.error(f"Error in login_user: {e}")
             raise CustomException(e, sys)
-        
-

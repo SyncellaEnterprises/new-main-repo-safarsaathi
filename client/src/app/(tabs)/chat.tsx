@@ -1,36 +1,94 @@
 import { View, Text, SafeAreaView, FlatList, TouchableOpacity, Image, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import TabHeader from '@/src/components/shared/TabHeader';
 import { SearchBar } from '@/src/components/shared/SearchBar';
 import { format } from 'date-fns';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
+import { useSocket } from '@/src/context/SocketContext';
+import { useAuth } from '@/src/context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface ChatPreview {
   id: string;
-  userName: string;
-  userImage: string;
+  name: string;
+  image: string;
   lastMessage: string;
-  timestamp: string;
+  last_active: string;
   unreadCount: number;
+  type: 'group' | 'private';
   isOnline: boolean;
-  isTyping: boolean;
-  lastMessageType: 'text' | 'image' | 'audio' | 'document';
 }
 
 export default function ChatScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const [chats, setChats] = useState<ChatPreview[]>([]); // Replace with your chat data
+  const [chats, setChats] = useState<ChatPreview[]>([]);
+  const socket = useSocket();
+  const { user } = useAuth();
+  const { isConnected } = useSocket();
+  const [activeTyping, setActiveTyping] = useState<{ [key: string]: boolean }>({});
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     // Fetch new chats here
     setTimeout(() => setRefreshing(false), 2000);
   }, []);
+
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const messageHandler = (message: any) => {
+      setChats(prev => prev.map(chat => {
+        if (chat.id === message.group_id || chat.id === message.receiver_id) {
+          return {
+            ...chat,
+            lastMessage: message.content,
+            last_active: message.sent_at,
+            unreadCount: chat.unreadCount + 1
+          };
+        }
+        return chat;
+      }));
+    };
+
+    const typingHandler = ({ users, chat_id }: any) => {
+      setActiveTyping(prev => ({
+        ...prev,
+        [chat_id]: users.length > 0
+      }));
+    };
+
+    socket.on('new_message', messageHandler);
+    socket.on('typing_status', typingHandler);
+
+    return () => {
+      socket.off('new_message', messageHandler);
+      socket.off('typing_status', typingHandler);
+    };
+  }, [socket, isConnected]);
+
+  useEffect(() => {
+    const fetchChats = async () => {
+      try {
+        const response = await fetch('http://10.0.2.2:4000/api/chats', {
+          headers: {
+            'Authorization': `Bearer ${await AsyncStorage.getItem('accessToken')}`
+          }
+        });
+        const data = await response.json();
+        setChats(data);
+        console.log(data);
+      } catch (error) {
+        console.error('Failed to fetch chats:', error);
+      }
+    };
+    
+    fetchChats();
+  }, [refreshing]);
 
   const renderLastMessage = (chat: ChatPreview) => {
     switch (chat.lastMessageType) {
@@ -74,7 +132,7 @@ export default function ChatScreen() {
     >
       <View className="relative">
         <Image
-          source={{ uri: chat.userImage }}
+          source={{ uri: chat.image }}
           className="w-14 h-14 rounded-full"
         />
         {chat.isOnline && (
@@ -85,27 +143,25 @@ export default function ChatScreen() {
       <View className="flex-1 ml-3">
         <View className="flex-row items-center justify-between">
           <Text className="text-lg font-semibold text-gray-800">
-            {chat.userName}
+            {chat.name}
           </Text>
           <Text className="text-xs text-gray-500">
-            {format(new Date(chat.timestamp), 'HH:mm')}
+            {format(new Date(chat.last_active), 'HH:mm')}
           </Text>
         </View>
-
-        <View className="flex-row items-center justify-between mt-1">
-          <View className="flex-1 flex-row items-center">
-            {chat.isTyping ? (
-              <Text className="text-blue-500 text-sm">typing...</Text>
-            ) : (
-              renderLastMessage(chat)
-            )}
-          </View>
-
+        
+        <View className="flex-row items-center justify-between">
+          <Text 
+            className={`text-sm ${
+              chat.unreadCount > 0 ? 'text-gray-800 font-medium' : 'text-gray-500'
+            }`}
+            numberOfLines={1}
+          >
+            {chat.lastMessage}
+          </Text>
           {chat.unreadCount > 0 && (
-            <View className="bg-blue-500 rounded-full min-w-[20px] h-5 items-center justify-center px-1">
-              <Text className="text-xs text-white font-medium">
-                {chat.unreadCount}
-              </Text>
+            <View className="bg-blue-500 rounded-full w-5 h-5 items-center justify-center">
+              <Text className="text-white text-xs">{chat.unreadCount}</Text>
             </View>
           )}
         </View>
@@ -129,7 +185,7 @@ export default function ChatScreen() {
   );
 
   const filteredChats = chats.filter(chat => 
-    chat.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     chat.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -151,7 +207,7 @@ export default function ChatScreen() {
         <View className="px-4 py-2">
           <SearchBar
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onSearch={setSearchQuery}
             placeholder="Search messages..."
           />
         </View>
@@ -178,7 +234,7 @@ export default function ChatScreen() {
 
         {/* New Chat FAB */}
         <TouchableOpacity
-          onPress={() => router.push("/new-message")}
+          onPress={() => router.push("/chat/new-message")}
           className="absolute bottom-6 right-6 w-14 h-14 bg-blue-500 rounded-full items-center justify-center shadow-lg"
           style={{
             shadowColor: '#1a237e',

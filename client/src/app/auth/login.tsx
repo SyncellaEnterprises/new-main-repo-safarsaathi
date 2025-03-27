@@ -5,16 +5,6 @@ import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useToast } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
-import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
-// Use localhost for iOS simulator, 10.0.2.2 for Android emulator, or your machine's IP for physical device
-const API_URL = __DEV__ 
-  ? Platform.select({
-    ios: 'http://localhost:5000/api/user',
-    android: 'http://10.0.2.2:5000/api/user',
-  })
-  : 'http://192.168.0.108:5000/api/user';  // Your production API URL
 
 export default function LoginScreen() {
   const router = useRouter();

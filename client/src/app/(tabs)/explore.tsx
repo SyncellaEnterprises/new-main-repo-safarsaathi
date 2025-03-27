@@ -13,7 +13,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import Explosion from 'react-native-confetti-cannon';
-import { API_URL } from '@/src/constants/config';
+
+// Set API URL to your local server
+const API_URL = 'http://10.0.2.2:5000';
 
 interface RecommendationResponse {
   recommended_user_age: number;
@@ -71,10 +73,10 @@ interface ConfettiRef {
   start: () => void;
 }
 
-interface RecommendationIds {
-  recommended_users: number[];
-  similarity_scores: number[];
+interface SwipeResponse {
+  remaining_swipes: number;
   status: string;
+  total_limit: number;
 }
 
 export default function ExploreScreen() {
@@ -82,7 +84,10 @@ export default function ExploreScreen() {
   const swiperRef = useRef<Swiper<TransformedProfile>>(null);
   const confettiRef = useRef<Explosion>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const { swipesLeft, timeUntilReset, isLimited, decrementSwipes } = useSwipeLimit(10);
+  const [swipesRemaining, setSwipesRemaining] = useState(10); // Default value
+  const [totalLimit, setTotalLimit] = useState(10); // Default value
+  const [timeUntilReset, setTimeUntilReset] = useState<string>('');
+  const [isLimited, setIsLimited] = useState(false);
   const [recommendations, setRecommendations] = useState<TransformedProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +95,42 @@ export default function ExploreScreen() {
   useEffect(() => {
     fetchRecommendations();
   }, []);
+
+  const checkRemainingSwipes = async () => {
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      
+      if (!token) {
+        throw new Error('No access token found');
+      }
+
+      const response = await axios.post(
+        `${API_URL}/api/swipes/remaining`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.data.status === 'success') {
+        setSwipesRemaining(response.data.remaining_swipes);
+        setTotalLimit(response.data.total_limit);
+        
+        // If no swipes remaining, user is limited
+        setIsLimited(response.data.remaining_swipes <= 0);
+      }
+    } catch (error: any) {
+      console.error('Error checking remaining swipes:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to check remaining swipes'
+      });
+    }
+  };
 
   const fetchRecommendations = async () => {
     try {
@@ -172,7 +213,7 @@ export default function ExploreScreen() {
           const similarity_score = profileMap.get(rec.recommended_user_profile_id) || 0;
 
           return {
-            username: `User${rec.recommended_user_profile_id}`,
+            username: `user_${rec.recommended_user_profile_id}`,
             age: rec.recommended_user_age,
             bio: rec.recommended_user_bio,
             gender: rec.recommended_user_gender,
@@ -222,89 +263,23 @@ export default function ExploreScreen() {
       Toast.show({
         type: 'info',
         text1: 'Daily Limit Reached',
-        text2: `Try again in ${timeUntilReset}`,
+        text2: `Try again later when swipes reset`,
       });
       return;
     }
 
-    try {
-      const currentUser = recommendations[currentIndex];
-      if (!currentUser) return;
-
-      const token = await AsyncStorage.getItem('accessToken');
-      if (!token) throw new Error('No access token found');
-
-      // Record the swipe
-      console.log('Making swipe request:', {
-        target_profile_id: currentUser.recommended_user_profile_id,
-        direction: direction === 'right' ? 'right' : 'left'
-      });
-
-      await axios.post(
-        `${API_URL}/api/swipe`,
-        {
-          target_profile_id: currentUser.recommended_user_profile_id,
-          direction: direction === 'right' ? 'right' : 'left'
-        },
-        {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: 5000
-        }
-      );
-
-      decrementSwipes();
-
-      // If it's a right swipe, check for a match
-      if (direction === 'right') {
-        const matchResponse = await axios.get(
-          `${API_URL}/api/matches`,
-          {
-            headers: { 
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-
-        console.log('Match response:', matchResponse.data);
-
-        const isMatch = matchResponse.data.matches.some(
-          (match: any) => match.matched_profile_id === currentUser.recommended_user_profile_id
-        );
-
-        if (isMatch) {
-          confettiRef.current?.start();
-          Toast.show({
-            type: 'success',
-            text1: 'It\'s a Match! 🎉',
-            text2: `You matched with ${currentUser.username}!`
-          });
-        }
-      }
-
-      // Trigger the swipe animation
-      switch (direction) {
-        case 'left':
-          swiperRef.current?.swipeLeft();
-          break;
-        case 'right':
-          swiperRef.current?.swipeRight();
-          break;
-        case 'superlike':
-          confettiRef.current?.start();
-          swiperRef.current?.swipeRight();
-          break;
-      }
-    } catch (error: any) {
-      console.error('Error in handleSwipe:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: error.message || 'Failed to process swipe'
-      });
+    // Only trigger the swipe animation here
+    switch (direction) {
+      case 'left':
+        swiperRef.current?.swipeLeft();
+        break;
+      case 'right':
+        swiperRef.current?.swipeRight();
+        break;
+      case 'superlike':
+        confettiRef.current?.start();
+        swiperRef.current?.swipeRight();
+        break;
     }
   };
 
@@ -364,7 +339,7 @@ export default function ExploreScreen() {
         onLeftPress={() => router.push("/(tabs)/connections" as any)}
         onRightPress={() => router.push("/(tabs)/filters" as any)}
         gradientColors={['#1a237e', '#283593']}
-        subtitle={isLimited ? `Reset in ${timeUntilReset}` : `${swipesLeft} swipes left`}
+        subtitle={isLimited ? `Swipes Reset Soon` : `${swipesRemaining}/${totalLimit} swipes left`}
       />
 
       <View className="flex-1">
@@ -374,11 +349,11 @@ export default function ExploreScreen() {
           renderCard={(user) => <UserCard user={user} />}
           onSwipedLeft={(cardIndex) => {
             console.log('Disliked', cardIndex);
-            handleSwipe('left');
+            setCurrentIndex(cardIndex + 1);
           }}
           onSwipedRight={(cardIndex) => {
             console.log('Liked', cardIndex);
-            handleSwipe('right');
+            setCurrentIndex(cardIndex + 1);
           }}
           onSwipedAll={() => {
             Toast.show({
@@ -440,6 +415,14 @@ export default function ExploreScreen() {
           className="absolute bottom-20 w-full z-10"
           onSwipe={handleSwipe}
           disabled={isLimited}
+          currentUser={recommendations[currentIndex]}
+          apiUrl={API_URL}
+          confettiRef={confettiRef}
+          updateSwipesRemaining={(remaining, total) => {
+            setSwipesRemaining(remaining);
+            setTotalLimit(total);
+            setIsLimited(remaining <= 0);
+          }}
         />
 
         <ConfettiCannon

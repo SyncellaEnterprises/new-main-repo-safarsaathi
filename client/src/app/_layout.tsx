@@ -9,6 +9,7 @@ import '@/global.css';
 import React from "react";
 import { StatusBar } from "react-native";
 import { useAuth } from "@/src/context/AuthContext";
+import { SocketProvider } from '@/src/context/SocketContext';
 
 // Keep splash screen visible while loading resources
 SplashScreen.preventAutoHideAsync();
@@ -29,27 +30,29 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <StatusBar
-          backgroundColor="#1a237e"
-          barStyle="light-content"
-        />
-        <Stack screenOptions={{
-          headerShown: false,
-          animation: 'fade',
-          // Enable screen caching
-          freezeOnBlur: true,
-          // Optimize memory usage
-          // unmountOnBlur: true
-        }}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="(icon)" />
-          <Stack.Screen name="auth" />
-          <Stack.Screen name="onboarding" />
-          <Stack.Screen name="chat/[id]" />
-        </Stack>
-      </ToastProvider>
-    </AuthProvider>
+    <SocketProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <StatusBar
+            backgroundColor="#1a237e"
+            barStyle="light-content"
+          />
+          <Stack screenOptions={{
+            headerShown: false,
+            animation: 'fade',
+            // Enable screen caching
+            freezeOnBlur: true,
+            // Optimize memory usage
+            // unmountOnBlur: true
+          }}>
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="(icon)" />
+            <Stack.Screen name="auth" />
+            <Stack.Screen name="onboarding" />
+            <Stack.Screen name="chat/[id]" />
+          </Stack>
+        </ToastProvider>
+      </AuthProvider>
+    </SocketProvider>
   );
 }
