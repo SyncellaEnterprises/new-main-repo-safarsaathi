@@ -7,7 +7,6 @@ import { SwipeButtons } from '@/src/components/explore/SwipeButtons';
 import TabHeader from '@/src/components/shared/TabHeader';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
-import { useSwipeLimit } from '@/src/hooks/useSwipeLimit';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BlurView } from 'expo-blur';

@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
+import io from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface SocketContextType {
-  socket: Socket | null;
+  socket: any;
   isConnected: boolean;
   isConnecting: boolean;
   connect: () => void;
@@ -19,7 +19,7 @@ const SocketContext = createContext<SocketContextType>({
 });
 
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [socket, setSocket] = useState<any>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(true);
 

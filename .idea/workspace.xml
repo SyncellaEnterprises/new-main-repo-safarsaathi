@@ -5,13 +5,19 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d6080ac8-7173-4192-944d-77feefd4c71d" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/(profile)/edit-info.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(profile)/edit-info.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/(profile)/edit-interests.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(profile)/edit-interests.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/(profile)/edit-location.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(profile)/edit-location.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/(profile)/edit-photos.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(profile)/edit-photos.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/(profile)/edit-prompts.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(profile)/edit-prompts.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/(tabs)/chat.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(tabs)/chat.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/app/(tabs)/explore.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(tabs)/explore.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/components/explore/SwipeButtons.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/explore/SwipeButtons.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/components/explore/UserCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/explore/UserCard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/app.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/controllers/chat_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/controllers/chat_controller.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/server/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/context/SocketContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/context/SocketContext.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/hooks/useLifestylePreferences.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/hooks/useSocket.ts" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/hooks/useSocket.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/hooks/useUser.ts" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
