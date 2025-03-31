@@ -9,7 +9,7 @@ from config.config import POSTGRES_DB, POSTGRES_HOST,POSTGRES_PASSWORD,POSTGRES_
 
 @app.route('/api/swipe/me', methods=['GET'])
 @jwt_required()
-def get_current_user_recommedation_data():
+def get_current_user_matches_data():
     try:
         logging.info("Fetching matches for current user")
         current_user = get_jwt_identity()
