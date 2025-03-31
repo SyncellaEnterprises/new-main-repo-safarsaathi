@@ -301,6 +301,139 @@ All onboarding endpoints require JWT Token in header: `Authorization: Bearer <to
     "status": "success"
   }
   ```
+### User Onboarding Endpoints
+All onboarding endpoints require JWT Token in header: `Authorization: Bearer <token>`
+
+- `PATCH /api/update/age`
+  - Update user age
+  - Body:
+    ```json
+    {
+        "age": "integer"  
+    }
+    ```
+  - Response:
+    ```json
+    {
+        "status": "success",
+        "message": "Age updated successfully"
+    }
+    ```
+
+- `PATCH /api/update/gender`
+  - Update user gender
+  - Body:
+    ```json
+    {
+        "gender": "string"  
+    }
+    ```
+  - Response:
+    ```json
+    {
+        "status": "success",
+        "message": "Gender updated successfully"
+    }
+    ```
+
+- `PATCH /api/update/location`
+  - Update user location
+  - Body:
+    ```json
+    {
+        "location": "string"
+    }
+    ```
+  - Response:
+    ```json
+    {
+        "status": "success",
+        "message": "Location updated successfully"
+    }
+    ```
+
+- `PATCH /api/update/occupation`
+  - Update user occupation
+  - Body:
+    ```json
+    {
+        "occupation": "string"
+    }
+    ```
+  - Response:
+    ```json
+    {
+        "status": "success",
+        "message": "Occupation updated successfully"
+    }
+    ```
+
+- `PATCH /api/update/interests`
+  - Update user interests
+  - Body:
+    ```json
+    {
+        "interests": "string"
+    }
+    ```
+  - Response:
+    ```json
+    {
+        "status": "success",
+        "message": "Interests updated successfully"
+    }
+    ```
+
+- `PATCH /api/update/bio`
+  - Update user bio
+  - Body:
+    ```json
+    {
+        "bio": "string"
+    }
+    ```
+  - Response:
+    ```json
+    {
+        "status": "success",
+        "message": "Bio updated successfully"
+    }
+    ```
+
+- `PATCH /api/update/prompts`
+  - Update user prompts
+  - Body:
+    ```json
+    {
+        "prompts": [
+            {
+                "question": "string",
+                "answer": "string"
+            }
+        ]
+    }
+    ```
+  - Response:
+    ```json
+    {
+        "status": "success",
+        "message": "Prompts updated successfully"
+    }
+    ```
+
+Error Response (for all endpoints):
+```json
+{
+    "status": "error",
+    "message": "Error description"
+}
+```
+
+Status Codes:
+- 200: Success
+- 400: Bad Request (invalid data or validation failed)
+- 401: Unauthorized (invalid or missing token)
+- 500: Internal Server Error
 
 -` POST /api/chat/send`
   - User Right Swipe match
@@ -493,6 +626,54 @@ Status Codes:
 - 200: Success
 - 404: State not found
 - 500: Server error
+
+### Matches of current user Endpoints
+
+- `GET /api/matches/me`
+  - Get all active matches for the logged-in user
+  - Requires: JWT Token
+  - Response:
+    ```json
+    {
+        "matches": [
+            {
+                "username": "john_doe",
+                "userId": 123,
+                "email": "john@example.com",
+                "interests": "travel, photography, hiking",
+                "matchDate": "2024-03-20T15:30:00Z",
+                "bio": "Adventure seeker and photography enthusiast"
+            },
+            {
+                "username": "jane_smith",
+                "userId": 124,
+                "email": "jane@example.com",
+                "interests": "music, art, cooking",
+                "matchDate": "2024-03-19T10:15:00Z",
+                "bio": "Art lover and foodie"
+            }
+        ]
+    }
+    ```
+
+  - Empty Response (when no matches):
+    ```json
+    {
+        "matches": []
+    }
+    ```
+
+  - Error Response:
+    ```json
+    {
+        "error": "Error description"
+    }
+    ```
+
+  Status Codes:
+  - 200: Success (including cases with no matches)
+  - 401: Unauthorized (invalid or missing token)
+  - 500: Internal Server Error
 
 ## Database Table schemas
 ### user_db: 
