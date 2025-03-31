@@ -7,10 +7,9 @@ from flask_jwt_extended import JWTManager
 from utils.logger import logging
 from utils.exception import CustomException
 from flask_socketio import SocketIO 
-import eventlet 
-from model.socket_chat import ChatHandler, get_db_connection
-from database.chat_db import ChatDB
-from controllers.chat_controller import get_chats, get_chat_messages, get_matches
+# from model.socket_chat import ChatHandler, get_db_connection
+# from database.chat_db import ChatDB
+# from controllers.chat_controller import get_chats, get_chat_messages, get_matches
 
 #eventlet.monkey_patch()
 app = Flask(__name__)

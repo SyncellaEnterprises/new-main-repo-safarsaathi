@@ -26,7 +26,7 @@ def get_current_user_recommedation_data():
         # Connect to database
         
         model = MatchesGetModel(conn)
-        response = model.get_recommendations(current_user_id)
+        response = model.get_my_matches(current_user_id)
         
         conn.close()
         

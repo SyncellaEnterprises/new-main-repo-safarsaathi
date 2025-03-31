@@ -17,7 +17,7 @@ class MatchesGetModel:
             logging.error(f"Error initializing MatchesGetModel: {e}")
             raise CustomException(e, sys)
 
-    def get__my_matches(self, user_id):
+    def get_my_matches(self, user_id):
         """Fetch matches for a user from database"""
         try:
             logging.info(f"Fetching matches for {user_id}")
