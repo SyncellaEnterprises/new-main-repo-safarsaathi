@@ -23,7 +23,7 @@ class RecommendationModel:
             logging.info(f"Fetching recommendations for {user_id}")
 
             self.cursor.execute("""SELECT 
-                                up_recommended.id AS recommended_user_profile_id,
+                                up_recommended.user_id AS recommended_user_profile_user_id,
                                 up_recommended.age AS recommended_user_age,
                                 up_recommended.bio AS recommended_user_bio,
                                 up_recommended.gender AS recommended_user_gender,
