@@ -7,7 +7,7 @@ from utils.get_user_id import get_user_id_from_username
 from database.matches_db_get_model import MatchesGetModel
 from config.config import POSTGRES_DB, POSTGRES_HOST,POSTGRES_PASSWORD,POSTGRES_PORT,POSTGRES_USER
 
-@app.route('/api/swipe/me', methods=['GET'])
+@app.route('/api/matches/me', methods=['GET'])
 @jwt_required()
 def get_current_user_matches_data():
     try:
