@@ -60,6 +60,7 @@ with app.app_context():
     from database.user_db_get_controller import *   
     from database.recommendations_db_get_controller import * 
     from controllers.onboarding_crud_controller import *
+    from database.matches_db_get_controller import *
     #from controllers.chat_controller import * 
     
 
