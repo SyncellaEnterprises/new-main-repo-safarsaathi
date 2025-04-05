@@ -7,7 +7,7 @@ import { BlurView } from 'expo-blur';
 
 const { width, height } = Dimensions.get('window');
 
-const DEFAULT_PROFILE_IMAGE = 'https://via.placeholder.com/400x600?text=No+Image';
+const DEFAULT_PROFILE_IMAGE = 'https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png';
 
 interface UserCardProps {
   user: {
@@ -26,7 +26,7 @@ interface UserCardProps {
         answer: string;
       }>;
     };
-    recommended_user_profile_id?: number;
+    recommended_user_profile_id: number;
   };
 }
 
@@ -34,8 +34,8 @@ export function UserCard({ user }: UserCardProps) {
   // If user is undefined, show a placeholder
   if (!user) {
     return (
-      <View className="flex-1 items-center justify-center bg-white rounded-3xl p-8">
-        <Text className="text-xl text-gray-500 text-center">
+      <View className="flex-1 items-center justify-center bg-neutral-lightest rounded-3xl p-8">
+        <Text className="text-xl text-neutral-dark text-center font-montserrat">
           No more profiles available. Check back later!
         </Text>
       </View>
@@ -47,16 +47,30 @@ export function UserCard({ user }: UserCardProps) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [imageLoadError, setImageLoadError] = useState<string[]>([]);
   const [isScrolling, setIsScrolling] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
   const scrollViewRef = useRef<ScrollView>(null);
   const scale = useSharedValue(1);
 
-  // Create an array of images (in this case just one from profile_photo)
-  const profilePhoto = user.profile_photo ? 
-    // Handle if profile_photo is a JSON string
-    (typeof user.profile_photo === 'string' && user.profile_photo.startsWith('{') ? 
-      JSON.parse(user.profile_photo).url : user.profile_photo) 
-    : null;
+  // Process the profile photo - handles both string URLs and JSON strings
+  const processProfilePhoto = () => {
+    if (!user.profile_photo) return null;
+    
+    try {
+      // Check if it's a JSON string
+      if (typeof user.profile_photo === 'string' && 
+          (user.profile_photo.startsWith('{') || user.profile_photo.startsWith('['))) {
+        const parsed = JSON.parse(user.profile_photo);
+        return parsed.url || parsed[0]?.url || parsed;
+      }
+      // Just return the string
+      return user.profile_photo;
+    } catch (e) {
+      console.error('Error processing profile photo:', e);
+      return user.profile_photo; // Return original on error
+    }
+  };
 
+  const profilePhoto = processProfilePhoto();
   const images = profilePhoto ? [profilePhoto] : [DEFAULT_PROFILE_IMAGE];
 
   // Auto-slide images with error handling
@@ -86,13 +100,14 @@ export function UserCard({ user }: UserCardProps) {
     return () => clearInterval(interval);
   }, [activeImageIndex, isScrolling, images.length]);
 
-  // Add this inside the component to debug props
+  // Debug user data on load
   useEffect(() => {
-    console.log('User data received:', {
+    console.log('User data for card:', {
       username: user.username,
       interests: user.interests,
       similarity_score: user.similarity_score,
-      profile_photo: user.profile_photo
+      profile_photo: user.profile_photo,
+      id: user.recommended_user_profile_id
     });
   }, [user]);
 
@@ -101,25 +116,47 @@ export function UserCard({ user }: UserCardProps) {
   }));
 
   const handleImageError = (imageUrl: string) => {
+    console.error('Image failed to load:', imageUrl);
     setImageLoadError(prev => [...prev, imageUrl]);
+  };
+
+  const handleImageLoad = () => {
+    setImageLoading(false);
   };
 
   const renderVerifiedBadge = () => (
     <BlurView intensity={80} className="absolute top-4 right-4 flex-row items-center px-3 py-1.5 rounded-full">
-      <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
-      <Text className="text-white text-sm ml-1 font-medium">Verified</Text>
+      <Ionicons name="checkmark-circle" size={16} color="#50A6A7" />
+      <Text className="text-white text-sm ml-1 font-montserratMedium">Verified</Text>
     </BlurView>
   );
 
-  // Make sure interests is always an array
-  const interestsArray: string[] = Array.isArray(user.interests) ? 
-    user.interests : 
-    (typeof user.interests === 'string' ? user.interests.split(',').map((i: string) => i.trim()) : []);
+  // Process interests to ensure it's always an array of strings
+  const processInterests = () => {
+    if (!user.interests) return [];
+    
+    if (Array.isArray(user.interests)) {
+      return user.interests;
+    }
+
+    if (typeof user.interests === 'string') {
+      // Handle potential JSON format with braces and quotes
+      return user.interests
+        .replace(/[{}"]/g, '') // Remove all braces and quotes
+        .split(',')
+        .map(i => i.trim())
+        .filter(i => i);
+    }
+    
+    return [];
+  };
+
+  const interestsArray = processInterests();
 
   return (
     <Animated.View style={animatedStyle} className="flex-1">
       <ScrollView 
-        className="flex-1 bg-white rounded-3xl overflow-hidden"
+        className="flex-1 bg-neutral-lightest rounded-3xl overflow-hidden shadow-md"
         bounces={false}
         showsVerticalScrollIndicator={false}
         onScrollBeginDrag={() => setIsScrolling(true)}
@@ -141,6 +178,11 @@ export function UserCard({ user }: UserCardProps) {
           >
             {images.map((image, index) => (
               <View key={index} className="relative">
+                {imageLoading && (
+                  <View style={{ width, height: height * 0.7 }} className="absolute items-center justify-center bg-neutral-medium">
+                    <ActivityIndicator size="large" color="#7D5BA6" />
+                  </View>
+                )}
                 <Image
                   source={{ 
                     uri: imageLoadError.includes(image) 
@@ -148,9 +190,10 @@ export function UserCard({ user }: UserCardProps) {
                       : image 
                   }}
                   style={{ width, height: height * 0.7 }}
-                  className="bg-gray-100"
+                  className="bg-neutral-medium"
                   resizeMode="cover"
                   onError={() => handleImageError(image)}
+                  onLoad={handleImageLoad}
                 />
                 <LinearGradient
                   colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.6)']}
@@ -194,28 +237,35 @@ export function UserCard({ user }: UserCardProps) {
 
         {/* User Info */}
         <View className="px-5 py-6">
-          <Text className="text-3xl font-bold">
-            {user.username}, {user.age || 'N/A'}
-          </Text>
+          <View className="flex-row justify-between items-center">
+            <Text className="text-2xl font-youngSerif text-primary-dark">
+              {user.username.replace('user_', '')}, {user.age || 'N/A'}
+            </Text>
+            <View className="bg-primary-light/20 px-3 py-1 rounded-full">
+              <Text className="text-primary-dark font-montserratMedium">
+                {Math.round((user.similarity_score || 0) * 100)}%
+              </Text>
+            </View>
+          </View>
           
           <View className="flex-row items-center mt-2">
-            <Ionicons name="location-outline" size={20} color="#4B5563" />
-            <Text className="text-lg text-gray-600 ml-1">
+            <Ionicons name="location-outline" size={18} color="#7D5BA6" />
+            <Text className="text-base text-neutral-dark ml-1.5 font-montserrat">
               {user.location || 'Location not specified'}
             </Text>
           </View>
 
           <View className="flex-row items-center mt-2">
-            <Ionicons name="briefcase-outline" size={20} color="#4B5563" />
-            <Text className="text-lg text-gray-600 ml-1">
+            <Ionicons name="briefcase-outline" size={18} color="#7D5BA6" />
+            <Text className="text-base text-neutral-dark ml-1.5 font-montserrat">
               {user.occupation || 'Occupation not specified'}
             </Text>
           </View>
 
           {/* Gender */}
           <View className="flex-row items-center mt-2">
-            <Ionicons name="person-outline" size={20} color="#4B5563" />
-            <Text className="text-lg text-gray-600 ml-1 capitalize">
+            <Ionicons name="person-outline" size={18} color="#7D5BA6" />
+            <Text className="text-base text-neutral-dark ml-1.5 font-montserrat capitalize">
               {user.gender || 'Not specified'}
             </Text>
           </View>
@@ -223,19 +273,19 @@ export function UserCard({ user }: UserCardProps) {
           {/* About Section */}
           {user.bio && (
             <View className="mt-6">
-              <Text className="text-xl font-semibold text-gray-800 mb-2">About</Text>
-              <Text className="text-gray-600">{user.bio}</Text>
+              <Text className="text-lg font-youngSerif text-primary-dark mb-2">About</Text>
+              <Text className="text-neutral-dark font-montserrat">{user.bio}</Text>
             </View>
           )}
 
           {/* Interests Section */}
           {interestsArray.length > 0 && (
             <View className="mt-6">
-              <Text className="text-xl font-semibold mb-3 text-gray-800">Interests</Text>
+              <Text className="text-lg font-youngSerif mb-3 text-primary-dark">Interests</Text>
               <View className="flex-row flex-wrap gap-2">
                 {interestsArray.map((interest: string, index: number) => (
-                  <View key={index} className="bg-gray-100 rounded-full px-4 py-2">
-                    <Text className="text-gray-700">{interest}</Text>
+                  <View key={index} className="bg-secondary/10 rounded-full px-4 py-2">
+                    <Text className="text-secondary-dark font-montserratMedium">{interest}</Text>
                   </View>
                 ))}
               </View>
@@ -243,22 +293,22 @@ export function UserCard({ user }: UserCardProps) {
           )}
 
           {/* Prompts Section */}
-          {user.prompts && user.prompts.prompts && user.prompts.prompts.length > 0 && (
-            <View className="mt-6 bg-gray-50 rounded-2xl p-5">
-              <Text className="text-xl font-semibold mb-4 text-gray-800">Prompts</Text>
+          {user.prompts?.prompts?.length > 0 && (
+            <View className="mt-6 bg-neutral-light rounded-2xl p-5">
+              <Text className="text-lg font-youngSerif mb-4 text-primary-dark">Prompts</Text>
               {user.prompts.prompts.map((prompt, index) => (
                 <View key={index} className="mb-4 last:mb-0">
-                  <Text className="text-indigo-600 font-medium mb-2">{prompt.question}</Text>
-                  <Text className="text-gray-600">{prompt.answer}</Text>
+                  <Text className="text-primary font-montserratMedium mb-2">{prompt.question}</Text>
+                  <Text className="text-neutral-dark font-montserrat">{prompt.answer}</Text>
                 </View>
               ))}
             </View>
           )}
 
           {/* Match Score */}
-          <View className="mt-6 bg-indigo-50 rounded-2xl p-5">
-            <Text className="text-xl font-semibold mb-2 text-indigo-800">Match Score</Text>
-            <Text className="text-indigo-600 text-lg">
+          <View className="mt-6 bg-accent/10 rounded-2xl p-5">
+            <Text className="text-lg font-youngSerif mb-2 text-accent-dark">Match Score</Text>
+            <Text className="text-accent-dark text-base font-montserratMedium">
               {Math.round((user.similarity_score || 0) * 100)}% Compatible
             </Text>
           </View>

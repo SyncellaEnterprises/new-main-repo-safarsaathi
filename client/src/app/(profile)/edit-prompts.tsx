@@ -142,36 +142,36 @@ export default function EditPromptsScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-[#F8FAFF] justify-center items-center">
-        <ActivityIndicator size="large" color="#1a237e" />
-        <Text className="mt-4 text-[#1a237e]">Loading prompts...</Text>
+      <View className="flex-1 bg-neutral-light justify-center items-center">
+        <ActivityIndicator size="large" color="#7D5BA6" />
+        <Text className="mt-4 text-primary font-montserrat">Loading prompts...</Text>
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-[#F8FAFF]">
+    <View className="flex-1 bg-neutral-light">
       <Animated.View 
         entering={FadeInDown.duration(500)}
-        className="bg-white px-6 pt-6 pb-4 border-b border-slate-100"
+        className="bg-neutral-lightest px-6 pt-6 pb-4 border-b border-neutral-medium"
       >
         <View className="flex-row items-center justify-between">
           <TouchableOpacity 
             onPress={() => router.back()}
             className="flex-row items-center"
           >
-            <Ionicons name="arrow-back" size={24} color="#1a237e" />
-            <Text className="ml-2 text-[#1a237e]">Back</Text>
+            <Ionicons name="arrow-back" size={24} color="#7D5BA6" />
+            <Text className="ml-2 text-primary font-montserratMedium">Back</Text>
           </TouchableOpacity>
-          <Text className="text-lg font-semibold text-[#1a237e]">Prompts</Text>
+          <Text className="text-lg font-youngSerif text-primary-dark">Prompts</Text>
           <TouchableOpacity 
             onPress={handleSave}
             disabled={isSaving || !changedPrompts}
           >
             {isSaving ? (
-              <ActivityIndicator size="small" color="#1a237e" />
+              <ActivityIndicator size="small" color="#7D5BA6" />
             ) : (
-              <Text className={`font-semibold ${changedPrompts ? 'text-[#1a237e]' : 'text-gray-400'}`}>
+              <Text className={`font-montserratMedium ${changedPrompts ? 'text-primary' : 'text-neutral-dark/40'}`}>
                 Save
               </Text>
             )}
@@ -180,10 +180,10 @@ export default function EditPromptsScreen() {
       </Animated.View>
 
       <ScrollView className="flex-1 p-6">
-        <Text className="text-2xl font-bold text-[#1a237e] mb-2">
+        <Text className="text-2xl font-youngSerif text-primary-dark mb-2">
           Your Prompts
         </Text>
-        <Text className="text-slate-500 mb-6">
+        <Text className="text-neutral-dark mb-6 font-montserrat">
           Add up to {MAX_PROMPTS} prompts to show your personality
         </Text>
 
@@ -201,16 +201,16 @@ export default function EditPromptsScreen() {
                 onPress={() => handleSelectPrompt(prompt)}
                 className={`p-4 rounded-xl border-2 ${
                   isSelected 
-                    ? 'border-[#1a237e] bg-indigo-50' 
-                    : 'border-slate-200'
+                    ? 'border-primary bg-primary/10' 
+                    : 'border-neutral-medium'
                 }`}
               >
-                <Text className="text-lg font-semibold text-[#1a237e]">
+                <Text className="text-lg font-montserratMedium text-primary-dark">
                   {prompt.question}
                 </Text>
                 {isSelected && (
                   <View className="mt-2">
-                    <Text className="text-slate-600">
+                    <Text className="text-neutral-dark font-montserrat">
                       {selectedPrompt.answer}
                     </Text>
                     <TouchableOpacity 
@@ -230,19 +230,19 @@ export default function EditPromptsScreen() {
       {activePrompt && (
         <Animated.View 
           entering={FadeIn}
-          className="absolute inset-0 bg-white px-6 pt-6"
+          className="absolute inset-0 bg-neutral-lightest px-6 pt-6"
         >
           <View className="flex-row items-center justify-between mb-6">
             <TouchableOpacity onPress={() => setActivePrompt(null)}>
-              <Ionicons name="close" size={24} color="#1a237e" />
+              <Ionicons name="close" size={24} color="#7D5BA6" />
             </TouchableOpacity>
-            <Text className="text-lg font-semibold text-[#1a237e]">Your Answer</Text>
+            <Text className="text-lg font-youngSerif text-primary-dark">Your Answer</Text>
             <TouchableOpacity onPress={handleSaveAnswer}>
-              <Text className="text-[#1a237e] font-semibold">Save</Text>
+              <Text className="text-primary font-montserratMedium">Save</Text>
             </TouchableOpacity>
           </View>
 
-          <Text className="text-xl font-semibold text-[#1a237e] mb-4">
+          <Text className="text-xl font-montserratMedium text-primary-dark mb-4">
             {PROMPTS.find(p => p.id === activePrompt)?.question}
           </Text>
 
@@ -250,13 +250,13 @@ export default function EditPromptsScreen() {
             multiline
             maxLength={MAX_CHARS}
             placeholder="Type your answer..."
-            className="text-lg text-slate-800 border-2 border-slate-200 rounded-xl p-4"
+            className="text-lg text-neutral-darkest border-2 border-neutral-medium rounded-xl p-4 font-montserrat"
             autoFocus
             value={promptInput}
             onChangeText={setPromptInput}
           />
           
-          <Text className="text-right mt-2 text-slate-500">
+          <Text className="text-right mt-2 text-neutral-dark font-montserrat">
             {promptInput.length}/{MAX_CHARS}
           </Text>
         </Animated.View>

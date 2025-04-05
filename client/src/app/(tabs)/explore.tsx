@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, SafeAreaView, ActivityIndicator, Text, TouchableOpacity } from 'react-native';
 import Swiper from 'react-native-deck-swiper';
 import ConfettiCannon from 'react-native-confetti-cannon';
@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import Explosion from 'react-native-confetti-cannon';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 // Set API URL to your local server
 const API_URL = 'http://10.0.2.2:5000';
@@ -25,7 +26,8 @@ interface RecommendationResponse {
   recommended_user_location: string | null;
   recommended_user_occupation: string;
   recommended_user_photo: string | null;
-  recommended_user_profile_id: number;
+  recommended_user_profile_id?: number;
+  recommended_user_profile_user_id?: number;
   recommended_user_prompts: {
     prompts: Array<{
       question: string;
@@ -89,13 +91,11 @@ export default function ExploreScreen() {
   const [isLimited, setIsLimited] = useState(false);
   const [recommendations, setRecommendations] = useState<TransformedProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchRecommendations();
-  }, []);
-
-  const checkRemainingSwipes = async () => {
+  // Check remaining swipes
+  const checkRemainingSwipes = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem('accessToken');
       
@@ -103,6 +103,7 @@ export default function ExploreScreen() {
         throw new Error('No access token found');
       }
 
+      console.log('Checking remaining swipes...');
       const response = await axios.post(
         `${API_URL}/api/swipes/remaining`,
         {},
@@ -113,6 +114,8 @@ export default function ExploreScreen() {
           }
         }
       );
+
+      console.log('Remaining swipes response:', response.data);
 
       if (response.data.status === 'success') {
         setSwipesRemaining(response.data.remaining_swipes);
@@ -129,7 +132,35 @@ export default function ExploreScreen() {
         text2: 'Failed to check remaining swipes'
       });
     }
-  };
+  }, []);
+
+  // Function to refetch everything - used for pull-to-refresh or retry button
+  const refreshAll = useCallback(async () => {
+    setRefreshing(true);
+    setCurrentIndex(0);
+    await checkRemainingSwipes();
+    await fetchRecommendations();
+    setRefreshing(false);
+  }, [checkRemainingSwipes]);
+
+  // Load initial data
+  useEffect(() => {
+    const initializeScreen = async () => {
+      try {
+        setLoading(true);
+        // First check swipes
+        await checkRemainingSwipes();
+        // Then fetch recommendations
+        await fetchRecommendations();
+      } catch (error) {
+        console.error('Error initializing explore screen:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeScreen();
+  }, []);
 
   const fetchRecommendations = async () => {
     try {
@@ -186,8 +217,20 @@ export default function ExploreScreen() {
       }
 
       // Transform the data
-      const transformedProfiles = detailedResponse.data.recommended_users.map(
+      const mappedProfiles: (TransformedProfile | null)[] = detailedResponse.data.recommended_users.map(
         (rec: RecommendationResponse) => {
+          // Get profile ID from either field name (handle API inconsistency)
+          const profileId = rec.recommended_user_profile_id || rec.recommended_user_profile_user_id;
+          
+          console.log('Processing profile with ID:', profileId);
+          
+          if (!profileId) {
+            console.error('Missing profile ID in recommendation:', rec);
+            // Instead of throwing error, log and skip this profile
+            console.warn('Skipping profile due to missing ID');
+            return null;
+          }
+
           // Parse location data
           let locationText = 'Location not specified';
           if (rec.recommended_user_location) {
@@ -202,17 +245,20 @@ export default function ExploreScreen() {
           }
 
           // Parse interests
-          const interestsStr = rec.recommended_user_interest || '{}';
-          const rawInterests = interestsStr.replace(/[{}]/g, '');
-          const interests = rawInterests.split(',')
-            .map(i => i.trim().replace(/^"|"$/g, ''))
+          const interestsStr = rec.recommended_user_interest || '';
+          const interests = interestsStr
+            .replace(/[{}"]/g, '') // Remove all braces and quotes
+            .split(',')
+            .map(i => i.trim())
             .filter(i => i);
 
           // Get similarity score from the map
-          const similarity_score = profileMap.get(rec.recommended_user_profile_id) || 0;
+          const similarity_score = profileMap.get(profileId) || rec.similarity_score || 0;
 
+          // Format the username to match what backend expects (user + ID, not user_ + ID)
+          // For display we use user_ID but for API calls we need userID format
           return {
-            username: `user_${rec.recommended_user_profile_id}`,
+            username: `user_${profileId}`,  // For UI display
             age: rec.recommended_user_age,
             bio: rec.recommended_user_bio,
             gender: rec.recommended_user_gender,
@@ -222,10 +268,19 @@ export default function ExploreScreen() {
             profile_photo: rec.recommended_user_photo,
             prompts: rec.recommended_user_prompts || { prompts: [] },
             similarity_score: similarity_score,
-            recommended_user_profile_id: rec.recommended_user_profile_id
+            recommended_user_profile_id: profileId
           };
         }
       );
+
+      // Filter out any null entries (skipped profiles)
+      const transformedProfiles: TransformedProfile[] = mappedProfiles.filter(
+        (profile): profile is TransformedProfile => profile !== null
+      );
+
+      if (transformedProfiles.length === 0) {
+        throw new Error('No valid profiles found');
+      }
 
       // Sort by similarity score
       const sortedProfiles = transformedProfiles.sort(
@@ -257,44 +312,46 @@ export default function ExploreScreen() {
     }
   };
 
-  const handleSwipe = async (direction: string) => {
+  const handleSwipe = (direction: string) => {
+    // Only handle UI animations here, not API calls
     if (isLimited) {
       Toast.show({
         type: 'info',
-        text1: 'Daily Limit Reached',
+        text1: 'Limit Reached',
         text2: `Try again later when swipes reset`,
       });
       return;
     }
 
-    // Only trigger the swipe animation here
+    // Trigger swipe animations
     switch (direction) {
       case 'left':
         swiperRef.current?.swipeLeft();
         break;
       case 'right':
-        swiperRef.current?.swipeRight();
-        break;
-      case 'superlike':
-        confettiRef.current?.start();
+      case 'superlike': // Handle superlike as a right swipe with confetti
         swiperRef.current?.swipeRight();
         break;
     }
+    
+    // Update index immediately after swipe
+    setCurrentIndex(prev => Math.min(prev + 1, recommendations.length - 1));
   };
 
-  if (loading) {
+  if (loading && !refreshing) {
     return (
-      <SafeAreaView className="flex-1 bg-[#1a237e]">
+      <SafeAreaView className="flex-1 bg-primary">
         <TabHeader
           title="Explore"
           leftIcon="people-outline"
           rightIcon="filter-outline"
           onLeftPress={() => router.push("/(tabs)/connections" as any)}
           onRightPress={() => router.push("/(tabs)/filters" as any)}
-          gradientColors={['#1a237e', '#283593']}
+          gradientColors={['rgba(125, 91, 166, 0.9)', 'rgba(90, 65, 128, 0.8)']}
         />
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#fff" />
+          <ActivityIndicator size="large" color="#FFF" />
+          <Text className="text-white mt-4 font-montserrat">Finding your matches...</Text>
         </View>
       </SafeAreaView>
     );
@@ -302,26 +359,26 @@ export default function ExploreScreen() {
 
   if (error || recommendations.length === 0) {
     return (
-      <SafeAreaView className="flex-1 bg-[#1a237e]">
+      <SafeAreaView className="flex-1 bg-primary">
         <TabHeader
           title="Explore"
           leftIcon="people-outline"
           rightIcon="filter-outline"
           onLeftPress={() => router.push("/(tabs)/connections" as any)}
           onRightPress={() => router.push("/(tabs)/filters" as any)}
-          gradientColors={['#1a237e', '#283593']}
+          gradientColors={['rgba(125, 91, 166, 0.9)', 'rgba(90, 65, 128, 0.8)']}
         />
         <View className="flex-1 items-center justify-center p-6">
           <BlurView intensity={20} className="p-6 rounded-3xl items-center">
             <Ionicons name="search" size={48} color="#fff" />
-            <Text className="text-white text-xl font-semibold mt-4 text-center">
+            <Text className="text-white text-xl font-youngSerif mt-4 text-center">
               {error || 'No recommendations found'}
             </Text>
             <TouchableOpacity 
-              onPress={fetchRecommendations}
+              onPress={refreshAll}
               className="mt-6 bg-white/20 px-6 py-3 rounded-xl"
             >
-              <Text className="text-white font-semibold">Try Again</Text>
+              <Text className="text-white font-montserratMedium">Try Again</Text>
             </TouchableOpacity>
           </BlurView>
         </View>
@@ -330,18 +387,24 @@ export default function ExploreScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-[#1a237e]">
+    <SafeAreaView className="flex-1 bg-primary">
       <TabHeader
         title="Explore"
         leftIcon="people-outline"
         rightIcon="filter-outline"
         onLeftPress={() => router.push("/(tabs)/connections" as any)}
         onRightPress={() => router.push("/(tabs)/filters" as any)}
-        gradientColors={['#1a237e', '#283593']}
+        gradientColors={['rgba(125, 91, 166, 0.9)', 'rgba(90, 65, 128, 0.8)']}
         subtitle={isLimited ? `Swipes Reset Soon` : `${swipesRemaining}/${totalLimit} swipes left`}
       />
 
       <View className="flex-1">
+        {refreshing ? (
+          <View className="absolute inset-0 items-center justify-center z-20 bg-black/20">
+            <ActivityIndicator size="large" color="#fff" />
+          </View>
+        ) : null}
+        
         <Swiper
           ref={swiperRef}
           cards={recommendations}
@@ -394,7 +457,7 @@ export default function ExploreScreen() {
               title: 'LIKE',
               style: {
                 label: {
-                  backgroundColor: '#00BFA6',
+                  backgroundColor: '#50A6A7',
                   color: 'white',
                   fontSize: 24
                 },
@@ -424,13 +487,21 @@ export default function ExploreScreen() {
           }}
         />
 
+        <TouchableOpacity 
+          onPress={refreshAll}
+          className="absolute top-4 right-4 z-20 bg-white/20 p-2 rounded-full"
+          style={{ right: 20 }}
+        >
+          <Ionicons name="refresh" size={24} color="#fff" />
+        </TouchableOpacity>
+
         <ConfettiCannon
           ref={confettiRef}
           count={200}
           origin={{ x: -10, y: 0 }}
           autoStart={false}
           fadeOut={true}
-          colors={['#FF6F3C', '#E100FF', '#00BFA6', '#FFD8C2']}
+          colors={['#D6A655', '#50A6A7', '#7D5BA6', '#E6C489']}
         />
       </View>
     </SafeAreaView>

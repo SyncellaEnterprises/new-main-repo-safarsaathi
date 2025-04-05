@@ -20,6 +20,21 @@ interface SwipeResponse {
   status: string;
 }
 
+interface Match {
+  is_active: boolean;
+  match_id: number;
+  matched_at: string;
+  matched_interests: string;
+  matched_location: string;
+  matched_user_id: number;
+  matched_username: string;
+}
+
+interface MatchResponse {
+  matches: Match[];
+  status: string;
+}
+
 interface SwipeButtonsProps {
   onSwipe: (direction: string) => void;
   className?: string;
@@ -70,19 +85,20 @@ export function SwipeButtons({
   }));
 
   const handleSwipe = async (direction: string) => {
-    // Check both disabled state and if there's a current user
+    // Early validation checks
+    if (!currentUser?.username) {
+      Toast.show({ type: 'error', text1: 'Invalid Profile', text2: 'Cannot swipe on this profile' });
+      return;
+    }
+
     if (disabled || !currentUser) {
       if (!currentUser) {
-        Toast.show({
-          type: 'info',
-          text1: 'No more profiles',
-          text2: 'Check back later for more recommendations!'
-        });
+        Toast.show({ type: 'info', text1: 'No more profiles', text2: 'Check back later!' });
       }
       return;
     }
-    
-    // Animate the button press
+
+    // Trigger button animation based on direction
     switch (direction) {
       case 'left':
         animatePress(scaleClose);
@@ -99,14 +115,21 @@ export function SwipeButtons({
       const token = await AsyncStorage.getItem('accessToken');
       if (!token) throw new Error('No access token found');
 
-      // Record the swipe with correct payload format
+      // Use the actual username from the API response
+      // Usernames are real strings like "shrey3", not based on IDs
+      const targetUsername = currentUser.username;
+      
+      console.log('Target username for swipe:', targetUsername);
+
+      // Prepare API payload
       const apiPayload = {
-        target_username: currentUser.username,
-        direction: direction === 'right' || direction === 'superlike' ? 'right' : 'left'
+        target_username: targetUsername,
+        direction: direction === 'right' ? 'right' : 'left'
       };
 
-      console.log('Making swipe request:', apiPayload);
+      console.log('Sending swipe request with payload:', apiPayload);
 
+      // Send swipe request
       const swipeResponse = await axios.post<SwipeResponse>(
         `${apiUrl}/api/swipe`,
         apiPayload,
@@ -119,7 +142,9 @@ export function SwipeButtons({
         }
       );
 
-      // Update remaining swipes from response
+      console.log('Swipe response:', swipeResponse.data);
+
+      // Update swipes remaining
       if (swipeResponse.data.status === 'success') {
         updateSwipesRemaining(
           swipeResponse.data.remaining_swipes,
@@ -127,12 +152,12 @@ export function SwipeButtons({
         );
       }
 
-      // If it's a right swipe, check for a match
-      if (direction === 'right' || direction === 'superlike') {
+      // Check for matches only after successful right swipe
+      if ((direction === 'right' || direction === 'superlike') && swipeResponse.data.status === 'success') {
         try {
-          const matchResponse = await axios.post(
-            `${apiUrl}/api/matches`,
-            {},
+          console.log('Checking for match...');
+          const matchResponse = await axios.get<MatchResponse>(
+            `${apiUrl}/api/matches/me`,
             {
               headers: { 
                 Authorization: `Bearer ${token}`,
@@ -143,46 +168,50 @@ export function SwipeButtons({
 
           console.log('Match response:', matchResponse.data);
 
-          // Check if the match data is valid and contains matches
-          if (matchResponse.data && matchResponse.data.matches) {
+          if (matchResponse.data?.matches?.length > 0) {
+            // Check if the current user is in the matches
             const isMatch = matchResponse.data.matches.some(
-              (match: any) => match.matched_username === currentUser.username
+              (match: Match) => match.matched_username === currentUser.username
             );
 
             if (isMatch) {
+              console.log('It\'s a match!', currentUser.username);
+              // Trigger confetti animation
               confettiRef.current?.start();
+              
               Toast.show({
                 type: 'success',
-                text1: 'It\'s a Match! 🎉',
-                text2: `You matched with ${currentUser.username}!`
+                text1: 'Match! 🎉',
+                text2: `You matched with ${currentUser.username}!`,
+                visibilityTime: 4000,
+                autoHide: true,
+                topOffset: 60
               });
             }
           }
         } catch (matchError: any) {
-          console.error('Error checking for match:', matchError);
-          // Don't show error toast for match check - just log it
+          console.error('Match check error:', matchError);
         }
       }
 
-      // Call the onSwipe function to trigger the animation in the parent component
+      // Only trigger UI swipe after successful API call
       onSwipe(direction);
-      
+
     } catch (error: any) {
-      console.error('Error in handleSwipe:', error.response || error);
+      console.error('Swipe error:', error);
       
-      // Get a more detailed error message
       const errorMessage = error.response?.data?.message || 
-                         error.response?.status === 404 ? 'API endpoint not found (404)' :
-                         error.message || 'Failed to process swipe';
-      
-      Toast.show({
-        type: 'error',
-        text1: 'Swipe Error',
-        text2: errorMessage
+                         error.response?.status === 404 ? 'Endpoint not found or invalid username' :
+                         error.message || 'Swipe failed';
+
+      Toast.show({ 
+        type: 'error', 
+        text1: 'Swipe Error', 
+        text2: errorMessage,
+        visibilityTime: 3000
       });
       
-      // Still call onSwipe to advance the card
-      onSwipe(direction);
+      // Do NOT call onSwipe() here to prevent UI mismatch
     }
   };
 
@@ -191,7 +220,7 @@ export function SwipeButtons({
       {/* Nope Button */}
       <AnimatedTouchable 
         style={closeStyle}
-        className="w-16 h-16 rounded-full bg-white shadow-lg shadow-red-500/50 
+        className="w-16 h-16 rounded-full bg-neutral-lightest shadow-lg 
                   items-center justify-center border-2 border-red-500"
         onPress={() => handleSwipe('left')}
         disabled={disabled || !currentUser}
@@ -204,26 +233,26 @@ export function SwipeButtons({
       {/* Super Like Button */}
       <AnimatedTouchable 
         style={starStyle}
-        className="w-20 h-20 rounded-full shadow-lg shadow-purple-500/50 
-                  items-center justify-center border-2 border-purple-500 elevation-5"
+        className="w-20 h-20 rounded-full shadow-lg 
+                  items-center justify-center border-2 border-primary elevation-5"
         onPress={() => handleSwipe('superlike')}
         disabled={disabled || !currentUser}
       >
         <View className="items-center justify-center">
-          <Ionicons name="star" size={40} color="#9D3FFF" />
+          <Ionicons name="star" size={40} color="#7D5BA6" />
         </View>
       </AnimatedTouchable>
 
       {/* Like Button */}
       <AnimatedTouchable 
         style={heartStyle}
-        className="w-16 h-16 rounded-full bg-white shadow-lg shadow-green-500/50 
-                  items-center justify-center border-2 border-green-500"
+        className="w-16 h-16 rounded-full bg-neutral-lightest shadow-lg 
+                  items-center justify-center border-2 border-secondary"
         onPress={() => handleSwipe('right')}
         disabled={disabled || !currentUser}
       >
         <View className="items-center justify-center">
-          <Ionicons name="heart" size={32} color="#34C759" />
+          <Ionicons name="heart" size={32} color="#50A6A7" />
         </View>
       </AnimatedTouchable>
     </View>

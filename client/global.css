@@ -1,3 +1,43 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html {
+    font-family: "Montserrat", system-ui, sans-serif;
+  }
+  
+  h1, h2, h3 {
+    font-family: "YoungSerif-Regular", serif;
+  }
+  
+  h4, h5, h6, strong {
+    font-family: "Montserrat-Bold", system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary text-white py-2 px-4 rounded-md font-montserratMedium;
+  }
+  
+  .btn-secondary {
+    @apply bg-secondary text-white py-2 px-4 rounded-md font-montserratMedium;
+  }
+  
+  .btn-accent {
+    @apply bg-accent text-neutral-darkest py-2 px-4 rounded-md font-montserratMedium;
+  }
+  
+  .card {
+    @apply bg-neutral-lightest p-4 rounded-lg shadow-md;
+  }
+  
+  .section-title {
+    @apply text-2xl font-youngSerif text-primary-dark mb-4;
+  }
+  
+  .page-container {
+    @apply px-4 py-6 bg-neutral-light min-h-screen;
+  }
+}

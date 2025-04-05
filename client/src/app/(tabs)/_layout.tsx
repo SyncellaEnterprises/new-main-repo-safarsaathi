@@ -19,76 +19,80 @@ export default function TabLayout() {
       <Ionicons 
         name={icons[name]} 
         size={focused ? 26 : 22}  // Smaller, modern icon sizes
-        color={focused ? "#1a237e" : "#B4B4B4"} // Subtle color changes for active state
+        color={focused ? "#7D5BA6" : "#9CA3AF"} // Use our primary color
       />
     );
   }, []);
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          height: 56, // Keep the smaller height
-          borderTopWidth: 0,
-          elevation: 10, // Added elevation for a floating shadow effect
-          shadowOpacity: 0.2, // Subtle shadow for floating appearance
-          shadowRadius: 8, // More subtle shadow
-          shadowOffset: { width: 0, height: -4 }, // Slight shadow offset for a lift effect
-          paddingBottom: 10,
-        },
-        tabBarActiveTintColor: "#1a237e",  // Active icon color in dark blue
-        tabBarInactiveTintColor: "#B4B4B4", // Grey for inactive icons
-        tabBarLabelStyle: {
-          fontSize: 11,  // Smaller font for labels
-          fontWeight: '500',  // Medium weight for a modern feel
-          marginTop: 4, // Slight margin for better spacing
-        },
-        freezeOnBlur: true,
-        unmountOnBlur: true,
-        tabBarBackground: () => (
-          <LinearGradient
-            colors={['#ffffff', '#f0f0f0']}  // Soft gradient for a minimal touch
-            style={{ height: '100%', borderRadius: 12 }} // Rounded corners for the background
-          />
-        ),
-      }}
-    >
-      <Tabs.Screen
-        name="home"
-        options={{
-          title: "Home",
-          tabBarIcon: ({ focused }) => getTabIcon("home", focused),
+    <>
+      <StatusBar barStyle="dark-content" />
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: {
+            height: 56, 
+            borderTopWidth: 0,
+            elevation: 8,
+            shadowOpacity: 0.1,
+            shadowRadius: 6,
+            shadowOffset: { width: 0, height: -2 },
+            paddingBottom: 8,
+            paddingTop: 4,
+          },
+          tabBarActiveTintColor: "#7D5BA6",  // Primary color
+          tabBarInactiveTintColor: "#9CA3AF", // Gray for inactive
+          tabBarLabelStyle: {
+            fontSize: 11, 
+            fontFamily: 'Montserrat-Medium',
+            marginTop: 2,
+          },
+          freezeOnBlur: true,
+          // unmountOnBlur: true,
+          tabBarBackground: () => (
+            <LinearGradient
+              colors={['#FFFFFF', '#F8F7FA']} // Light neutral gradient
+              style={{ height: '100%' }}
+            />
+          ),
         }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: "Explore",
-          tabBarIcon: ({ focused }) => getTabIcon("explore", focused),
-        }}
-      />
-      <Tabs.Screen
-        name="location"
-        options={{
-          title: "Maps",
-          tabBarIcon: ({ focused }) => getTabIcon("location", focused),
-        }}
-      />
-      <Tabs.Screen
-        name="chat"
-        options={{
-          title: "Chat",
-          tabBarIcon: ({ focused }) => getTabIcon("chat", focused),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Profile",
-          tabBarIcon: ({ focused }) => getTabIcon("profile", focused),
-        }}
-      />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="home"
+          options={{
+            title: "Home",
+            tabBarIcon: ({ focused }) => getTabIcon("home", focused),
+          }}
+        />
+        <Tabs.Screen
+          name="explore"
+          options={{
+            title: "Explore",
+            tabBarIcon: ({ focused }) => getTabIcon("explore", focused),
+          }}
+        />
+        <Tabs.Screen
+          name="location"
+          options={{
+            title: "Maps",
+            tabBarIcon: ({ focused }) => getTabIcon("location", focused),
+          }}
+        />
+        <Tabs.Screen
+          name="chat"
+          options={{
+            title: "Chat",
+            tabBarIcon: ({ focused }) => getTabIcon("chat", focused),
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: "Profile",
+            tabBarIcon: ({ focused }) => getTabIcon("profile", focused),
+          }}
+        />
+      </Tabs>
+    </>
   );
 }

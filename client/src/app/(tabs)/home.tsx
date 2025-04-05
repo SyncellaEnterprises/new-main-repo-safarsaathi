@@ -138,21 +138,21 @@ export default function HomeScreen() {
           <View className="flex-row items-center mb-2">
             <View className="bg-white/20 px-3 py-1 rounded-full flex-row items-center">
               <Ionicons name="calendar" size={14} color="#fff" />
-              <Text className="text-white ml-2">{item.startDate}</Text>
+              <Text className="text-white ml-2 font-montserrat">{item.startDate}</Text>
             </View>
             <View className="bg-white/20 px-3 py-1 rounded-full flex-row items-center ml-2">
               <Ionicons name="time" size={14} color="#fff" />
-              <Text className="text-white ml-2">{item.duration}</Text>
+              <Text className="text-white ml-2 font-montserrat">{item.duration}</Text>
             </View>
           </View>
           
-          <Text className="text-white text-xl font-bold mb-2">{item.title}</Text>
+          <Text className="text-white text-xl font-youngSerif mb-2">{item.title}</Text>
           
           <View className="flex-row items-center justify-between">
-            <Text className="text-white text-lg font-semibold">{item.price}</Text>
+            <Text className="text-white text-lg font-montserratMedium">{item.price}</Text>
             <View className="flex-row items-center bg-white/20 px-3 py-1 rounded-full">
-              <Ionicons name="star" size={14} color="#FFD700" />
-              <Text className="text-white ml-2">{item.rating}</Text>
+              <Ionicons name="star" size={14} color="#D6A655" />
+              <Text className="text-white ml-2 font-montserrat">{item.rating}</Text>
             </View>
           </View>
         </LinearGradient>
@@ -160,7 +160,7 @@ export default function HomeScreen() {
     </Animated.View>
   );
 
-  const renderGroupCard = ({ item }) => (
+  const renderGroupCard = ({ item }: { item: any }) => (
     <TouchableOpacity 
       onPress={() => router.push(`/group/${item.id}`)}
       className="mr-4 w-[220px]"
@@ -171,16 +171,16 @@ export default function HomeScreen() {
           className="w-full h-[120px]"
         />
         <View className="p-3">
-          <Text className="text-white font-bold mb-1">{item.name}</Text>
+          <Text className="text-white font-montserratMedium mb-1">{item.name}</Text>
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
               <Ionicons name="people" size={14} color="#fff" />
-              <Text className="text-white text-sm ml-1">{item.members} members</Text>
+              <Text className="text-white text-sm ml-1 font-montserrat">{item.members} members</Text>
             </View>
             <TouchableOpacity 
               className="bg-white/20 px-3 py-1 rounded-full"
             >
-              <Text className="text-white text-sm">Join</Text>
+              <Text className="text-white text-sm font-montserrat">Join</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -191,7 +191,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView className="flex-1 bg-primary">
       <LinearGradient
-        colors={['#3B82F6', '#60A5FA', '#93C5FD']}
+        colors={['rgba(125, 91, 166, 0.9)', 'rgba(90, 65, 128, 0.8)']}
         className="flex-1"
       >
         <TabHeader
@@ -200,12 +200,19 @@ export default function HomeScreen() {
           rightIcon="notifications-outline"
           onLeftPress={() => router.push("/explore")}
           onRightPress={() => router.push("/notifications")}
-          gradientColors={['#3B82F6', '#60A5FA']}
+          gradientColors={['rgba(125, 91, 166, 0.9)', 'rgba(90, 65, 128, 0.8)']}
         />
       
         <ScrollView 
           className="flex-1"
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh}
+              tintColor="#fff"
+            />
+          }
           contentContainerStyle={{ padding: 16 }}
         >   
           {/* Custom Trip Card */}
@@ -214,15 +221,15 @@ export default function HomeScreen() {
             className="mt-6"
           >
             <LinearGradient
-              colors={['#4F46E5', '#7C3AED']}
+              colors={['#50A6A7', '#398788']}
               className="rounded-3xl p-6"
             >
               <View className="flex-row justify-between items-center">
                 <View className="flex-1">
-                  <Text className="text-white text-2xl font-bold mb-2">
+                  <Text className="text-white text-2xl font-youngSerif mb-2">
                     Create Your Dream Trip
                   </Text>
-                  <Text className="text-white/80">
+                  <Text className="text-white/80 font-montserrat">
                     Customize every detail of your journey
                   </Text>
                 </View>
@@ -235,7 +242,7 @@ export default function HomeScreen() {
 
           {/* Recommended Trips */}
           <View className="mb-8">
-            <Text className="text-2xl font-bold text-white mb-4">
+            <Text className="text-2xl font-youngSerif text-white mb-4 mt-8">
               Recommended Trips
             </Text>
             <FlatList
@@ -250,11 +257,11 @@ export default function HomeScreen() {
           {/* Travel Groups */}
           <View className="mt-8">
             <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-white text-xl font-bold">
+              <Text className="text-white text-xl font-youngSerif">
                 Travel Groups
               </Text>
               <TouchableOpacity onPress={() => router.push("/groups")}>
-                <Text className="text-white/80">See All</Text>
+                <Text className="text-white/80 font-montserrat">See All</Text>
               </TouchableOpacity>
             </View>
             <FlatList
@@ -268,7 +275,7 @@ export default function HomeScreen() {
 
           {/* Upcoming Events */}
           <View className="mt-8 mb-8">
-            <Text className="text-white text-xl font-bold mb-4">
+            <Text className="text-white text-xl font-youngSerif mb-4">
               Upcoming Events
             </Text>
             {UPCOMING_EVENTS.map(event => (
@@ -283,17 +290,17 @@ export default function HomeScreen() {
                     className="w-full h-[120px]"
                   />
                   <View className="p-4">
-                    <Text className="text-white text-lg font-bold mb-1">
+                    <Text className="text-white text-lg font-youngSerif mb-1">
                       {event.title}
                     </Text>
                     <View className="flex-row items-center justify-between">
                       <View className="flex-row items-center">
                         <Ionicons name="location" size={14} color="#fff" />
-                        <Text className="text-white ml-1">{event.location}</Text>
+                        <Text className="text-white ml-1 font-montserrat">{event.location}</Text>
                       </View>
                       <View className="flex-row items-center">
                         <Ionicons name="calendar" size={14} color="#fff" />
-                        <Text className="text-white ml-1">{event.date}</Text>
+                        <Text className="text-white ml-1 font-montserrat">{event.date}</Text>
                       </View>
                     </View>
                   </View>

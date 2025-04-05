@@ -79,55 +79,57 @@ export default function LoginScreen() {
     <View className="flex-1 bg-neutral-light">
       <Animated.View 
         entering={FadeInDown.duration(1000).springify()}
-        className="flex-1 justify-center p-6"
+        className="flex-1 justify-center px-6 py-8"
       >
         <Animated.Text 
           entering={FadeInUp.delay(300)}
-          className="text-4xl font-bold mb-2 text-primary"
+          className="text-3xl font-youngSerif mb-2 text-primary-dark"
         >
           Welcome Back
         </Animated.Text>
         <Animated.Text 
           entering={FadeInUp.delay(400)}
-          className="text-neutral-dark mb-10"
+          className="text-neutral-dark mb-8 font-montserratLight text-base"
         >
           Sign in to continue your journey
         </Animated.Text>
 
-        <View className="space-y-4">
+        <View className="space-y-5">
           <Animated.View entering={FadeInUp.delay(500)}>
-            <Text className="text-neutral-dark mb-2 ml-1">Email</Text>
+            <Text className="text-neutral-dark mb-2 ml-1 font-montserratMedium text-sm">Email</Text>
             <TextInput
               value={formData.email}
               onChangeText={(text) => setFormData({ ...formData, email: text })}
-              className="bg-neutral-lightest px-4 py-3 rounded-xl border border-primary-light"
+              className="bg-neutral-lightest px-4 py-3.5 rounded-xl border border-neutral-medium font-montserrat"
               placeholder="your@email.com"
               keyboardType="email-address"
               autoCapitalize="none"
+              placeholderTextColor="#9CA3AF"
               editable={!isLoading}
             />
           </Animated.View>
 
           <Animated.View entering={FadeInUp.delay(600)}>
-            <Text className="text-neutral-dark mb-2 ml-1">Password</Text>
+            <Text className="text-neutral-dark mb-2 ml-1 font-montserratMedium text-sm">Password</Text>
             <View className="relative">
               <TextInput
                 value={formData.password}
                 onChangeText={(text) => setFormData({ ...formData, password: text })}
-                className="bg-neutral-lightest px-4 py-3 rounded-xl border border-primary-light"
+                className="bg-neutral-lightest px-4 py-3.5 rounded-xl border border-neutral-medium font-montserrat"
                 secureTextEntry={!showPassword}
                 placeholder="Min. 6 characters"
+                placeholderTextColor="#9CA3AF"
                 editable={!isLoading}
               />
               <TouchableOpacity 
                 onPress={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-3"
+                className="absolute right-4 top-3.5"
                 disabled={isLoading}
               >
                 <Ionicons 
                   name={showPassword ? "eye-off" : "eye"} 
                   size={24} 
-                  color="#075985"
+                  color="#7D5BA6"
                 />
               </TouchableOpacity>
             </View>
@@ -136,9 +138,9 @@ export default function LoginScreen() {
 
         <Animated.View 
           entering={FadeInUp.delay(700)}
-          className="mt-2"
+          className="mt-3"
         >
-          <Link href="/auth/forgot-password" className="text-primary text-right">
+          <Link href="/auth/forgot-password" className="text-primary-dark text-right font-montserratMedium text-sm">
             Forgot Password?
           </Link>
         </Animated.View>
@@ -147,12 +149,12 @@ export default function LoginScreen() {
           <TouchableOpacity
             onPress={handleLogin}
             disabled={isLoading}
-            className="bg-primary py-4 rounded-xl mt-8 flex-row justify-center items-center"
+            className="bg-primary py-4 rounded-xl mt-8 flex-row justify-center items-center shadow-sm"
           >
             {isLoading ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text className="text-neutral-lightest text-lg font-semibold">Sign In</Text>
+              <Text className="text-neutral-lightest text-base font-montserratBold">Sign In</Text>
             )}
           </TouchableOpacity>
         </Animated.View>
@@ -161,8 +163,8 @@ export default function LoginScreen() {
           entering={FadeInUp.delay(900)}
           className="flex-row justify-center mt-8"
         >
-          <Text className="text-neutral-dark">Don't have an account? </Text>
-          <Link href="/auth/register" className="text-primary font-semibold">
+          <Text className="text-neutral-dark font-montserrat">Don't have an account? </Text>
+          <Link href="/auth/register" className="text-primary-dark font-montserratBold">
             Sign Up
           </Link>
         </Animated.View>
