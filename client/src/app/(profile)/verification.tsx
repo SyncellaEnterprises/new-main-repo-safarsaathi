@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import Animated, { FadeInDown, SlideInRight } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
+import React from "react";
 
 interface VerificationStep {
   id: string;

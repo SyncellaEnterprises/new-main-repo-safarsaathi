@@ -536,33 +536,35 @@ Status Codes:
      ```json
     {
       "status": "success",
-      "user": {
-          "age": 24,
-          "bio": "love you",
-          "created_at": "Tue, 04 Mar 2025 15:34:02 GMT",
-          "email": "shery3@.com",
-          "gender": "female",
-          "interest": "chess, football",
-          "location": "mumbai",
-          "occupation": "student",
-          "profile_photo": null,
-          "prompts": {
-              "prompts": [
-                  {
-                      "answer": "Waking up by the beach, exploring local culture, and ending the day with a sunset dinner.",
-                      "question": "My perfect travel day looks like..."
-                  },
-                  {
-                      "answer": "Backpacking solo through Europe for three months.",
-                      "question": "My biggest adventure was..."
-                  }
-              ]
-          },
-          "user_id": 2,
-          "username": "shrey3"
-      }
+  "user": {
+    "age": 22,
+    "bio": "Myself nitin gupta I am better than you",
+    "created_at": "Thu, 27 Mar 2025 17:58:28 GMT",
+    "email": "lalu@gmail.com",
+    "gender": "male",
+    "interest": "{Cooking,\"Street Food\",Backpacking}",
+    "location": "{\"state\":\"Gujarat\",\"city\":\"Ahmedabad\",\"latitude\":37.4220936,\"longitude\":-122.083922,\"address\":\"Mountain View, California\"}",
+    "occupation": "entrepreneur",
+    "profile_photo": null,
+    "prompts": {
+      "prompts": [
+        {
+          "answer": "hhhhhhhhhhhhhhhhhhh",
+          "question": "My biggest adventure was..."
+        },
+        {
+          "answer": "hhhhhhhhhhhhhhhhhhhhhhhh",
+          "question": "I get way too excited about..."
+        }
+      ]
+    },
+    "user_id": 11,
+    "username": "lalu"
+  }
     }
     ```
+
+    
 - `GET /api/recommended_users/me`
   - Get data of the logged in user
   - Requires: JWT Token
