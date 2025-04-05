@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -14,34 +14,28 @@ interface InterestCategory {
 
 const INTEREST_CATEGORIES: InterestCategory[] = [
   {
-    id: 'outdoor',
-    name: 'Outdoor Activities',
-    icon: 'leaf-outline',
-    interests: ['Hiking', 'Camping', 'Beach', 'Cycling', 'Rock Climbing', 'Fishing']
+    id: '1',
+    name: 'Activities',
+    icon: 'bicycle',
+    interests: ['Hiking', 'Swimming', 'Cycling', 'Running', 'Yoga', 'Camping', 'Surfing', 'Skiing']
   },
   {
-    id: 'culture',
-    name: 'Culture & Arts',
-    icon: 'color-palette-outline',
-    interests: ['Museums', 'Theater', 'Photography', 'Music', 'Dance', 'Art']
+    id: '2',
+    name: 'Arts & Culture',
+    icon: 'color-palette',
+    interests: ['Museums', 'Theater', 'Music', 'Movies', 'Dancing', 'Photography', 'Painting', 'Reading']
   },
   {
-    id: 'food',
-    name: 'Food & Dining',
-    icon: 'restaurant-outline',
-    interests: ['Local Food', 'Cooking', 'Wine Tasting', 'Cafes', 'Street Food']
+    id: '3',
+    name: 'Food & Drink',
+    icon: 'restaurant',
+    interests: ['Cooking', 'Baking', 'Wine Tasting', 'Craft Beer', 'Foodie', 'Vegan', 'BBQ', 'Sushi']
   },
   {
-    id: 'travel',
-    name: 'Travel Style',
-    icon: 'airplane-outline',
-    interests: ['Adventure', 'Backpacking', 'Luxury', 'Road Trips', 'Solo Travel']
-  },
-  {
-    id: 'social',
-    name: 'Social Activities',
-    icon: 'people-outline',
-    interests: ['Board Games', 'Karaoke', 'Dancing', 'Sports', 'Volunteering']
+    id: '4',
+    name: 'Travel',
+    icon: 'airplane',
+    interests: ['Beach', 'Mountains', 'Cities', 'Road Trips', 'Backpacking', 'Luxury Travel', 'Solo Travel', 'Adventure']
   }
 ];
 
@@ -51,8 +45,7 @@ export default function EditInterestsScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const MAX_INTERESTS = 8;
-  const MIN_INTERESTS = 3;
+  const MAX_INTERESTS = 10;
 
   useEffect(() => {
     fetchUserInterests();
@@ -63,30 +56,19 @@ export default function EditInterestsScreen() {
     try {
       const token = await AsyncStorage.getItem('accessToken');
       const response = await fetch('http://10.0.2.2:5000/api/users/me', {
+        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
       
       if (response.ok) {
         const data = await response.json();
+        
         if (data.status === "success" && data.user) {
-          // Handle different interest formats - could be array or string with format {item1,item2}
-          let interests: string[] = [];
-          
-          if (data.user.interest) {
-            if (Array.isArray(data.user.interest)) {
-              interests = data.user.interest;
-            } else if (typeof data.user.interest === 'string') {
-              // Handle format like "{Cooking,\"Street Food\",Backpacking}"
-              const interestsString = data.user.interest.replace(/[{}]/g, '');
-              interests = interestsString.split(',').map((item: string) => {
-                // Remove quotes and trim
-                return item.replace(/"/g, '').trim();
-              });
-            }
-          }
-          
+          // Handle interests from the API
+          const interests = data.user.interest || [];
           setSelectedInterests(interests);
         }
       } else {
@@ -101,15 +83,15 @@ export default function EditInterestsScreen() {
   };
 
   const handleToggleInterest = (interest: string) => {
-    if (selectedInterests.includes(interest)) {
-      setSelectedInterests(prev => prev.filter(i => i !== interest));
+    setSelectedInterests(prev => {
+      const isSelected = prev.includes(interest);
+      const updatedInterests = isSelected
+        ? prev.filter(i => i !== interest)
+        : [...prev, interest];
+      
       setHasChanges(true);
-    } else if (selectedInterests.length < MAX_INTERESTS) {
-      setSelectedInterests(prev => [...prev, interest]);
-      setHasChanges(true);
-    } else {
-      Alert.alert('Maximum Reached', `You can select up to ${MAX_INTERESTS} interests.`);
-    }
+      return updatedInterests;
+    });
   };
 
   const handleSave = async () => {
@@ -117,9 +99,9 @@ export default function EditInterestsScreen() {
       Alert.alert('No Changes', 'No changes were made to your interests');
       return;
     }
-
-    if (selectedInterests.length < MIN_INTERESTS) {
-      Alert.alert('Too Few Interests', `Please select at least ${MIN_INTERESTS} interests.`);
+    
+    if (selectedInterests.length === 0) {
+      Alert.alert('No Interests', 'Please select at least one interest');
       return;
     }
 
@@ -163,54 +145,53 @@ export default function EditInterestsScreen() {
       }
     } catch (error) {
       console.error('Error saving interests:', error);
-      Alert.alert('Error', 'Failed to save changes. Please try again.');
+      Alert.alert('Error', 'Failed to save changes');
     } finally {
       setIsSaving(false);
     }
   };
-
-  // Check if an entire category is selected
+  
+  // Helper functions for the UI
   const isCategorySelected = (category: InterestCategory) => {
-    return category.interests.every(interest => selectedInterests.includes(interest));
+    return category.interests.some(interest => selectedInterests.includes(interest));
   };
-
-  // Get the count of selected interests in a category
+  
   const selectedCountInCategory = (category: InterestCategory) => {
     return category.interests.filter(interest => selectedInterests.includes(interest)).length;
   };
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-[#F8FAFF] justify-center items-center">
-        <ActivityIndicator size="large" color="#1a237e" />
-        <Text className="mt-4 text-[#1a237e]">Loading interests...</Text>
+      <View className="flex-1 bg-neutral-light justify-center items-center">
+        <ActivityIndicator size="large" color="#7D5BA6" />
+        <Text className="mt-4 text-primary font-montserrat">Loading interests...</Text>
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-[#F8FAFF]">
+    <View className="flex-1 bg-neutral-light">
       <Animated.View 
         entering={FadeInDown.duration(500)}
-        className="bg-white px-6 pt-6 pb-4 border-b border-slate-100"
+        className="bg-neutral-lightest px-6 pt-6 pb-4 border-b border-neutral-medium"
       >
         <View className="flex-row items-center justify-between">
           <TouchableOpacity 
             onPress={() => router.back()}
             className="flex-row items-center"
           >
-            <Ionicons name="arrow-back" size={24} color="#1a237e" />
-            <Text className="ml-2 text-[#1a237e]">Back</Text>
+            <Ionicons name="arrow-back" size={24} color="#7D5BA6" />
+            <Text className="ml-2 text-primary font-montserratMedium">Back</Text>
           </TouchableOpacity>
-          <Text className="text-lg font-semibold text-[#1a237e]">Interests</Text>
+          <Text className="text-lg font-youngSerif text-primary-dark">Interests</Text>
           <TouchableOpacity 
             onPress={handleSave}
-            disabled={isSaving || !hasChanges || selectedInterests.length < MIN_INTERESTS}
+            disabled={isSaving || !hasChanges}
           >
             {isSaving ? (
-              <ActivityIndicator size="small" color="#1a237e" />
+              <ActivityIndicator size="small" color="#7D5BA6" />
             ) : (
-              <Text className={`font-semibold ${(hasChanges && selectedInterests.length >= MIN_INTERESTS) ? 'text-[#1a237e]' : 'text-gray-400'}`}>
+              <Text className={`font-montserratMedium ${hasChanges ? 'text-primary' : 'text-neutral-dark/40'}`}>
                 Save
               </Text>
             )}
@@ -219,68 +200,58 @@ export default function EditInterestsScreen() {
       </Animated.View>
 
       <ScrollView className="flex-1 p-6">
-        <Text className="text-2xl font-bold text-[#1a237e] mb-2">
+        <Text className="text-2xl font-youngSerif text-primary-dark mb-2">
           Your Interests
         </Text>
-        <Text className="text-slate-500 mb-4">
-          Select {MIN_INTERESTS}-{MAX_INTERESTS} interests to help us find better matches
+        <Text className="text-neutral-dark mb-6 font-montserrat">
+          Select up to {MAX_INTERESTS} interests. Selected: {selectedInterests.length}/{MAX_INTERESTS}
         </Text>
-        
-        <View className="bg-white px-4 py-3 rounded-xl mb-6 border border-indigo-100">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-indigo-900 font-medium">
-              {selectedInterests.length}/{MAX_INTERESTS} selected
-            </Text>
-            {selectedInterests.length < MIN_INTERESTS && (
-              <Text className="text-red-500 text-sm">
-                Select at least {MIN_INTERESTS}
-              </Text>
-            )}
-          </View>
-          <View className="h-2 bg-gray-100 rounded-full mt-2">
-            <View 
-              className={`h-2 rounded-full ${
-                selectedInterests.length >= MIN_INTERESTS ? 'bg-green-500' : 'bg-indigo-500'
-              }`}
-              style={{ width: `${(selectedInterests.length / MAX_INTERESTS) * 100}%` }}
-            />
-          </View>
-        </View>
 
-        {INTEREST_CATEGORIES.map((category, index) => (
+        {INTEREST_CATEGORIES.map((category, catIndex) => (
           <Animated.View
             key={category.id}
-            entering={FadeIn.delay(index * 100)}
-            className="mb-8"
+            entering={FadeIn.delay(catIndex * 100)}
+            className="mb-6"
           >
-            <View className="flex-row items-center justify-between mb-4">
-              <View className="flex-row items-center">
-                <Ionicons name={category.icon as any} size={24} color="#1a237e" />
-                <Text className="text-lg font-semibold text-[#1a237e] ml-2">
+            <View className="flex-row items-center mb-3">
+              <Ionicons name={category.icon as any} size={24} color="#7D5BA6" />
+              <View className="flex-1 ml-2">
+                <Text className="text-lg font-montserratMedium text-primary-dark">
                   {category.name}
                 </Text>
+                {isCategorySelected(category) && (
+                  <Text className="text-primary font-montserrat text-xs">
+                    {selectedCountInCategory(category)} selected
+                  </Text>
+                )}
               </View>
-              <Text className="text-slate-500 text-sm">
-                {selectedCountInCategory(category)}/{category.interests.length}
-              </Text>
             </View>
-
-            <View className="flex-row flex-wrap gap-2">
-              {category.interests.map((interest) => {
+            
+            <View className="flex-row flex-wrap">
+              {category.interests.map((interest, index) => {
                 const isSelected = selectedInterests.includes(interest);
+                const isMaxedOut = selectedInterests.length >= MAX_INTERESTS && !isSelected;
+                
                 return (
                   <TouchableOpacity
-                    key={interest}
+                    key={`${category.id}-${index}`}
                     onPress={() => handleToggleInterest(interest)}
-                    className={`px-4 py-2 rounded-full border ${
+                    disabled={isMaxedOut}
+                    className={`mr-2 mb-2 px-4 py-2 rounded-full border ${
                       isSelected 
-                        ? 'bg-indigo-600 border-indigo-500' 
-                        : 'bg-white border-slate-200'
+                        ? 'bg-primary border-primary' 
+                        : isMaxedOut
+                          ? 'bg-neutral-medium border-neutral-medium'
+                          : 'bg-neutral-lightest border-neutral-medium'
                     }`}
                   >
-                    <Text className={
-                      isSelected ? 'text-white' : 'text-slate-600'
-                    }>
+                    <Text className={`${
+                      isSelected 
+                        ? 'text-neutral-lightest font-montserratMedium' 
+                        : isMaxedOut
+                          ? 'text-neutral-dark/40 font-montserrat'
+                          : 'text-neutral-dark font-montserrat'
+                    }`}>
                       {interest}
                     </Text>
                   </TouchableOpacity>
@@ -289,22 +260,8 @@ export default function EditInterestsScreen() {
             </View>
           </Animated.View>
         ))}
-        
-        {selectedInterests.length > 0 && (
-          <View className="mt-4 p-5 rounded-xl bg-indigo-50 mb-10">
-            <Text className="text-[#1a237e] font-semibold mb-2">Selected Interests</Text>
-            <View className="flex-row flex-wrap gap-2">
-              {selectedInterests.map(interest => (
-                <View 
-                  key={interest}
-                  className="bg-indigo-100 px-3 py-1 rounded-full"
-                >
-                  <Text className="text-indigo-800">{interest}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
+
+        <View className="h-20" />
       </ScrollView>
     </View>
   );

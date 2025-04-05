@@ -13,40 +13,35 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        poppins: ["Poppins", "sans-serif"],
-        nunito: ["Nunito", "sans-serif"],
-        roboto: ["Roboto", "sans-serif"],
-        inter: ["Inter", "sans-serif"],
+        montserrat: ["Montserrat", "sans-serif"],
+        montserratBold: ["Montserrat-Bold", "sans-serif"],
+        montserratMedium: ["Montserrat-Medium", "sans-serif"],
+        montserratLight: ["Montserrat-Light", "sans-serif"],
+        youngSerif: ["YoungSerif-Regular", "serif"],
+        spaceMono: ["SpaceMono-Regular", "monospace"],
       },
       colors: {
         primary: {
-          DEFAULT: "#3B82F6", // Sky Blue
-          light: "#93C5FD", // Light Sky Blue
-          dark: "#2563EB", // Deep Sky Blue
+          DEFAULT: "#7D5BA6", // Soft purple - elegant and romantic
+          light: "#9D7EBD", // Light purple
+          dark: "#5A4180", // Deep purple
         },
         secondary: {
-          DEFAULT: "#38BDF8", // Lighter Blue
-          light: "#BAE6FD", // Very Light Blue
-          dark: "#0284C7", // Darker Blue
+          DEFAULT: "#50A6A7", // Soft teal - travel/adventure feel
+          light: "#7FC2C3", // Light teal
+          dark: "#398788", // Deep teal
         },
         accent: {
-          DEFAULT: "#60A5FA", // Medium Sky Blue
-          light: "#DBEAFE", // Pale Sky Blue
-          dark: "#2563EB", // Royal Blue
+          DEFAULT: "#D6A655", // Warm gold - subtle warmth
+          light: "#E6C489", // Light gold
+          dark: "#B38B40", // Deep gold
         },
         neutral: {
           lightest: "#FFFFFF",
-          light: "#F0F9FF",
-          medium: "#E0F2FE",
-          dark: "#075985",
-          darkest: "#0C4A6E",
-        },
-        travel: {
-          sunset: "#F6AD55",
-          ocean: "#38BDF8",
-          mountain: "#7DD3FC",
-          beach: "#F6E05E",
-          forest: "#48BB78",
+          light: "#F8F7FA",
+          medium: "#E6E4EC",
+          dark: "#34323E",
+          darkest: "#1D1B26",
         }
       },
       spacing: {

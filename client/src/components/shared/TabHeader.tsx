@@ -26,7 +26,7 @@ export default function TabHeader({
   onLeftPress,
   onRightPress,
   showDate = true,
-  gradientColors = ['rgba(26, 35, 126, 0.9)', 'rgba(40, 53, 147, 0.8)'],
+  gradientColors = ['rgba(125, 91, 166, 0.9)', 'rgba(90, 65, 128, 0.8)'],
   subtitle
 }: TabHeaderProps) {
   const router = useRouter();
@@ -45,9 +45,9 @@ export default function TabHeader({
       
       <View className="flex-row items-center justify-between">
         <View className="flex-1">
-          <Text className="text-2xl font-bold text-white">{title}</Text>
+          <Text className="text-2xl font-youngSerif text-white">{title}</Text>
           {showDate && (
-            <Text className="text-white/70 text-sm mt-1">
+            <Text className="text-white/70 text-sm mt-1 font-montserrat">
               {subtitle || new Date().toLocaleDateString('en-US', { 
                 month: 'long', 
                 day: 'numeric' 

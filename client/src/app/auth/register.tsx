@@ -89,19 +89,19 @@ export default function RegisterScreen() {
     <View className="flex-1 bg-neutral-light">
       <Animated.ScrollView 
         entering={FadeInDown.duration(1000).springify()}
-        className="flex-1 p-6"
+        className="flex-1 px-6 py-4"
         showsVerticalScrollIndicator={false}
       >
-        <View className="mt-10">
+        <View className="mt-6">
           <Animated.Text 
             entering={FadeInUp.delay(300)}
-            className="text-4xl font-bold mb-2 text-primary"
+            className="text-3xl font-youngSerif mb-2 text-primary-dark"
           >
             Create Account
           </Animated.Text>
           <Animated.Text 
             entering={FadeInUp.delay(400)}
-            className="text-neutral-dark mb-10"
+            className="text-neutral-dark mb-8 font-montserratLight text-base"
           >
             Start your travel journey today
           </Animated.Text>
@@ -109,26 +109,28 @@ export default function RegisterScreen() {
           <View className="space-y-4">
             {/* Username Input */}
             <Animated.View entering={FadeInUp.delay(500)}>
-              <Text className="text-neutral-dark mb-2 ml-1">Username</Text>
+              <Text className="text-neutral-dark mb-2 ml-1 font-montserratMedium text-sm">Username</Text>
               <TextInput
                 value={formData.username}
                 onChangeText={(text) => setFormData({ ...formData, username: text })}
-                className="bg-neutral-lightest px-4 py-3 rounded-xl border border-primary-light"
+                className="bg-neutral-lightest px-4 py-3.5 rounded-xl border border-neutral-medium font-montserrat"
                 placeholder="johndoe123"
                 autoCapitalize="none"
+                placeholderTextColor="#9CA3AF"
                 editable={!isLoading}
               />
             </Animated.View>
 
             {/* Email Input */}
             <Animated.View entering={FadeInUp.delay(600)}>
-              <Text className="text-neutral-dark mb-2 ml-1">Email</Text>
+              <Text className="text-neutral-dark mb-2 ml-1 font-montserratMedium text-sm">Email</Text>
               <TextInput
                 value={formData.email}
                 onChangeText={(text) => setFormData({ ...formData, email: text })}
-                className="bg-neutral-lightest px-4 py-3 rounded-xl border border-primary-light"
+                className="bg-neutral-lightest px-4 py-3.5 rounded-xl border border-neutral-medium font-montserrat"
                 placeholder="your@email.com"
                 keyboardType="email-address"
+                placeholderTextColor="#9CA3AF"
                 autoCapitalize="none"
                 editable={!isLoading}
               />
@@ -136,25 +138,26 @@ export default function RegisterScreen() {
 
             {/* Password Input */}
             <Animated.View entering={FadeInUp.delay(700)}>
-              <Text className="text-neutral-dark mb-2 ml-1">Password</Text>
+              <Text className="text-neutral-dark mb-2 ml-1 font-montserratMedium text-sm">Password</Text>
               <View className="relative">
                 <TextInput
                   value={formData.password}
                   onChangeText={(text) => setFormData({ ...formData, password: text })}
-                  className="bg-neutral-lightest px-4 py-3 rounded-xl border border-primary-light"
+                  className="bg-neutral-lightest px-4 py-3.5 rounded-xl border border-neutral-medium font-montserrat"
                   secureTextEntry={!showPassword}
                   placeholder="Min. 6 characters"
+                  placeholderTextColor="#9CA3AF"
                   editable={!isLoading}
                 />
                 <TouchableOpacity 
                   onPress={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-3"
+                  className="absolute right-4 top-3.5"
                   disabled={isLoading}
                 >
                   <Ionicons 
                     name={showPassword ? "eye-off" : "eye"} 
                     size={24} 
-                    color="#075985"
+                    color="#7D5BA6"
                   />
                 </TouchableOpacity>
               </View>
@@ -162,25 +165,26 @@ export default function RegisterScreen() {
 
             {/* Confirm Password Input */}
             <Animated.View entering={FadeInUp.delay(800)}>
-              <Text className="text-neutral-dark mb-2 ml-1">Confirm Password</Text>
+              <Text className="text-neutral-dark mb-2 ml-1 font-montserratMedium text-sm">Confirm Password</Text>
               <View className="relative">
                 <TextInput
                   value={formData.confirmPassword}
                   onChangeText={(text) => setFormData({ ...formData, confirmPassword: text })}
-                  className="bg-neutral-lightest px-4 py-3 rounded-xl border border-primary-light"
+                  className="bg-neutral-lightest px-4 py-3.5 rounded-xl border border-neutral-medium font-montserrat"
                   secureTextEntry={!showConfirmPassword}
                   placeholder="Confirm your password"
+                  placeholderTextColor="#9CA3AF"
                   editable={!isLoading}
                 />
                 <TouchableOpacity 
                   onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-4 top-3"
+                  className="absolute right-4 top-3.5"
                   disabled={isLoading}
                 >
                   <Ionicons 
                     name={showConfirmPassword ? "eye-off" : "eye"} 
                     size={24} 
-                    color="#075985"
+                    color="#7D5BA6"
                   />
                 </TouchableOpacity>
               </View>
@@ -191,22 +195,22 @@ export default function RegisterScreen() {
             <TouchableOpacity
               onPress={handleRegister}
               disabled={isLoading}
-              className="bg-primary py-4 rounded-xl mt-8 flex-row justify-center items-center"
+              className="bg-primary py-4 rounded-xl mt-8 flex-row justify-center items-center shadow-sm"
             >
               {isLoading ? (
                 <ActivityIndicator color="white" />
               ) : (
-                <Text className="text-neutral-lightest text-lg font-semibold">Create Account</Text>
+                <Text className="text-neutral-lightest text-base font-montserratBold">Create Account</Text>
               )}
             </TouchableOpacity>
           </Animated.View>
 
           <Animated.View 
             entering={FadeInUp.delay(1000)}
-            className="flex-row justify-center mt-8 mb-4"
+            className="flex-row justify-center mt-8 mb-6"
           >
-            <Text className="text-neutral-dark">Already have an account? </Text>
-            <Link href="/auth/login" className="text-primary font-semibold">
+            <Text className="text-neutral-dark font-montserrat">Already have an account? </Text>
+            <Link href="/auth/login" className="text-primary-dark font-montserratBold">
               Sign In
             </Link>
           </Animated.View>

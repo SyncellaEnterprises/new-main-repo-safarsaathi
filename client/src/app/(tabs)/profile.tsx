@@ -26,32 +26,32 @@ export default function ProfileScreen() {
 
   if (loading && !refreshing) {
     return (
-      <View className="flex-1 bg-slate-50 items-center justify-center">
-        <ActivityIndicator size="large" color="#6366f1" />
+      <View className="flex-1 bg-neutral-light items-center justify-center">
+        <ActivityIndicator size="large" color="#7D5BA6" />
       </View>
     );
   }
 
   if (error) {
     return (
-      <View className="flex-1 bg-slate-50 items-center justify-center p-4">
-        <Text className="text-red-500 text-center mb-4">{error}</Text>
+      <View className="flex-1 bg-neutral-light items-center justify-center p-4">
+        <Text className="text-primary-dark text-center mb-4 font-montserrat">{error}</Text>
         <TouchableOpacity 
           onPress={fetchProfile}
-          className="bg-indigo-600 px-6 py-3 rounded-xl"
+          className="bg-primary px-6 py-3 rounded-xl"
         >
-          <Text className="text-white font-semibold">Retry</Text>
+          <Text className="text-neutral-lightest font-montserratMedium">Retry</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50">
+    <SafeAreaView className="flex-1 bg-neutral-light">
       <ScrollView 
         className="flex-1"
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#7D5BA6"]} />
         }
       >
         {/* Profile Header */}
@@ -60,7 +60,7 @@ export default function ProfileScreen() {
           className="relative h-48"
         >
           <LinearGradient
-            colors={['#6366f1', '#818cf8']}
+            colors={['rgba(125, 91, 166, 0.9)', 'rgba(90, 65, 128, 0.8)']}
             className="absolute w-full h-full"
           />
           <View className="flex-row justify-between items-start p-4">
@@ -69,7 +69,7 @@ export default function ProfileScreen() {
               className="bg-white/20 px-4 py-2 rounded-full flex-row items-center"
             >
               <Ionicons name="pencil" size={16} color="white" />
-              <Text className="text-white ml-2 font-medium">Edit Profile</Text>
+              <Text className="text-white ml-2 font-montserratMedium">Edit Profile</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setShowSettings(true)}
@@ -83,79 +83,79 @@ export default function ProfileScreen() {
         {/* Profile Info Card */}
         <Animated.View 
           entering={FadeInDown.delay(100)}
-          className="mx-4 -mt-20 bg-white rounded-3xl shadow-lg overflow-hidden"
+          className="mx-4 -mt-20 bg-neutral-lightest rounded-3xl shadow-md overflow-hidden"
         >
           <View className="p-6">
             <View className="items-center">
-              <View className="w-24 h-24 bg-slate-100 rounded-full border-4 border-white shadow-sm mb-4">
+              <View className="w-24 h-24 bg-neutral-medium rounded-full border-4 border-neutral-lightest shadow-sm mb-4">
                 {profile?.profile_photo ? (
                   <Image
                     source={{ uri: profile.profile_photo }}
                     className="w-full h-full rounded-full"
                   />
                 ) : (
-                  <View className="w-full h-full rounded-full bg-indigo-100 items-center justify-center">
-                    <Ionicons name="person" size={40} color="#6366f1" />
+                  <View className="w-full h-full rounded-full bg-primary-light/30 items-center justify-center">
+                    <Ionicons name="person" size={40} color="#7D5BA6" />
                   </View>
                 )}
-                <View className="absolute right-0 bottom-0 bg-indigo-600 rounded-full p-1">
+                <View className="absolute right-0 bottom-0 bg-primary rounded-full p-1">
                   <Ionicons name="camera" size={14} color="white" />
                 </View>
               </View>
-              <Text className="text-2xl font-bold text-slate-800">
+              <Text className="text-2xl font-youngSerif text-neutral-darkest">
                 {profile?.username}
               </Text>
-              <Text className="text-slate-500 mt-1">
+              <Text className="text-neutral-dark mt-1 font-montserrat">
                 {profile?.occupation || 'Add occupation'}
               </Text>
-              <Text className="text-slate-500">
+              <Text className="text-neutral-dark font-montserrat">
                 {profile?.location || 'Add location'}
               </Text>
               
               {/* Verification Badge */}
               <TouchableOpacity 
                 onPress={() => router.push("/(profile)/verification")}
-                className="mt-4 flex-row items-center bg-indigo-50 px-4 py-2 rounded-full"
+                className="mt-4 flex-row items-center bg-primary/10 px-4 py-2 rounded-full"
               >
-                <Ionicons name="shield-checkmark" size={16} color="#6366f1" />
-                <Text className="text-indigo-600 ml-2 font-medium">Get Verified</Text>
+                <Ionicons name="shield-checkmark" size={16} color="#7D5BA6" />
+                <Text className="text-primary ml-2 font-montserratMedium">Get Verified</Text>
               </TouchableOpacity>
             </View>
 
             <View className="mt-6">
-              <Text className="text-slate-600 text-center leading-relaxed">
+              <Text className="text-neutral-dark text-center leading-relaxed font-montserrat">
                 {profile?.bio || 'Add a bio to tell others about yourself'}
               </Text>
             </View>
 
             {/* Quick Stats */}
-            <View className="flex-row justify-around mt-6 pt-6 border-t border-slate-100">
+            <View className="flex-row justify-around mt-6 pt-6 border-t border-neutral-medium">
               <View className="items-center">
-                <Text className="text-2xl font-bold text-indigo-600">
+                <Text className="text-2xl font-montserratBold text-primary">
                   {profile?.interest?.length || 0}
                 </Text>
-                <Text className="text-slate-500">Interests</Text>
+                <Text className="text-neutral-dark font-montserrat">Interests</Text>
               </View>
               <View className="items-center">
-                <Text className="text-2xl font-bold text-indigo-600">
+                <Text className="text-2xl font-montserratBold text-primary">
                   {profile?.prompts?.prompts?.length || 0}
                 </Text>
-                <Text className="text-slate-500">Prompts</Text>
+                <Text className="text-neutral-dark font-montserrat">Prompts</Text>
               </View>
               <View className="items-center">
-                <Text className="text-2xl font-bold text-indigo-600">
+                <Text className="text-2xl font-montserratBold text-primary">
                   {profile?.created_at ? 
                     Math.floor((new Date().getTime() - new Date(profile.created_at).getTime()) / (1000 * 3600 * 24))
                     : 0
                   }
                 </Text>
-                <Text className="text-slate-500">Days Active</Text>
+                <Text className="text-neutral-dark font-montserrat">Days Active</Text>
               </View>
             </View>
           </View>
         </Animated.View>
 
-        {/* Interests Section */}
+     
         {/* <Animated.View 
           entering={FadeInDown.delay(200)}
           className="m-4 bg-white rounded-3xl shadow-sm"
@@ -189,38 +189,38 @@ export default function ProfileScreen() {
               )}
             </View>
           </TouchableOpacity>
-        </Animated.View> */}
+        </Animated.View>
 
         {/* Prompts Section */}
         <Animated.View 
           entering={FadeInDown.delay(300)}
-          className="m-4 bg-white rounded-3xl shadow-sm"
+          className="m-4 bg-neutral-lightest rounded-3xl shadow-sm"
         >
           <TouchableOpacity 
             onPress={() => router.push("/(profile)/edit-prompts")}
             className="p-6"
           >
             <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-lg font-semibold text-slate-800">
+              <Text className="text-lg font-youngSerif text-neutral-darkest">
                 Prompts
               </Text>
-              <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
             </View>
             {profile?.prompts?.prompts?.slice(0, 2).map((prompt, index) => (
               <View key={index} className="mb-4 last:mb-0">
-                <Text className="text-indigo-600 font-medium mb-2">
+                <Text className="text-primary font-montserratMedium mb-2">
                   {prompt.question}
                 </Text>
-                <Text className="text-slate-600">
+                <Text className="text-neutral-dark font-montserrat">
                   {prompt.answer}
                 </Text>
               </View>
             ))}
             {(!profile?.prompts?.prompts || profile.prompts.prompts.length === 0) && (
-              <Text className="text-slate-500">Add prompts to tell your story</Text>
+              <Text className="text-neutral-dark font-montserrat">Add prompts to tell your story</Text>
             )}
             {profile?.prompts?.prompts && profile.prompts.prompts.length > 2 && (
-              <Text className="text-indigo-600 mt-4 font-medium">
+              <Text className="text-primary mt-4 font-montserratMedium">
                 +{profile.prompts.prompts.length - 2} more prompts
               </Text>
             )}

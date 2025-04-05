@@ -28,7 +28,7 @@ export function SearchBar({
     >
       <BlurView intensity={20} tint="dark" style={styles.blurContainer}>
         <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#fff" />
+          <Ionicons name="search" size={20} color="#FFFFFF" />
           <TextInput
             placeholder={placeholder}
             placeholderTextColor="rgba(255,255,255,0.6)"
@@ -39,7 +39,7 @@ export function SearchBar({
             value={value}
           />
           <TouchableOpacity style={styles.filterButton}>
-            <Ionicons name="options-outline" size={20} color="#fff" />
+            <Ionicons name="options-outline" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </BlurView>
@@ -62,15 +62,16 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(29, 27, 38, 0.5)', // neutral-darkest with opacity
     paddingHorizontal: 15,
     paddingVertical: 12,
   },
   input: {
     flex: 1,
-    color: '#fff',
+    color: '#FFFFFF',
     marginLeft: 10,
     fontSize: 16,
+    fontFamily: 'Montserrat', // Use our Montserrat font
   },
   filterButton: {
     padding: 5,

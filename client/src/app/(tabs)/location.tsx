@@ -5,10 +5,65 @@ import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
+
+// Mock user data with Snapchat-like details
+const MOCK_USERS = [
+  {
+    id: '1',
+    name: 'Anurag',
+    avatar: 'https://picsum.photos/200',
+    status: '7h ago',
+    location: 'Talao Pali',
+    coordinates: {
+      latitude: 19.0760,
+      longitude: 72.8777,
+    },
+    isActive: false,
+    mood: '🎮 Gaming',
+    battery: '57%'
+  },
+  {
+    id: '2',
+    name: 'Dhanush',
+    avatar: 'https://picsum.photos/201',
+    status: '1h ago',
+    location: 'Juhu Beach',
+    coordinates: {
+      latitude: 19.0825,
+      longitude: 72.8757,
+    },
+    isActive: true,
+    mood: '🏖️ At Beach',
+    battery: '82%'
+  },
+  // Add more mock users as needed
+];
+
+const PLACES_OF_INTEREST = [
+  {
+    id: '1',
+    name: 'The Capital Mall',
+    type: 'Top Pick',
+    coordinates: {
+      latitude: 19.0790,
+      longitude: 72.8800,
+    },
+    icon: '🛍️'
+  },
+  {
+    id: '2',
+    name: 'M.S. College',
+    type: 'Top Pick',
+    coordinates: {
+      latitude: 19.0740,
+      longitude: 72.8820,
+    },
+    icon: '🎓'
+  },
+  // Add more places
+];
 
 export default function LocationScreen() {
   const mapRef = useRef<MapView>(null);
@@ -21,73 +76,78 @@ export default function LocationScreen() {
   const [selectedFilter, setSelectedFilter] = useState('All');
   const [showGhostMode, setShowGhostMode] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [matches, setMatches] = useState<any[]>([]);
-  const [userData, setUserData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const token = await AsyncStorage.getItem('accessToken');
-        
-        // Get current user location
-        const userResponse = await axios.get('http://localhost:5000/api/users/me', {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const location = await Location.getCurrentPositionAsync({});
+        setCurrentLocation({
+          ...currentLocation,
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
         });
-        console.log(userResponse.data.user);
-        console.log(userResponse.data.user.location);
-        console.log(userResponse.data.user.location.latitude);
-        console.log(userResponse.data.user.location.longitude);
-        // Parse user location
-        const userLocation = JSON.parse(userResponse.data.user.location);
-        setUserData({
-          ...userResponse.data.user,
-          location: userLocation  // Store parsed location in state
-        });
-        
-        // Update map region
-        setCurrentLocation(prev => ({
-          ...prev,
-          latitude: userLocation.latitude,
-          longitude: userLocation.longitude,
-        }));
-        console.log(currentLocation);
-
-        // Get matches
-        const matchesResponse = await axios.post('http://localhost:5000/api/matches', {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        
-        setMatches(matchesResponse.data.matches.map((match: any) => ({
-          ...match,
-          location: JSON.parse(match.matched_location)
-        })));
-        console.log(matches);
-        console.log(matchesResponse.data.matches);
-
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setIsLoading(false);
       }
-    };
-
-    fetchData();
+    })();
   }, []);
 
-  const renderUserMarker = (match: any) => (
+  const renderUserMarker = (user: typeof MOCK_USERS[0]) => (
     <Marker
-      key={match.match_id}
-      coordinate={{
-        latitude: match.location.latitude,
-        longitude: match.location.longitude
-      }}
+      key={user.id}
+      coordinate={user.coordinates}
+      anchor={{ x: 0.5, y: 0.5 }}
     >
       <View style={styles.markerContainer}>
-        <Text style={styles.markerText}>{match.matched_username}</Text>
+        <Image 
+          source={{ uri: user.avatar }}
+          style={[
+            styles.markerImage,
+            user.isActive && styles.markerImageActive
+          ]}
+        />
+        <View style={[
+          styles.markerBadge,
+          user.isActive ? styles.markerBadgeActive : styles.markerBadgeInactive
+        ]}>
+          <Text style={styles.markerTime}>
+            {user.isActive ? 'now' : user.status}
+          </Text>
+        </View>
+      </View>
+      <Callout tooltip>
+        <BlurView intensity={30} tint="dark" style={styles.calloutContainer}>
+          <View style={styles.calloutHeader}>
+            <Image 
+              source={{ uri: user.avatar }}
+              style={styles.calloutImage}
+            />
+            <View style={styles.calloutInfo}>
+              <Text style={styles.calloutName}>{user.name}</Text>
+              <Text style={styles.calloutStatus}>{user.mood}</Text>
+              <Text style={styles.calloutLocation}>📍 {user.location}</Text>
+            </View>
+          </View>
+          <View style={styles.calloutFooter}>
+            <Text style={styles.calloutBattery}>🔋 {user.battery}</Text>
+            <TouchableOpacity style={styles.calloutButton}>
+              <Text style={styles.calloutButtonText}>Send Message</Text>
+            </TouchableOpacity>
+          </View>
+        </BlurView>
+      </Callout>
+    </Marker>
+  );
+
+  const renderPlaceMarker = (place: typeof PLACES_OF_INTEREST[0]) => (
+    <Marker
+      key={place.id}
+      coordinate={place.coordinates}
+      anchor={{ x: 0.5, y: 0.5 }}
+    >
+      <View style={styles.placeMarkerContainer}>
+        <Text style={styles.placeMarkerIcon}>{place.icon}</Text>
+        <Text style={styles.placeMarkerText}>{place.name}</Text>
+        <Text style={styles.placeMarkerType}>{place.type}</Text>
       </View>
     </Marker>
   );
@@ -107,9 +167,8 @@ export default function LocationScreen() {
             <Ionicons name="search" size={20} color="#fff" />
           </TouchableOpacity>
           <View style={styles.locationInfo}>
-            <Text style={styles.locationText}>
-              {userData?.location?.city || 'Loading...'}
-            </Text>
+            <Text style={styles.locationText}>Mumbai</Text>
+            <Text style={styles.temperatureText}>25°C</Text>
           </View>
           <TouchableOpacity 
             style={styles.ghostButton}
@@ -138,10 +197,10 @@ export default function LocationScreen() {
       >
         {/* Heatmap */}
         <Heatmap
-          points={matches.map(match => ({
-            latitude: match.location.latitude,
-            longitude: match.location.longitude,
-            weight: 1
+          points={MOCK_USERS.map(user => ({
+            latitude: user.coordinates.latitude,
+            longitude: user.coordinates.longitude,
+            weight: user.isActive ? 1 : 0.5,
           }))}
           radius={50}
           opacity={0.3}
@@ -153,7 +212,10 @@ export default function LocationScreen() {
         />
         
         {/* User Markers */}
-        {!showGhostMode && matches.map(renderUserMarker)}
+        {!showGhostMode && MOCK_USERS.map(renderUserMarker)}
+        
+        {/* Places Markers */}
+        {PLACES_OF_INTEREST.map(renderPlaceMarker)}
       </MapView>
 
       {/* Quick Actions */}
@@ -177,16 +239,16 @@ export default function LocationScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.bottomNavContent}
         >
-          {matches.map((match) => (
+          {MOCK_USERS.map((user) => (
             <TouchableOpacity 
-              key={match.match_id}
+              key={user.id}
               style={styles.userButton}
             >
               <Image 
-                source={{ uri: match.profile_photo || 'https://picsum.photos/200' }}
+                source={{ uri: user.avatar }}
                 style={styles.userButtonImage}
               />
-              <Text style={styles.userButtonName}>{match.matched_username}</Text>
+              <Text style={styles.userButtonName}>{user.name}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -233,19 +295,42 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginRight: 10,
   },
+  temperatureText: {
+    color: '#fff',
+    fontSize: 16,
+  },
   ghostButton: {
     padding: 5,
   },
   markerContainer: {
     alignItems: 'center',
   },
-  markerText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-    padding: 4,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    borderRadius: 4
+  markerImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  markerImageActive: {
+    borderColor: '#00ff00',
+  },
+  markerBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginTop: 2,
+  },
+  markerBadgeActive: {
+    backgroundColor: '#00ff00',
+  },
+  markerBadgeInactive: {
+    backgroundColor: 'rgba(255,255,255,0.8)',
+  },
+  markerTime: {
+    fontSize: 10,
+    color: '#000',
+    fontWeight: '600',
   },
   calloutContainer: {
     width: width * 0.7,

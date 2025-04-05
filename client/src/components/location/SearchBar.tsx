@@ -11,11 +11,11 @@ export function SearchBar({ onFocus, onBlur }: SearchBarProps) {
   return (
     <View style={styles.container}>
       <View style={styles.searchBox}>
-        <Ionicons name="search" size={20} color="#666" />
+        <Ionicons name="search" size={20} color="#FFFFFF" />
         <TextInput
           style={styles.input}
           placeholder="Mumbai"
-          placeholderTextColor="#fff"
+          placeholderTextColor="rgba(255,255,255,0.7)"
           onFocus={onFocus}
           onBlur={onBlur}
         />
@@ -36,15 +36,16 @@ const styles = StyleSheet.create({
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(29, 27, 38, 0.7)',
     paddingHorizontal: 15,
     paddingVertical: 10,
-    borderRadius: 25,
+    borderRadius: 15,
   },
   input: {
     flex: 1,
     marginLeft: 10,
     fontSize: 16,
-    color: '#fff',
+    color: '#FFFFFF',
+    fontFamily: 'Montserrat',
   },
 });
