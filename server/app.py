@@ -6,32 +6,14 @@ import psycopg2
 from flask_jwt_extended import JWTManager
 from utils.logger import logging
 from utils.exception import CustomException
-from flask_socketio import SocketIO 
-# from model.socket_chat import ChatHandler, get_db_connection
-# from database.chat_db import ChatDB
-# from controllers.chat_controller import get_chats, get_chat_messages, get_matches
+from controllers.chat_controller import get_chats, get_chat_messages, get_matches
 
-#eventlet.monkey_patch()
+# Initialize Flask app
 app = Flask(__name__)
 logging.info("Flask app initialized")
 
 app.config["JWT_SECRET_KEY"] = JWT_SECRET_KEY
 jwt = JWTManager(app)
-
-# Initialize SocketIO
-# socketio = SocketIO(
-#     app,
-#     cors_allowed_origins="*",
-#     async_mode='eventlet',
-#     logger=True,
-#     engineio_logger=True,
-#     ping_timeout=60,
-#     ping_interval=25,
-#     http_compression=True
-# )
-# ChatDB.initialize()
-# chat_handler = ChatHandler(socketio)
-# logging.info("SocketIO initialized") 
 
 # Connect to PostgreSQL database
 def get_db_connection():
@@ -45,11 +27,20 @@ def get_db_connection():
         )
         cursor = conn.cursor()
         logging.info("Connected to PostgreSQL database")
+        return conn, cursor
     except Exception as e:
         logging.error(f"Database connection failed: {e}")
         raise CustomException(e)
-get_db_connection()
+
+# Test database connection
+try:
+    conn, cursor = get_db_connection()
+    cursor.close()
+    conn.close()
+except Exception as e:
+    logging.error(f"Initial database connection test failed: {e}")
     
+# Import controllers
 with app.app_context():
     from controllers.user_auth_controller import *
     from controllers.user_onboarding_controller import *
@@ -60,18 +51,19 @@ with app.app_context():
     from database.recommendations_db_get_controller import * 
     from controllers.onboarding_crud_controller import *
     from database.matches_db_get_controller import *
-    #from controllers.chat_controller import * 
-    
 
-# @app.teardown_appcontext
-# def close_db_connections(exception=None):
-#     if ChatDB._connection_pool:
-#         ChatDB._connection_pool.closeall()
+# Add chat API routes
+app.add_url_rule('/api/chats', view_func=get_chats, methods=['GET'])
+app.add_url_rule('/api/messages/<chat_id>', view_func=get_chat_messages, methods=['GET'])
+app.add_url_rule('/api/matches/me', view_func=get_matches, methods=['GET'])
 
-# # Add these routes
-# app.add_url_rule('/api/chats', view_func=get_chats, methods=['GET'])
-# app.add_url_rule('/api/messages/<chat_id>', view_func=get_chat_messages, methods=['GET'])
-# app.add_url_rule('/api/matches', view_func=get_matches, methods=['GET'])
+# Define function for socket info using the shared config
+def socket_info_handler():
+    from socket_config import get_socket_config
+    return jsonify(get_socket_config())
+
+# Register the route for socket info
+app.add_url_rule('/api/socket/info', 'socket_info_endpoint', socket_info_handler, methods=['GET'])
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

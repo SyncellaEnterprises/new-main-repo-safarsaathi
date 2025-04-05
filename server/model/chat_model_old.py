@@ -13,7 +13,7 @@ app = Flask(__name__)
 CORS(app)  # Allow CORS for all origins
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-PORT = 4000
+PORT = 5000
 chatgroups = []
 users = {}  # Store users and their socket IDs for one-to-one chat
 

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, SafeAreaView, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, SafeAreaView, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSocket } from '@/src/context/SocketContext';
 import { useAuth } from '@/src/context/AuthContext';
@@ -12,154 +12,252 @@ interface Message {
   content: string;
   sender_id: string;
   sender_name: string;
+  receiver_id: string;
   sent_at: string;
   type: 'text' | 'image' | 'video';
   status: 'sent' | 'delivered' | 'read';
-  receiver_id?: string;
-  group_id?: string;
+}
+
+interface Recipient {
+  id: string;
+  username: string;
+  profile_photo: string | null;
+  isOnline: boolean;
 }
 
 export default function ChatDetailScreen() {
   const { id } = useLocalSearchParams();
-  const { socket, isConnected, isConnecting } = useSocket();
+  const { socket, isConnected, isConnecting, joinChat, sendMessage, readMessage, sendTypingStatus } = useSocket();
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [recipient, setRecipient] = useState({ name: '', image: '', isOnline: false });
+  const [recipient, setRecipient] = useState<Recipient>({ 
+    id: String(id), 
+    username: 'Loading...', 
+    profile_photo: null,
+    isOnline: false 
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const router = useRouter();
 
-  // Load initial messages (you'll need to implement this)
+  // Join the chat when connected
   useEffect(() => {
-    const fetchMessages = async () => {
-      try {
-        const response = await fetch(`http://10.0.2.2:4000/api/messages/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${await AsyncStorage.getItem('accessToken')}`
-          }
-        });
-        const data = await response.json();
-        setMessages(data);
-      } catch (error) {
-        console.error('Failed to fetch messages:', error);
-      }
+    if (isConnected && id) {
+      joinChat(String(id));
+    }
+  }, [isConnected, id, joinChat]);
+
+  // Listen for socket events
+  useEffect(() => {
+    if (!socket) return;
+
+    // Handler for when successfully joined a chat
+    const handleChatJoined = (data: {
+      room_id: string;
+      recipient: Recipient;
+      is_online: boolean;
+      messages: Message[];
+    }) => {
+      console.log('Chat joined with data:', JSON.stringify(data));
+      
+      // Validate recipient data
+      const recipientData = data.recipient || { 
+        id: String(id), 
+        username: 'User', 
+        profile_photo: null,
+        isOnline: false 
+      };
+      
+      // Validate messages array
+      const validMessages = Array.isArray(data.messages) 
+        ? data.messages.filter(msg => msg && typeof msg === 'object')
+        : [];
+      
+      console.log(`Received ${validMessages.length} valid messages`);
+      
+      setRecipient({
+        ...recipientData,
+        isOnline: data.is_online
+      });
+      setMessages(validMessages);
+      setIsLoading(false);
     };
-    
-    fetchMessages();
-  }, [id]);
 
-  useEffect(() => {
-    if (!socket || !isConnected) return;
-
-    // Join chat room with proper parameters
-    socket.emit('join_chat', { 
-      chat_type: 'private', // or 'group' based on chat type
-      chat_id: id,
-      other_user_id: recipient.id // You'll need to get recipient ID
-    });
-
-    // Update event listeners
-    socket.on('chat_history', (history: Message[]) => {
-      setMessages(history);
-    });
-
-    socket.on('new_message', (message: Message) => {
+    // Handler for new messages
+    const handleNewMessage = (message: Message) => {
+      console.log('New message received:', JSON.stringify(message));
+      
+      // Validate the message object
+      if (!message || typeof message !== 'object') {
+        console.warn('Received invalid message object');
+        return;
+      }
+      
       setMessages(prev => [...prev, message]);
-      if (message.receiver_id === user.id) {
-        socket.emit('message_read', { message_id: message.message_id });
+      
+      // If the message is from the other user, mark it as read
+      if (message.sender_id === String(id)) {
+        readMessage(message.message_id);
       }
-    });
+    };
 
-    socket.on('message_status', ({ message_id, status }) => {
-      setMessages(prev => prev.map(msg => 
-        msg.message_id === message_id ? { ...msg, status } : msg
-      ));
-    });
+    // Handler for message status updates
+    const handleMessageStatus = (data: { message_id: string; status: string }) => {
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.message_id === data.message_id 
+            ? { ...msg, status: data.status as 'sent' | 'delivered' | 'read' } 
+            : msg
+        )
+      );
+    };
 
-    socket.on('typing_status', ({ users, chat_type, chat_id }) => {
-      if (chat_id === id) {
-        setIsTyping(users.length > 0);
+    // Handler for typing status
+    const handleTypingStatus = (data: { user_id: string; is_typing: boolean }) => {
+      if (data.user_id === String(id)) {
+        setIsTyping(data.is_typing);
       }
-    });
+    };
 
-    // Listen for user status changes
-    socket.on('user_status', ({ username, status }) => {
-      if (username === recipient.name) {
-        setRecipient(prev => ({ ...prev, isOnline: status === 'online' }));
+    // Handler for user status
+    const handleUserStatus = (data: { user_id: string; status: 'online' | 'offline' }) => {
+      if (data.user_id === String(id)) {
+        setRecipient(prev => ({
+          ...prev,
+          isOnline: data.status === 'online'
+        }));
       }
-    });
+    };
 
+    // Set up event listeners
+    socket.on('chat_joined', handleChatJoined);
+    socket.on('new_message', handleNewMessage);
+    socket.on('message_status', handleMessageStatus);
+    socket.on('typing_status', handleTypingStatus);
+    socket.on('user_status', handleUserStatus);
+
+    // Clean up event listeners
     return () => {
-      socket.emit('leave_chat', { chat_id: id });
-      socket.off('chat_history');
-      socket.off('new_message');
-      socket.off('message_status');
-      socket.off('typing_status');
-      socket.off('user_status');
+      socket.off('chat_joined', handleChatJoined);
+      socket.off('new_message', handleNewMessage);
+      socket.off('message_status', handleMessageStatus);
+      socket.off('typing_status', handleTypingStatus);
+      socket.off('user_status', handleUserStatus);
     };
-  }, [socket, isConnected, id, user]);
+  }, [socket, id, readMessage, user]);
 
-  const sendMessage = useCallback(() => {
-    if (!newMessage.trim() || !socket || !user) return;
+  // Handle sending a message
+  const handleSendMessage = () => {
+    if (!newMessage.trim() || !isConnected) return;
 
-    const messageData = {
-      content: newMessage,
-      receiver_id: recipient.id, // Should come from route params
-      type: 'text'
-    };
-
-    socket.emit('send_message', messageData);
+    sendMessage(newMessage.trim(), String(id));
     setNewMessage('');
-  }, [newMessage, socket, user, recipient]);
+    
+    // Cancel typing indicator when sending
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+      sendTypingStatus(String(id), false);
+    }
+  };
 
-  const handleTyping = useCallback((typing: boolean) => {
-    if (!socket || !user) return;
-    socket.emit('typing', {
-      chat_type: 'private',
-      chat_id: id,
-      is_typing: typing
-    });
-  }, [socket, id, user]);
+  // Handle typing indicators
+  const handleTyping = (text: string) => {
+    setNewMessage(text);
+    
+    // Send typing indicator when user starts typing
+    if (!typingTimerRef.current && text.length > 0) {
+      sendTypingStatus(String(id), true);
+    }
+    
+    // Clear previous timer
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+    }
+    
+    // Set a new timer to stop typing indicator after 3 seconds of inactivity
+    typingTimerRef.current = setTimeout(() => {
+      sendTypingStatus(String(id), false);
+      typingTimerRef.current = null;
+    }, 3000);
+  };
 
+  // Format date for display
+  const formatMessageTime = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        // Return current time if date is invalid
+        return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (error) {
+      console.warn('Error formatting date:', error);
+      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+  };
+
+  // Render message items
   const renderMessage = ({ item }: { item: Message }) => {
-    const isOwnMessage = item.sender_id === user?.id;
+    // Add null checks to prevent TypeError
+    if (!item || !user) {
+      return null; // Skip rendering if item or user is undefined
+    }
+    
+    // Safely get the sender ID, ensuring it's a string for comparison
+    const senderId = item.sender_id ? String(item.sender_id) : '';
+    const userId = user.id ? String(user.id) : '';
+    
+    // Check if message is from current user
+    const isOwnMessage = senderId === userId;
     
     return (
-      <View className={`flex-row ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-3`}>
+      <View className={`flex-row ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-3 mx-2`}>
         {!isOwnMessage && (
           <Image
-            source={{ uri: recipient.image }}
+            source={{ 
+              uri: recipient.profile_photo || 'https://via.placeholder.com/400x400?text=No+Profile+Image'
+            }}
             className="h-8 w-8 rounded-full mr-2 self-end"
           />
         )}
         
         <View className={`${
           isOwnMessage 
-            ? 'bg-blue-500 rounded-t-2xl rounded-l-2xl' 
+            ? 'bg-primary rounded-t-2xl rounded-l-2xl' 
             : 'bg-white rounded-t-2xl rounded-r-2xl'
           } p-3 max-w-[75%] shadow-sm`}
         >
           <Text className={`${
             isOwnMessage ? 'text-white' : 'text-gray-800'
           } text-base`}>
-            {item.content}
+            {item.content || ''}
           </Text>
           
           <View className="flex-row items-center justify-end mt-1">
             <Text className={`text-xs mr-1 ${
-              isOwnMessage ? 'text-blue-100' : 'text-gray-500'
+              isOwnMessage ? 'text-primary-light' : 'text-gray-500'
             }`}>
-              {new Date(item.sent_at).toLocaleTimeString([], { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              })}
+              {formatMessageTime(item.sent_at || new Date().toISOString())}
             </Text>
             
             {isOwnMessage && (
               <Ionicons 
-                name={item.status === 'read' ? 'checkmark-done' : 'checkmark'} 
+                name={
+                  item.status === 'read' 
+                    ? 'checkmark-done' 
+                    : item.status === 'delivered' 
+                    ? 'checkmark-done'
+                    : 'checkmark'
+                } 
                 size={16} 
-                color={item.status === 'read' ? '#93C5FD' : '#BFDBFE'}
+                color={
+                  item.status === 'read' 
+                    ? '#E6E4EC'
+                    : '#BFB8D9'
+                }
               />
             )}
           </View>
@@ -168,28 +266,44 @@ export default function ChatDetailScreen() {
     );
   };
 
+  // Empty state for no messages
+  const renderEmptyMessages = () => (
+    <View className="flex-1 items-center justify-center p-4">
+      <Ionicons name="chatbubbles-outline" size={64} color="#E6E4EC" />
+      <Text className="text-neutral-dark mt-4 text-center font-montserrat">
+        No messages yet.{'\n'}Start the conversation!
+      </Text>
+    </View>
+  );
+
   // Show loading state
-  if (isConnecting) {
+  if (isConnecting || isLoading) {
     return (
-      <View className="flex-1 items-center justify-center">
-        <Text>Connecting to chat...</Text>
+      <View className="flex-1 items-center justify-center bg-neutral-light">
+        <ActivityIndicator size="large" color="#7D5BA6" />
+        <Text className="mt-4 text-center text-neutral-dark font-montserrat">
+          Connecting to chat...
+        </Text>
       </View>
     );
   }
 
   if (!isConnected) {
     return (
-      <View className="flex-1 items-center justify-center">
-        <Text>Connection lost. Reconnecting...</Text>
+      <View className="flex-1 items-center justify-center bg-neutral-light">
+        <Ionicons name="wifi-outline" size={64} color="#E6E4EC" />
+        <Text className="mt-4 text-center text-neutral-dark font-montserrat">
+          Connection lost. Reconnecting...
+        </Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-neutral-light">
       {/* Header */}
       <LinearGradient
-        colors={['#3B82F6', '#60A5FA']}
+        colors={['rgba(125, 91, 166, 0.9)', 'rgba(90, 65, 128, 0.8)']}
         className="px-4 py-3"
       >
         <View className="flex-row items-center">
@@ -201,16 +315,17 @@ export default function ChatDetailScreen() {
           </TouchableOpacity>
 
           <Image
-            source={{ uri: recipient.image }}
+            source={{ uri: recipient.profile_photo || 'https://via.placeholder.com/400x400?text=No+Profile+Image' }}
             className="h-10 w-10 rounded-full"
           />
           
           <View className="flex-1 ml-3">
-            <Text className="text-white text-lg font-semibold">
-              {recipient.name}
+            <Text className="text-white text-lg font-montserratMedium">
+              {recipient.username}
             </Text>
-            <Text className="text-blue-100 text-sm">
+            <Text className="text-primary-light text-sm font-montserrat">
               {recipient.isOnline ? 'Online' : 'Offline'}
+              {isTyping ? ' • Typing...' : ''}
             </Text>
           </View>
 
@@ -233,8 +348,10 @@ export default function ChatDetailScreen() {
         data={messages}
         renderItem={renderMessage}
         keyExtractor={(item) => item.message_id}
-        inverted
-        className="flex-1 px-4"
+        contentContainerStyle={messages.length === 0 ? { flex: 1 } : { paddingVertical: 16 }}
+        ListEmptyComponent={renderEmptyMessages}
+        inverted={false}
+        className="flex-1"
         showsVerticalScrollIndicator={false}
       />
 
@@ -251,13 +368,11 @@ export default function ChatDetailScreen() {
           <View className="flex-1 flex-row items-center bg-gray-100 rounded-full px-4 py-2 mx-2">
             <TextInput
               value={newMessage}
-              onChangeText={setNewMessage}
+              onChangeText={handleTyping}
               placeholder="Message..."
-              className="flex-1 text-base text-gray-800"
+              className="flex-1 text-base text-gray-800 font-montserrat"
               multiline
               maxLength={500}
-              onFocus={() => handleTyping(true)}
-              onBlur={() => handleTyping(false)}
             />
             
             <TouchableOpacity className="mr-2">
@@ -269,9 +384,9 @@ export default function ChatDetailScreen() {
           </View>
 
           <TouchableOpacity
-            onPress={sendMessage}
-            className="p-2 bg-blue-500 rounded-full"
-            disabled={!newMessage.trim()}
+            onPress={handleSendMessage}
+            className={`p-2 rounded-full ${newMessage.trim() ? 'bg-primary' : 'bg-neutral-medium'}`}
+            disabled={!newMessage.trim() || !isConnected}
           >
             <Ionicons 
               name="send" 
