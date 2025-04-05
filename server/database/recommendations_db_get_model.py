@@ -23,6 +23,7 @@ class RecommendationModel:
             logging.info(f"Fetching recommendations for {user_id}")
 
             self.cursor.execute("""SELECT 
+                                ud.username AS recommended_user_username,
                                 up_recommended.user_id AS recommended_user_profile_user_id,
                                 up_recommended.age AS recommended_user_age,
                                 up_recommended.bio AS recommended_user_bio,
@@ -44,6 +45,10 @@ class RecommendationModel:
                             -- Join for recommended user's profile
                             JOIN 
                                 user_profile up_recommended ON ur.recommended_user_id = up_recommended.user_id
+                                
+                            -- Join to get username from user_db
+                            JOIN 
+                                user_db ud ON up_recommended.user_id = ud.id
 
                             WHERE 
                                 ur.user_id = %s
