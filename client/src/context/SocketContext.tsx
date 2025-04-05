@@ -13,6 +13,10 @@ interface SocketContextType {
   sendMessage: (content: string, receiverId: string, type?: string) => void;
   readMessage: (messageId: string) => void;
   sendTypingStatus: (receiverId: string, isTyping: boolean) => void;
+  // Group chat methods
+  joinGroupChat: (groupId: string) => void;
+  sendGroupMessage: (content: string, groupId: string, type?: string) => void;
+  sendGroupTypingStatus: (groupId: string, isTyping: boolean) => void;
 }
 
 const SocketContext = createContext<SocketContextType>({
@@ -25,6 +29,10 @@ const SocketContext = createContext<SocketContextType>({
   sendMessage: () => {},
   readMessage: () => {},
   sendTypingStatus: () => {},
+  // Group chat methods
+  joinGroupChat: () => {},
+  sendGroupMessage: () => {},
+  sendGroupTypingStatus: () => {},
 });
 
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
@@ -33,7 +41,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [isConnecting, setIsConnecting] = useState(true);
   const [socketConfig, setSocketConfig] = useState({
     host: '10.0.2.2',
-    port: 5001
+    port: 5002
   });
 
   // Fetch socket server configuration
@@ -71,7 +79,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         // Fallback: try to get socket config directly from socket server
         try {
           console.log('Attempting to fetch config directly from socket server...');
-          const fallbackResponse = await axios.get('http://10.0.2.2:5001/api/socket/info', {
+          const fallbackResponse = await axios.get('http://10.0.2.2:5002/api/socket_server/info', {
             timeout: 3000
           });
           
@@ -125,6 +133,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         reconnectionDelay: 1000,
       });
 
+      // Set up basic connection event handlers
       newSocket.on('connect', () => {
         console.log('Socket connected');
         setIsConnected(true);
@@ -141,44 +150,79 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         setIsConnecting(false);
       });
 
-      newSocket.on('connection_status', (status: { status: string; message?: string }) => {
-        console.log('Connection status:', status);
-      });
-
-      newSocket.on('error', (error: { message: string }) => {
-        console.error('Socket error:', error.message);
-      });
-
-      // Listen for new messages
-      newSocket.on('new_message', (message: any) => {
-        console.log('New message received:', message);
-        // To be handled by the chat screen component
-      });
-
-      // Listen for message status updates
-      newSocket.on('message_status', (status: { message_id: string; status: string }) => {
-        console.log('Message status update:', status);
-        // To be handled by the chat screen component
-      });
-
-      // Listen for typing status
-      newSocket.on('typing_status', (status: { user_id: string; is_typing: boolean }) => {
-        console.log('Typing status:', status);
-        // To be handled by the chat screen component
-      });
-
-      // Listen for user status updates
-      newSocket.on('user_status', (status: { user_id: string; status: 'online' | 'offline' }) => {
-        console.log('User status update:', status);
-        // To be handled by the chat screen component
-      });
-
       setSocket(newSocket);
     } catch (error) {
       console.error('Socket connection failed:', error);
       setIsConnecting(false);
     }
   };
+
+  // Set up all the socket event listeners when socket changes
+  useEffect(() => {
+    if (!socket) return;
+
+    // Connection status events
+    socket.on('connection_status', (status: { status: string; message?: string }) => {
+      console.log('Connection status:', status);
+    });
+
+    socket.on('error', (error: { message: string }) => {
+      console.error('Socket error:', error.message);
+    });
+
+    // Direct chat events
+    socket.on('chat_joined', (data: any) => {
+      console.log('Chat joined:', data);
+    });
+
+    socket.on('new_message', (message: any) => {
+      console.log('New message received:', message);
+    });
+
+    socket.on('message_status', (status: { message_id: string; status: string }) => {
+      console.log('Message status update:', status);
+    });
+
+    socket.on('typing_status', (status: { user_id: string; is_typing: boolean }) => {
+      console.log('Typing status:', status);
+    });
+
+    socket.on('user_status', (status: { user_id: string; status: 'online' | 'offline' }) => {
+      console.log('User status update:', status);
+    });
+
+    // Group chat events
+    socket.on('group_chat_joined', (data: { group_id: string; online_members: string[] }) => {
+      console.log('Group chat joined:', data);
+    });
+
+    socket.on('new_group_message', (message: any) => {
+      console.log('New group message received:', message);
+    });
+
+    socket.on('group_member_status', (status: { group_id: string; user_id: string; status: 'online' | 'offline' }) => {
+      console.log('Group member status update:', status);
+    });
+
+    socket.on('group_typing_status', (status: { group_id: string; user_id: string; username: string; is_typing: boolean }) => {
+      console.log('Group typing status:', status);
+    });
+
+    return () => {
+      // Clean up all listeners
+      socket.off('connection_status');
+      socket.off('error');
+      socket.off('chat_joined');
+      socket.off('new_message');
+      socket.off('message_status');
+      socket.off('typing_status');
+      socket.off('user_status');
+      socket.off('group_chat_joined');
+      socket.off('new_group_message');
+      socket.off('group_member_status');
+      socket.off('group_typing_status');
+    };
+  }, [socket]);
 
   const disconnect = () => {
     if (socket) {
@@ -227,6 +271,37 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     console.log('Sending typing status to user:', receiverId, isTyping);
   };
 
+  // Join a group chat
+  const joinGroupChat = (groupId: string) => {
+    if (!socket || !isConnected) return;
+    
+    socket.emit('join_group_chat', { group_id: groupId });
+    console.log('Joining group chat:', groupId);
+  };
+
+  // Send a message to a group
+  const sendGroupMessage = (content: string, groupId: string, type: string = 'text') => {
+    if (!socket || !isConnected) return;
+    
+    socket.emit('send_group_message', {
+      content: content,
+      group_id: groupId,
+      type: type
+    });
+    console.log('Sending group message to group:', groupId);
+  };
+
+  // Send typing status to a group
+  const sendGroupTypingStatus = (groupId: string, isTyping: boolean) => {
+    if (!socket || !isConnected) return;
+    
+    socket.emit('group_typing_status', {
+      group_id: groupId,
+      is_typing: isTyping
+    });
+    console.log('Sending group typing status to group:', groupId, isTyping);
+  };
+
   // Connect socket when the configuration is ready
   useEffect(() => {
     connect();
@@ -245,7 +320,11 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       joinChat,
       sendMessage,
       readMessage,
-      sendTypingStatus
+      sendTypingStatus,
+      // Group chat methods
+      joinGroupChat,
+      sendGroupMessage,
+      sendGroupTypingStatus
     }}>
       {children}
     </SocketContext.Provider>

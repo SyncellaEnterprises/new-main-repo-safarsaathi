@@ -16,6 +16,7 @@ interface TabHeaderProps {
   showDate?: boolean;
   gradientColors?: string[];
   subtitle?: string;
+  rightContent?: React.ReactNode;
 }
 
 export default function TabHeader({
@@ -27,7 +28,8 @@ export default function TabHeader({
   onRightPress,
   showDate = true,
   gradientColors = ['rgba(125, 91, 166, 0.9)', 'rgba(90, 65, 128, 0.8)'],
-  subtitle
+  subtitle,
+  rightContent
 }: TabHeaderProps) {
   const router = useRouter();
 
@@ -56,7 +58,9 @@ export default function TabHeader({
           )}
         </View>
 
-        {showIcons && (
+        {rightContent ? (
+          rightContent
+        ) : showIcons && (
           <View className="flex-row space-x-3">
             <TouchableOpacity
               onPress={onLeftPress || (() => router.push("/(icon)/notifications"))}

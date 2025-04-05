@@ -1,6 +1,6 @@
 # Socket Server Configuration
-SOCKET_PORT = 5001
-SOCKET_HOST = '10.0.2.2'  # Host for Android emulator to access local machine
+SOCKET_PORT = 5002
+SOCKET_HOST = "10.0.2.2"  # Android emulator's special IP to access host machine
 
 def get_socket_config():
     """

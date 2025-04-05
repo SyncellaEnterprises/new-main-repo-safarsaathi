@@ -22,12 +22,12 @@ def run_main_api():
     return subprocess.Popen(["python", "run_api.py"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
 def run_socket_server():
-    """Run the socket server on port 5001"""
+    """Run the socket server on port 5002"""
     # Check if port is already in use
-    if check_port_in_use(5001):
-        print("Warning: Port 5001 is already in use. Socket server may not start properly.")
+    if check_port_in_use(5002):
+        print("Warning: Port 5002 is already in use. Socket server may not start properly.")
     
-    print("Starting socket server on port 5001...")
+    print("Starting socket server on port 5002...")
     return subprocess.Popen(["python", "run_socket.py"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
 def stream_output(process, prefix):
@@ -71,7 +71,7 @@ def verify_servers_running():
             # Just check if the port is open
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.settimeout(5)
-                result = s.connect_ex(('localhost', 5001))
+                result = s.connect_ex(('localhost', 5002))
                 if result == 0:
                     print("✅ Socket server port is open")
                     socket_running = True

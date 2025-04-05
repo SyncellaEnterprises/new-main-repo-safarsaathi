@@ -7,6 +7,10 @@ from flask_jwt_extended import JWTManager
 from utils.logger import logging
 from utils.exception import CustomException
 from controllers.chat_controller import get_chats, get_chat_messages, get_matches
+from controllers.travel_group_controller import (
+    create_travel_group, get_user_travel_groups, get_travel_group,
+    add_member_to_group, remove_member_from_group, get_group_messages, send_group_message
+)
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -57,10 +61,21 @@ app.add_url_rule('/api/chats', view_func=get_chats, methods=['GET'])
 app.add_url_rule('/api/messages/<chat_id>', view_func=get_chat_messages, methods=['GET'])
 app.add_url_rule('/api/matches/me', view_func=get_matches, methods=['GET'])
 
+# Add travel group API routes
+app.add_url_rule('/api/groups', view_func=get_user_travel_groups, methods=['GET'])
+app.add_url_rule('/api/groups', view_func=create_travel_group, methods=['POST'])
+app.add_url_rule('/api/groups/<group_id>', view_func=get_travel_group, methods=['GET'])
+app.add_url_rule('/api/groups/<group_id>/members', view_func=add_member_to_group, methods=['POST'])
+app.add_url_rule('/api/groups/<group_id>/members/<member_id>', view_func=remove_member_from_group, methods=['DELETE'])
+app.add_url_rule('/api/groups/<group_id>/messages', view_func=get_group_messages, methods=['GET'])
+app.add_url_rule('/api/groups/<group_id>/messages', view_func=send_group_message, methods=['POST'])
+
 # Define function for socket info using the shared config
 def socket_info_handler():
     from socket_config import get_socket_config
-    return jsonify(get_socket_config())
+    config = get_socket_config()
+    logging.info(f"Returning socket config: {config}")
+    return jsonify(config)
 
 # Register the route for socket info
 app.add_url_rule('/api/socket/info', 'socket_info_endpoint', socket_info_handler, methods=['GET'])
