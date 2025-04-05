@@ -18,6 +18,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 const API_URL = 'http://10.0.2.2:5000';
 
 interface RecommendationResponse {
+  recommended_user_username: string;
   recommended_user_age: number;
   recommended_user_bio: string;
   recommended_user_created_at: string;
@@ -255,10 +256,9 @@ export default function ExploreScreen() {
           // Get similarity score from the map
           const similarity_score = profileMap.get(profileId) || rec.similarity_score || 0;
 
-          // Format the username to match what backend expects (user + ID, not user_ + ID)
-          // For display we use user_ID but for API calls we need userID format
+        
           return {
-            username: `user_${profileId}`,  // For UI display
+            username: rec.recommended_user_username,
             age: rec.recommended_user_age,
             bio: rec.recommended_user_bio,
             gender: rec.recommended_user_gender,

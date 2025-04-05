@@ -7,30 +7,10 @@
     <list default="true" id="d6080ac8-7173-4192-944d-77feefd4c71d" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/ENDPOINT.md" beforeDir="false" afterPath="$PROJECT_DIR$/client/ENDPOINT.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/app.json" beforeDir="false" afterPath="$PROJECT_DIR$/client/app.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/global.css" beforeDir="false" afterPath="$PROJECT_DIR$/client/global.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/(profile)/edit-info.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(profile)/edit-info.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/(profile)/edit-interests.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(profile)/edit-interests.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/(profile)/edit-location.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(profile)/edit-location.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/(profile)/edit-photos.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(profile)/edit-photos.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/(profile)/edit-prompts.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(profile)/edit-prompts.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/(tabs)/_layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(tabs)/_layout.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/app/(tabs)/chat.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(tabs)/chat.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/app/(tabs)/explore.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(tabs)/explore.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/(tabs)/home.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(tabs)/home.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/app/(tabs)/location.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(tabs)/location.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/(tabs)/profile.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(tabs)/profile.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/auth/forgot-password.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/auth/forgot-password.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/auth/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/auth/index.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/auth/login.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/auth/login.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/auth/register.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/auth/register.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/components/explore/SwipeButtons.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/explore/SwipeButtons.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/components/explore/UserCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/explore/UserCard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/components/location/ConnectionCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/location/ConnectionCard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/components/location/SearchBar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/location/SearchBar.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/components/shared/SearchBar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/shared/SearchBar.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/components/shared/TabHeader.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/shared/TabHeader.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/tailwind.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/client/tailwind.config.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

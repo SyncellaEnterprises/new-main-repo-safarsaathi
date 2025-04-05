@@ -571,6 +571,7 @@ Status Codes:
     {
     "recommended_users": [
         {
+            "recommended_user_username": "nitin",
             "recommended_user_age": 28,
             "recommended_user_bio": "Naa bahi afhsahfshfhsdjfdaf asas",
             "recommended_user_created_at": "Thu, 06 Mar 2025 13:16:07 GMT",
@@ -627,7 +628,8 @@ Status Codes:
                 "email": "john@example.com",
                 "interests": "travel, photography, hiking",
                 "matchDate": "2024-03-20T15:30:00Z",
-                "bio": "Adventure seeker and photography enthusiast"
+                "bio": "Adventure seeker and photography enthusiast",
+                "location": "{\"state\":\"Karnataka\",\"city\":\"Hubballi\",\"latitude\":37.4220936,\"longitude\":-122.083922,\"address\":\"Mountain View, California\"}",
             },
             {
                 "username": "jane_smith",
@@ -635,7 +637,8 @@ Status Codes:
                 "email": "jane@example.com",
                 "interests": "music, art, cooking",
                 "matchDate": "2024-03-19T10:15:00Z",
-                "bio": "Art lover and foodie"
+                "bio": "Art lover and foodie",
+                "location": "{\"state\":\"Maharashtra\",\"city\":\"Mumbai\",\"latitude\":19.0759837,\"longitude\":72.8776559,\"address\":\"Mumbai, Maharashtra\"}",
             }
         ]
     }

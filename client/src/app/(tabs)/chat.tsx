@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, SafeAreaView, FlatList, TouchableOpacity, Image, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, SafeAreaView, FlatList, TouchableOpacity, Image, RefreshControl, ActivityIndicator, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
@@ -10,61 +10,27 @@ import { BlurView } from 'expo-blur';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/src/context/AuthContext';
+import axios from 'axios';
+import Toast from 'react-native-toast-message';
 
-// Mock data for demonstration
-const MOCK_CHATS = [
-  {
-    id: '1',
-    name: 'Sarah Johnson',
-    image: 'https://randomuser.me/api/portraits/women/43.jpg',
-    lastMessage: 'Looking forward to our trip! 🏔️',
-    last_active: new Date().toISOString(),
-    unreadCount: 3,
-    type: 'private' as const,
-    isOnline: true,
-  },
-  {
-    id: '2',
-    name: 'Travel Buddies',
-    image: 'https://images.unsplash.com/photo-1527631746610-bca00a040d60?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-    lastMessage: "Rahul: I'll bring the snacks for the hike",
-    last_active: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    unreadCount: 0,
-    type: 'group' as const,
-    isOnline: false,
-  },
-  {
-    id: '3',
-    name: 'Alex Chen',
-    image: 'https://randomuser.me/api/portraits/men/32.jpg',
-    lastMessage: 'The homestay near the lake looks amazing!',
-    last_active: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    unreadCount: 0,
-    type: 'private' as const,
-    isOnline: true,
-  },
-  {
-    id: '4',
-    name: 'Mumbai Explorers',
-    image: 'https://images.unsplash.com/photo-1529253355930-ddbe423a2ac7?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-    lastMessage: 'Meeting at Gateway of India at 5pm',
-    last_active: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    unreadCount: 2,
-    type: 'group' as const,
-    isOnline: false,
-  },
-  {
-    id: '5',
-    name: 'Priya Patel',
-    image: 'https://randomuser.me/api/portraits/women/64.jpg',
-    lastMessage: 'Got our train tickets! ✓',
-    last_active: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    unreadCount: 0,
-    type: 'private' as const,
-    isOnline: false,
-  }
-];
+// Set API URL to your local server (same as in explore.tsx)
+const API_URL = 'http://10.0.2.2:5000';
 
+// Default profile image if none provided
+const DEFAULT_PROFILE_IMAGE = 'https://via.placeholder.com/400x400?text=No+Profile+Image';
+
+// Match interface from API
+interface Match {
+  username: string;
+  userId: number;
+  email: string;
+  interests: string;
+  matchDate: string;
+  bio: string;
+  profile_photo?: string | null;
+}
+
+// Chat preview interface
 interface ChatPreview {
   id: string;
   name: string;
@@ -72,9 +38,10 @@ interface ChatPreview {
   lastMessage: string;
   last_active: string;
   unreadCount: number;
-  type: 'group' | 'private';
+  type: 'match';
   isOnline: boolean;
   lastMessageType?: 'text' | 'image' | 'audio' | 'document';
+  match_data: Match; // Original match data from API
 }
 
 export default function ChatScreen() {
@@ -82,41 +49,111 @@ export default function ChatScreen() {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [chats, setChats] = useState<ChatPreview[]>(MOCK_CHATS);
+  const [loading, setLoading] = useState(true);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [chats, setChats] = useState<ChatPreview[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    // In a real app, fetch chats from API here
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1500);
+  // Fetch matches from API
+  const fetchMatches = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      // Get JWT token
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) {
+        throw new Error('No access token found');
+      }
+
+      // Make API request to get matches
+      console.log('Fetching matches...');
+      const response = await axios.get(`${API_URL}/api/matches/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('Matches response:', response.data);
+
+      if (response.data.matches) {
+        setMatches(response.data.matches);
+        
+        // Transform matches to chat previews
+        const chatPreviews = response.data.matches.map((match: Match) => ({
+          id: match.userId.toString(),
+          name: match.username,
+          image: match.profile_photo || DEFAULT_PROFILE_IMAGE,
+          lastMessage: "Tap to start chatting!",
+          last_active: match.matchDate,
+          unreadCount: 0,
+          type: 'match' as const,
+          isOnline: false,
+          match_data: match
+        }));
+        
+        setChats(chatPreviews);
+        setError(null);
+      } else {
+        setMatches([]);
+        setChats([]);
+        setError('No matches found');
+      }
+    } catch (error: any) {
+      console.error('Error fetching matches:', error);
+      setError(error.message || 'Failed to fetch matches');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to load matches'
+      });
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // Example function to get time display
+  // Initial fetch of matches
+  useEffect(() => {
+    fetchMatches();
+  }, []);
+
+  // Handle refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchMatches();
+    setRefreshing(false);
+  }, [fetchMatches]);
+
+  // Format date display
   const getTimeDisplay = (timestamp: string) => {
-    const messageDate = new Date(timestamp);
-    const today = new Date();
-    
-    if (messageDate.toDateString() === today.toDateString()) {
-      // If message is from today, show time
-      return format(messageDate, 'HH:mm');
-    } else if (
-      messageDate.getDate() === today.getDate() - 1 && 
-      messageDate.getMonth() === today.getMonth() && 
-      messageDate.getFullYear() === today.getFullYear()
-    ) {
-      // If message is from yesterday
-      return 'Yesterday';
-    } else if (today.getTime() - messageDate.getTime() < 7 * 24 * 60 * 60 * 1000) {
-      // If message is from this week
-      return format(messageDate, 'EEE');
-    } else {
-      // Otherwise show date
-      return format(messageDate, 'dd/MM');
+    try {
+      const messageDate = new Date(timestamp);
+      const today = new Date();
+      
+      if (messageDate.toDateString() === today.toDateString()) {
+        // If message is from today, show time
+        return format(messageDate, 'HH:mm');
+      } else if (
+        messageDate.getDate() === today.getDate() - 1 && 
+        messageDate.getMonth() === today.getMonth() && 
+        messageDate.getFullYear() === today.getFullYear()
+      ) {
+        // If message is from yesterday
+        return 'Yesterday';
+      } else if (today.getTime() - messageDate.getTime() < 7 * 24 * 60 * 60 * 1000) {
+        // If message is from this week
+        return format(messageDate, 'EEE');
+      } else {
+        // Otherwise show date
+        return format(messageDate, 'dd/MM');
+      }
+    } catch (e) {
+      // If date parsing fails, return a fallback
+      return 'New';
     }
   };
 
+  // Render message preview
   const renderMessagePreview = (content: string, type?: string) => {
     if (type === 'image') {
       return (
@@ -146,6 +183,7 @@ export default function ChatScreen() {
     }
   };
 
+  // Render chat item
   const renderChatItem = ({ item }: { item: ChatPreview }) => (
     <Animated.View entering={FadeInDown.delay(parseInt(item.id) * 100)}>
       <TouchableOpacity
@@ -161,9 +199,9 @@ export default function ChatScreen() {
           {item.isOnline && (
             <View className="absolute bottom-0 right-0 w-3 h-3 bg-secondary rounded-full border-2 border-neutral-lightest" />
           )}
-          {item.type === 'group' && (
+          {item.type === 'match' && (
             <View className="absolute -bottom-1 -right-1 bg-primary-light rounded-full w-5 h-5 items-center justify-center border border-neutral-lightest">
-              <Ionicons name="people" size={10} color="#fff" />
+              <Ionicons name="heart" size={10} color="#fff" />
             </View>
           )}
         </View>
@@ -196,34 +234,63 @@ export default function ChatScreen() {
     </Animated.View>
   );
 
+  // Empty state component
   const renderEmptyComponent = () => (
     <View className="flex-1 items-center justify-center py-20">
       <Ionicons name="chatbubbles-outline" size={48} color="#E6E4EC" />
       <Text className="text-neutral-dark mt-4 text-center font-montserrat">
-        No conversations yet{'\n'}Start chatting with someone!
+        {error || "No matches yet.\nKeep swiping to find connections!"}
       </Text>
+      <TouchableOpacity 
+        onPress={() => router.push("/(tabs)/explore")}
+        className="mt-6 bg-primary px-6 py-3 rounded-xl"
+      >
+        <Text className="text-white font-montserratMedium">Explore Users</Text>
+      </TouchableOpacity>
     </View>
   );
 
+  // Filter chats based on search query
   const filteredChats = chats.filter(chat => 
     chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    chat.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
+    (chat.match_data.interests && 
+      chat.match_data.interests.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (chat.match_data.bio && 
+      chat.match_data.bio.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
     <SafeAreaView className="flex-1 bg-neutral-light">
       <TabHeader
-        title="Messages"
-        // leftIcon="mail-unread-outline"
-        // rightIcon="filter-outline"
-        // onLeftPress={() => router.push("/chat/requests")}
-        // onRightPress={() => router.push("/chat/filter")}
+        title="Matches"
         gradientColors={['rgba(125, 91, 166, 0.9)', 'rgba(90, 65, 128, 0.8)']}
       />
+      
+      {/* Search Bar */}
+      <View className="mt-2 mx-4 mb-3">
+        <View className="bg-white rounded-xl overflow-hidden shadow">
+          <View className="flex-row items-center px-3 py-2">
+            <Ionicons name="search" size={20} color="#7D5BA6" />
+            <TextInput
+              placeholder="Search matches..."
+              placeholderTextColor="#9CA3AF"
+              className="flex-1 ml-2 text-neutral-darkest font-montserrat"
+              onChangeText={setSearchQuery}
+              value={searchQuery}
+            />
+            {searchQuery ? (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </View>
+      </View>
 
-      {loading ? (
+      {loading && !refreshing ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#7D5BA6" />
+          <Text className="mt-4 text-neutral-dark font-montserrat">Loading your matches...</Text>
         </View>
       ) : (
         <FlatList
@@ -245,17 +312,17 @@ export default function ChatScreen() {
 
       {/* New Chat FAB */}
       <TouchableOpacity
-        onPress={() => router.push("/chat/new-message")}
+        onPress={() => router.push("/(tabs)/explore")}
         className="absolute bottom-6 right-6 w-14 h-14 bg-primary rounded-full items-center justify-center shadow-lg"
         style={{
-          shadowColor: '#5A4180',
+          shadowColor: "#7D5BA6",
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.3,
-          shadowRadius: 4,
-          elevation: 8
+          shadowRadius: 5,
+          elevation: 5
         }}
       >
-        <Ionicons name="create-outline" size={24} color="white" />
+        <Ionicons name="search" size={24} color="#fff" />
       </TouchableOpacity>
     </SafeAreaView>
   );

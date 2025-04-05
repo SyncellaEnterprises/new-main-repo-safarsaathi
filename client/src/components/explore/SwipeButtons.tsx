@@ -115,8 +115,6 @@ export function SwipeButtons({
       const token = await AsyncStorage.getItem('accessToken');
       if (!token) throw new Error('No access token found');
 
-      // Use the actual username from the API response
-      // Usernames are real strings like "shrey3", not based on IDs
       const targetUsername = currentUser.username;
       
       console.log('Target username for swipe:', targetUsername);
