@@ -56,9 +56,10 @@ class MatchesGetModel:
                     "username": row["username"],
                     "userId": row["userid"],  # PostgreSQL converts to lowercase
                     "email": row["email"],
+                    "location": row["location"],
                     "interests": row["interests"],
-                    "matchDate": row["matchdate"].isoformat() if row["matchdate"] else None,  # Convert timestamp to ISO format
-                    "bio": row["bio"]
+                    "bio": row["bio"],
+                    "matchDate": row["matchdate"].isoformat() if row["matchdate"] else None  # Convert timestamp to ISO format
                 }
                 matches.append(match_info)
             
