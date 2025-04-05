@@ -1,22 +1,123 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import MapView, { PROVIDER_GOOGLE, Heatmap, Marker, Callout } from 'react-native-maps';
+import MapView, { PROVIDER_GOOGLE, Marker, Callout, Circle, MapTypes } from 'react-native-maps';
 import { StyleSheet, View, ScrollView, TouchableOpacity, Text, Image, Platform, Dimensions, ActivityIndicator } from 'react-native';
 import * as Location from 'expo-location';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, SlideInUp } from 'react-native-reanimated';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width, height } = Dimensions.get('window');
 
-// Set API URL to your local server (same as in explore.tsx)
+// Set API URL to your local server
 const API_URL = 'http://10.0.2.2:5000';
 
 // Default profile image if none provided
-const DEFAULT_PROFILE_IMAGE = 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.etvbharat.com%2Fen%2F!entertainment%2Fdressed-in-saree-sharvari-wagh-sends-festive-greetings-prays-for-alpha-on-dussehra-enn24101201536&psig=AOvVaw00wrwqm2ec-4gylA7pH1xF&ust=1743942436672000&source=images&cd=vfe&opi=89978449&ved=0CBEQjRxqFwoTCMjJ7PzxwIwDFQAAAAAdAAAAABAE';
+const DEFAULT_PROFILE_IMAGE = 'https://static.vecteezy.com/system/resources/thumbnails/009/292/244/small/default-avatar-icon-of-social-media-user-vector.jpg';
+
+// Map styles
+const CUSTOM_MAP_STYLE = [
+  {
+    "elementType": "geometry",
+    "stylers": [{"color": "#121212"}]
+  },
+  {
+    "elementType": "labels.icon",
+    "stylers": [{"visibility": "off"}]
+  },
+  {
+    "elementType": "labels.text.fill",
+    "stylers": [{"color": "#757575"}]
+  },
+  {
+    "elementType": "labels.text.stroke",
+    "stylers": [{"color": "#212121"}]
+  },
+  {
+    "featureType": "administrative",
+    "elementType": "geometry",
+    "stylers": [{"color": "#2e2e2e"}]
+  },
+  {
+    "featureType": "administrative.country",
+    "elementType": "labels.text.fill",
+    "stylers": [{"color": "#7D5BA6"}]
+  },
+  {
+    "featureType": "administrative.locality",
+    "elementType": "labels.text.fill",
+    "stylers": [{"color": "#bdbdbd"}]
+  },
+  {
+    "featureType": "poi",
+    "elementType": "labels.text.fill",
+    "stylers": [{"color": "#757575"}]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "geometry",
+    "stylers": [{"color": "#151515"}]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "labels.text.fill",
+    "stylers": [{"color": "#616161"}]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "labels.text.stroke",
+    "stylers": [{"color": "#1b1b1b"}]
+  },
+  {
+    "featureType": "road",
+    "elementType": "geometry.fill",
+    "stylers": [{"color": "#333333"}]
+  },
+  {
+    "featureType": "road",
+    "elementType": "labels.text.fill",
+    "stylers": [{"color": "#8a8a8a"}]
+  },
+  {
+    "featureType": "road.arterial",
+    "elementType": "geometry",
+    "stylers": [{"color": "#353535"}]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry",
+    "stylers": [{"color": "#3c3c3c"}]
+  },
+  {
+    "featureType": "road.highway.controlled_access",
+    "elementType": "geometry",
+    "stylers": [{"color": "#4e4e4e"}]
+  },
+  {
+    "featureType": "road.local",
+    "elementType": "labels.text.fill",
+    "stylers": [{"color": "#616161"}]
+  },
+  {
+    "featureType": "transit",
+    "elementType": "labels.text.fill",
+    "stylers": [{"color": "#757575"}]
+  },
+  {
+    "featureType": "water",
+    "elementType": "geometry",
+    "stylers": [{"color": "#070F1A"}]
+  },
+  {
+    "featureType": "water",
+    "elementType": "labels.text.fill",
+    "stylers": [{"color": "#3d3d3d"}]
+  }
+];
 
 // Match interface with added location parsing
 interface Match {
@@ -38,7 +139,7 @@ interface Match {
   };
 }
 
-// Places of interest can remain the same for now
+// Places of interest
 const PLACES_OF_INTEREST = [
   {
     id: '1',
@@ -60,7 +161,6 @@ const PLACES_OF_INTEREST = [
     },
     icon: '🎓'
   },
-  // Add more places as needed
 ];
 
 export default function LocationScreen() {
@@ -76,10 +176,9 @@ export default function LocationScreen() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedFilter, setSelectedFilter] = useState('All');
+  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [showGhostMode, setShowGhostMode] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const [mapType, setMapType] = useState<'standard' | 'satellite'>('standard');
 
   // Initialize with user's current location
   const getUserLocation = async () => {
@@ -88,9 +187,10 @@ export default function LocationScreen() {
       if (status === 'granted') {
         const location = await Location.getCurrentPositionAsync({});
         setCurrentLocation({
-          ...currentLocation,
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
         });
         
         if (mapRef.current) {
@@ -99,7 +199,7 @@ export default function LocationScreen() {
             longitude: location.coords.longitude,
             latitudeDelta: 0.05,
             longitudeDelta: 0.05,
-          });
+          }, 1000);
         }
       }
     } catch (error) {
@@ -126,8 +226,6 @@ export default function LocationScreen() {
           'Content-Type': 'application/json'
         }
       });
-
-      console.log('Map matches response:', response.data);
 
       if (response.data.matches && response.data.matches.length > 0) {
         // Parse location data for each match
@@ -193,6 +291,25 @@ export default function LocationScreen() {
     fetchMatches();
   }, []);
 
+  // Handle match selection
+  const handleSelectMatch = (match: Match) => {
+    setSelectedMatch(match);
+    
+    if (match.parsedLocation && mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: match.parsedLocation.latitude,
+        longitude: match.parsedLocation.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      }, 1000);
+    }
+  };
+
+  // Toggle map type
+  const toggleMapType = () => {
+    setMapType(prev => prev === 'standard' ? 'satellite' : 'standard');
+  };
+
   // Render a match marker
   const renderUserMarker = (match: Match) => {
     if (!match.parsedLocation) return null;
@@ -206,46 +323,31 @@ export default function LocationScreen() {
         }}
         anchor={{ x: 0.5, y: 0.5 }}
       >
-        <View style={styles.markerContainer}>
-          <Image 
-            source={{ uri: match.profile_photo || DEFAULT_PROFILE_IMAGE }}
-            style={styles.markerImage}
-            defaultSource={require('@/assets/images/avatar.png')}
-          />
+        <TouchableOpacity 
+          activeOpacity={0.8}
+          onPress={() => handleSelectMatch(match)}
+        >
+          <LinearGradient
+            colors={['#7D5BA6', '#A259FF']}
+            style={styles.markerGradient}
+          >
+            <Image 
+              source={{ uri: match.profile_photo || DEFAULT_PROFILE_IMAGE }}
+              style={styles.markerImage}
+              defaultSource={require('@/assets/images/avatar.png')}
+            />
+          </LinearGradient>
           <View style={styles.markerBadge}>
             <Text style={styles.markerTime}>
               {match.username}
             </Text>
           </View>
-        </View>
-        <Callout tooltip onPress={() => router.push(`/chat/${match.userId}`)}>
-          <BlurView intensity={30} tint="dark" style={styles.calloutContainer}>
-            <View style={styles.calloutHeader}>
-              <Image 
-                source={{ uri: match.profile_photo || DEFAULT_PROFILE_IMAGE }}
-                style={styles.calloutImage}
-                defaultSource={require('@/assets/images/avatar.png')}
-              />
-              <View style={styles.calloutInfo}>
-                <Text style={styles.calloutName}>{match.username}</Text>
-                <Text style={styles.calloutStatus}>{match.interests}</Text>
-                <Text style={styles.calloutLocation}>
-                  📍 {match.parsedLocation.city || match.parsedLocation.state || 'Location not specified'}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.calloutFooter}>
-              <Text style={styles.calloutBio}>{match.bio ? (match.bio.length > 30 ? match.bio.substring(0, 30) + '...' : match.bio) : 'No bio provided'}</Text>
-              <TouchableOpacity style={styles.calloutButton}>
-                <Text style={styles.calloutButtonText}>Chat Now</Text>
-              </TouchableOpacity>
-            </View>
-          </BlurView>
-        </Callout>
+        </TouchableOpacity>
       </Marker>
     );
   };
 
+  // Render a place marker
   const renderPlaceMarker = (place: typeof PLACES_OF_INTEREST[0]) => (
     <Marker
       key={place.id}
@@ -255,25 +357,18 @@ export default function LocationScreen() {
       <View style={styles.placeMarkerContainer}>
         <Text style={styles.placeMarkerIcon}>{place.icon}</Text>
         <Text style={styles.placeMarkerText}>{place.name}</Text>
-        <Text style={styles.placeMarkerType}>{place.type}</Text>
       </View>
     </Marker>
   );
 
   return (
     <View style={styles.container}>
-      {/* Search and Location Header */}
+      {/* Fancy Header */}
       <Animated.View 
-        entering={FadeInDown}
+        entering={FadeInDown.duration(800).delay(200)}
         style={styles.header}
       >
-        <View style={styles.searchContainer}>
-          <TouchableOpacity 
-            style={styles.searchButton}
-            onPress={() => setIsSearching(true)}
-          >
-            <Ionicons name="search" size={20} color="#fff" />
-          </TouchableOpacity>
+        <BlurView intensity={20} tint="dark" style={styles.searchContainer}>
           <View style={styles.locationInfo}>
             <Text style={styles.locationText}>
               {matches.length > 0 ? `${matches.length} Matches Nearby` : 'No Matches Nearby'}
@@ -289,7 +384,7 @@ export default function LocationScreen() {
               color="#fff" 
             />
           </TouchableOpacity>
-        </View>
+        </BlurView>
       </Animated.View>
 
       {loading ? (
@@ -299,46 +394,39 @@ export default function LocationScreen() {
         </View>
       ) : (
         <>
-          {/* Main Map */}
+          {/* Custom Styled Map */}
           <MapView
             ref={mapRef}
             provider={PROVIDER_GOOGLE}
             style={styles.map}
             initialRegion={currentLocation}
-            customMapStyle={darkMapStyle}
+            customMapStyle={CUSTOM_MAP_STYLE}
             showsUserLocation
             showsCompass={false}
-            showsMyLocationButton={false}
+            mapType={mapType}
+            showsScale={false}
             rotateEnabled={false}
-            showsBuildings={false}
-            showsIndoors={false}
-            showsPointsOfInterest={false}
             showsTraffic={false}
+            showsIndoors={false}
+            showsBuildings={false}
+            showsPointsOfInterest={false}
           >
-            {/* Heatmap only if we have matches */}
-            {matches.length > 0 && (
-              <Heatmap
-                points={matches
-                  .filter(match => match.parsedLocation)
-                  .map(match => ({
-                    latitude: match.parsedLocation!.latitude,
-                    longitude: match.parsedLocation!.longitude,
-                    weight: 1,
-                  }))}
-                radius={20}
-                opacity={0.3}
-                gradient={{
-                  colors: ['#ffd700', '#ff8c00', '#ff4500'],
-                  startPoints: [0, 0.5, 1],
-                  colorMapSize: 2000
-                }}
-              />
-            )}
+            {/* Location Pulse Effect for Current Location */}
+            <Circle
+              center={{
+                latitude: currentLocation.latitude,
+                longitude: currentLocation.longitude,
+              }}
+              radius={500}
+              fillColor="rgba(125, 91, 166, 0.2)"
+              strokeColor="rgba(125, 91, 166, 0.5)"
+              strokeWidth={1}
+            />
             
-            {/* User Markers */}
+            {/* Match Markers */}
             {!showGhostMode && matches.map(renderUserMarker)}
             
-            {/* Places Markers */}
+            {/* Places of Interest */}
             {PLACES_OF_INTEREST.map(renderPlaceMarker)}
           </MapView>
 
@@ -360,7 +448,63 @@ export default function LocationScreen() {
                 <Ionicons name="refresh" size={24} color="#fff" />
               </TouchableOpacity>
             </BlurView>
+            <BlurView intensity={20} tint="dark" style={styles.actionButton}>
+              <TouchableOpacity 
+                style={styles.actionBlur}
+                onPress={toggleMapType}
+              >
+                <MaterialCommunityIcons name={mapType === 'standard' ? "satellite-variant" : "map"} size={24} color="#fff" />
+              </TouchableOpacity>
+            </BlurView>
           </View>
+
+          {/* Selected Match Info */}
+          {selectedMatch && (
+            <Animated.View
+              entering={SlideInUp.duration(500)}
+              style={styles.matchInfoCardContainer}
+            >
+              <BlurView intensity={30} tint="dark" style={styles.matchInfoCard}>
+                <View style={styles.matchInfoHeader}>
+                  <Image 
+                    source={{ uri: selectedMatch.profile_photo || DEFAULT_PROFILE_IMAGE }}
+                    style={styles.matchInfoImage}
+                    defaultSource={require('@/assets/images/avatar.png')}
+                  />
+                  <View style={styles.matchInfoDetails}>
+                    <Text style={styles.matchInfoName}>{selectedMatch.username}</Text>
+                    <Text style={styles.matchInfoInterests}>{selectedMatch.interests}</Text>
+                    {selectedMatch.parsedLocation && (
+                      <Text style={styles.matchInfoLocation}>
+                        📍 {selectedMatch.parsedLocation.city || selectedMatch.parsedLocation.state || 'Location not specified'}
+                      </Text>
+                    )}
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.matchInfoClose}
+                    onPress={() => setSelectedMatch(null)}
+                  >
+                    <Ionicons name="close" size={24} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.matchInfoBio}>{selectedMatch.bio || 'No bio provided'}</Text>
+                <LinearGradient
+                  colors={['#7D5BA6', '#A259FF']}
+                  start={{x: 0, y: 0}}
+                  end={{x: 1, y: 0}}
+                  style={styles.matchInfoButton}
+                >
+                  <TouchableOpacity 
+                    onPress={() => router.push(`/chat/${selectedMatch.userId}`)}
+                    style={styles.matchInfoButtonInner}
+                  >
+                    <Text style={styles.matchInfoButtonText}>Start Chatting</Text>
+                    <Ionicons name="chatbubble" size={18} color="#fff" style={styles.matchInfoButtonIcon} />
+                  </TouchableOpacity>
+                </LinearGradient>
+              </BlurView>
+            </Animated.View>
+          )}
 
           {/* Bottom Matches Navigation */}
           {matches.length > 0 && (
@@ -373,23 +517,25 @@ export default function LocationScreen() {
                 {matches.map((match) => (
                   <TouchableOpacity 
                     key={match.userId.toString()}
-                    style={styles.userButton}
-                    onPress={() => {
-                      if (match.parsedLocation) {
-                        mapRef.current?.animateToRegion({
-                          latitude: match.parsedLocation.latitude,
-                          longitude: match.parsedLocation.longitude,
-                          latitudeDelta: 0.01,
-                          longitudeDelta: 0.01,
-                        });
-                      }
-                    }}
+                    style={[
+                      styles.userButton,
+                      selectedMatch?.userId === match.userId && styles.selectedUserButton
+                    ]}
+                    onPress={() => handleSelectMatch(match)}
                   >
-                    <Image 
-                      source={{ uri: match.profile_photo || DEFAULT_PROFILE_IMAGE }}
-                      style={styles.userButtonImage}
-                      defaultSource={require('@/assets/images/avatar.png')}
-                    />
+                    <LinearGradient
+                      colors={['#7D5BA6', '#A259FF']}
+                      style={[
+                        styles.userButtonBorder,
+                        selectedMatch?.userId === match.userId && styles.selectedUserButtonBorder
+                      ]}
+                    >
+                      <Image 
+                        source={{ uri: match.profile_photo || DEFAULT_PROFILE_IMAGE }}
+                        style={styles.userButtonImage}
+                        defaultSource={require('@/assets/images/avatar.png')}
+                      />
+                    </LinearGradient>
                     <Text style={styles.userButtonName}>{match.username}</Text>
                   </TouchableOpacity>
                 ))}
@@ -414,21 +560,17 @@ const styles = StyleSheet.create({
   header: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 50 : 30,
-    left: 0,
-    right: 0,
-    zIndex: 1,
-    padding: 16,
+    left: 16,
+    right: 16,
+    zIndex: 10,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 25,
-    padding: 10,
-  },
-  searchButton: {
-    padding: 5,
+    borderRadius: 20,
+    padding: 12,
+    overflow: 'hidden',
   },
   locationInfo: {
     flexDirection: 'row',
@@ -438,11 +580,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-    marginRight: 10,
-  },
-  temperatureText: {
-    color: '#fff',
-    fontSize: 16,
   },
   ghostButton: {
     padding: 5,
@@ -450,88 +587,32 @@ const styles = StyleSheet.create({
   markerContainer: {
     alignItems: 'center',
   },
+  markerGradient: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    padding: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   markerImage: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  markerImageActive: {
-    borderColor: '#00ff00',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
   },
   markerBadge: {
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
-    marginTop: 2,
-    backgroundColor: 'rgba(125, 91, 166, 0.8)',
-  },
-  markerBadgeActive: {
-    backgroundColor: '#00ff00',
-  },
-  markerBadgeInactive: {
-    backgroundColor: 'rgba(255,255,255,0.8)',
+    marginTop: 4,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderWidth: 1,
+    borderColor: 'rgba(125, 91, 166, 0.5)',
   },
   markerTime: {
     fontSize: 10,
-    color: '#fff',
-    fontWeight: '600',
-  },
-  calloutContainer: {
-    width: width * 0.7,
-    borderRadius: 15,
-    overflow: 'hidden',
-    padding: 12,
-  },
-  calloutHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  calloutImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 10,
-  },
-  calloutInfo: {
-    flex: 1,
-  },
-  calloutName: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  calloutStatus: {
-    color: '#fff',
-    opacity: 0.8,
-    fontSize: 14,
-  },
-  calloutLocation: {
-    color: '#fff',
-    opacity: 0.8,
-    fontSize: 12,
-  },
-  calloutFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 10,
-  },
-  calloutBio: {
-    color: '#fff',
-    fontSize: 12,
-    flex: 1,
-    marginRight: 10,
-  },
-  calloutButton: {
-    backgroundColor: '#7D5BA6',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 15,
-  },
-  calloutButtonText: {
     color: '#fff',
     fontWeight: '600',
   },
@@ -540,6 +621,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.7)',
     padding: 8,
     borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   placeMarkerIcon: {
     fontSize: 20,
@@ -561,7 +644,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   actionButton: {
-    borderRadius: 12,
+    borderRadius: 20,
     overflow: 'hidden',
   },
   actionBlur: {
@@ -574,20 +657,41 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 16,
     paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
   },
   bottomNavContent: {
     paddingHorizontal: 8,
+    gap: 16,
   },
   userButton: {
     alignItems: 'center',
     marginHorizontal: 8,
   },
+  selectedUserButton: {
+    transform: [{scale: 1.1}],
+  },
+  userButtonBorder: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedUserButtonBorder: {
+    shadowColor: '#7D5BA6',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
+    elevation: 8,
+  },
   userButtonImage: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    borderWidth: 2,
-    borderColor: '#fff',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
   },
   userButtonName: {
     color: '#fff',
@@ -606,84 +710,77 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
   },
+  matchInfoCardContainer: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 100,
+    zIndex: 5,
+  },
+  matchInfoCard: {
+    padding: 16,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(125, 91, 166, 0.3)',
+  },
+  matchInfoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  matchInfoImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  matchInfoDetails: {
+    flex: 1,
+  },
+  matchInfoName: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  matchInfoInterests: {
+    color: '#fff',
+    fontSize: 14,
+    opacity: 0.8,
+  },
+  matchInfoLocation: {
+    color: '#fff',
+    fontSize: 12,
+    opacity: 0.7,
+    marginTop: 4,
+  },
+  matchInfoClose: {
+    padding: 8,
+  },
+  matchInfoBio: {
+    color: '#fff',
+    fontSize: 14,
+    marginVertical: 12,
+    lineHeight: 20,
+  },
+  matchInfoButton: {
+    borderRadius: 20,
+    marginTop: 8,
+  },
+  matchInfoButtonInner: {
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  matchInfoButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  matchInfoButtonIcon: {
+    marginLeft: 8,
+  },
 });
-
-const darkMapStyle = [
-  {
-    elementType: 'geometry',
-    stylers: [{ color: '#242f3e' }]
-  },
-  {
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#746855' }]
-  },
-  {
-    elementType: 'labels.text.stroke',
-    stylers: [{ color: '#242f3e' }]
-  },
-  {
-    featureType: 'administrative.locality',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#d59563' }]
-  },
-  {
-    featureType: 'poi',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#d59563' }]
-  },
-  {
-    featureType: 'poi.park',
-    elementType: 'geometry',
-    stylers: [{ color: '#263c3f' }]
-  },
-  {
-    featureType: 'poi.park',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#6b9a76' }]
-  },
-  {
-    featureType: 'road',
-    elementType: 'geometry',
-    stylers: [{ color: '#38414e' }]
-  },
-  {
-    featureType: 'road',
-    elementType: 'geometry.stroke',
-    stylers: [{ color: '#212a37' }]
-  },
-  {
-    featureType: 'road',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#9ca5b3' }]
-  },
-  {
-    featureType: 'road.highway',
-    elementType: 'geometry',
-    stylers: [{ color: '#746855' }]
-  },
-  {
-    featureType: 'road.highway',
-    elementType: 'geometry.stroke',
-    stylers: [{ color: '#1f2835' }]
-  },
-  {
-    featureType: 'road.highway',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#f3d19c' }]
-  },
-  {
-    featureType: 'water',
-    elementType: 'geometry',
-    stylers: [{ color: '#17263c' }]
-  },
-  {
-    featureType: 'water',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#515c6d' }]
-  },
-  {
-    featureType: 'water',
-    elementType: 'labels.text.stroke',
-    stylers: [{ color: '#17263c' }]
-  }
-];
