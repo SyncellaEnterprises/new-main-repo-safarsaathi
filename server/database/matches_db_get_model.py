@@ -28,6 +28,7 @@ class MatchesGetModel:
                     ud.id as userId,
                     ud.email,
                     up.interest as interests,
+                    up.location as location,
                     m.matched_at as matchDate,
                     up.bio
                 FROM matches m
