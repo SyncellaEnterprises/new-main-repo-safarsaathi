@@ -2,11 +2,18 @@ from flask import Flask, jsonify, request
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
+from flask_jwt_extended.utils import decode_token
 from config.config import *
 from utils.logger import logging
 import psycopg2
 from datetime import datetime
 from socket_config import SOCKET_PORT, SOCKET_HOST
+import sys
+import os
+
+# Add the server directory to the Python path to enable imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from database.travel_group_db import TravelGroupDB
 
 # Create a separate Flask app for the socket server
 app = Flask(__name__)
@@ -15,14 +22,17 @@ app.config['JWT_TOKEN_LOCATION'] = ['headers', 'query_string']
 jwt = JWTManager(app)
 CORS(app)  # Allow CORS for all origins
 
+# Initialize TravelGroupDB
+travel_group_db = TravelGroupDB()
+
 # API route to provide socket server information
-@app.route('/api/socket/info', methods=['GET'])
-def socket_info():
-    """Return socket server configuration details"""
+@app.route('/api/socket_server/info', methods=['GET'])
+def get_socket_info():
+    """API endpoint to provide socket server information"""
     return jsonify({
-        'socket_port': SOCKET_PORT,
         'socket_host': SOCKET_HOST,
-        'status': 'online'
+        'socket_port': SOCKET_PORT,
+        'status': 'running'
     })
 
 # Initialize SocketIO with this app
@@ -57,7 +67,6 @@ def get_db_connection():
 
 def get_user_id_from_token(token):
     """Helper function to extract user ID from a token with different formats"""
-    from flask_jwt_extended.utils import decode_token
     decoded_token = decode_token(token)
     
     # Log token structure for debugging
@@ -211,11 +220,11 @@ def mark_messages_as_read(user_id, other_user_id):
 def handle_connect(auth=None):
     token = request.args.get('token')
     if not token:
-        logging.warning("Connection attempt without token")
-        raise ConnectionRefusedError('Authentication required')
+        logging.warning("Connection attempt without token - allowing anonymous connection")
+        emit('connection_status', {'status': 'connected', 'message': 'Connected anonymously'})
+        return
     
     try:
-        from flask_jwt_extended.utils import decode_token
         decoded_token = decode_token(token)
         
         # Check token structure
@@ -238,7 +247,8 @@ def handle_connect(auth=None):
             
             if not result:
                 logging.error(f"User not found: {username}")
-                raise ConnectionRefusedError('User not found')
+                emit('connection_status', {'status': 'anonymous', 'message': 'User not found but connected anonymously'})
+                return
                 
             user_id = result[0]
             logging.info(f"Found user ID: {user_id} for username: {username}")
@@ -256,7 +266,9 @@ def handle_connect(auth=None):
         emit('connection_status', {'status': 'connected', 'message': 'Successfully connected'})
     except Exception as e:
         logging.error(f"Authentication error: {str(e)}")
-        raise ConnectionRefusedError('Authentication failed')
+        emit('connection_status', {'status': 'error', 'message': f'Authentication error: {str(e)}'})
+        # Allow connection but mark it as unauthenticated
+        return
 
 @socketio.on('disconnect')
 def handle_disconnect():
@@ -270,7 +282,6 @@ def handle_disconnect():
 @socketio.on('join_chat')
 def handle_join_chat(data):
     try:
-        from flask_jwt_extended.utils import decode_token
         token = request.args.get('token')
         decoded_token = decode_token(token)
         
@@ -336,7 +347,6 @@ def handle_join_chat(data):
 @socketio.on('send_message')
 def handle_send_message(data):
     try:
-        from flask_jwt_extended.utils import decode_token
         token = request.args.get('token')
         decoded_token = decode_token(token)
         
@@ -441,7 +451,6 @@ def handle_send_message(data):
 @socketio.on('message_read')
 def handle_message_read(data):
     try:
-        from flask_jwt_extended.utils import decode_token
         token = request.args.get('token')
         decoded_token = decode_token(token)
         
@@ -507,7 +516,6 @@ def handle_message_read(data):
 @socketio.on('typing')
 def handle_typing(data):
     try:
-        from flask_jwt_extended.utils import decode_token
         token = request.args.get('token')
         decoded_token = decode_token(token)
         
@@ -550,7 +558,255 @@ def handle_typing(data):
     except Exception as e:
         logging.error(f"Error handling typing status: {str(e)}")
 
+# Group-related socket events
+@socketio.on('join_group')
+def handle_join_group(data):
+    try:
+        token = request.args.get('token')
+        logging.info(f"Join group request received with token: {token}")
+        
+        if not token:
+            logging.error("No token provided")
+            emit('error', {'message': 'No token provided'})
+            return
+        
+        decoded_token = decode_token(token)
+        sub = decoded_token.get('sub', {})
+        
+        user_id = None
+        if isinstance(sub, dict) and 'id' in sub:
+            user_id = sub['id']
+        elif isinstance(sub, str):
+            # If sub is a username string, look up the user_id
+            conn = psycopg2.connect(**DATABASE_CONF)
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM user_db WHERE username = %s", (sub,))
+            result = cursor.fetchone()
+            if result:
+                user_id = result[0]
+            cursor.close()
+            conn.close()
+        
+        if not user_id:
+            logging.error(f"Failed to extract user_id from token: {decoded_token}")
+            emit('error', {'message': 'Invalid token'})
+            return
+        
+        group_id = data.get('group_id')
+        if not group_id:
+            logging.error("No group_id provided")
+            emit('error', {'message': 'No group_id provided'})
+            return
+        
+        # Check if user is a member of the group
+        is_member = travel_group_db.is_group_member(group_id, user_id)
+        if not is_member:
+            logging.error(f"User {user_id} is not a member of group {group_id}")
+            emit('error', {'message': 'You are not a member of this group'})
+            return
+        
+        room = f"group_{group_id}"
+        join_room(room)
+        logging.info(f"User {user_id} joined group room {room}")
+        emit('joined_group', {'group_id': group_id, 'user_id': user_id}, room=room)
+    except Exception as e:
+        logging.error(f"Error in join_group: {str(e)}")
+        emit('error', {'message': str(e)})
+
+@socketio.on('group_message')
+def handle_group_message(data):
+    try:
+        token = request.args.get('token')
+        logging.info(f"Group message request received with token: {token}")
+        
+        if not token:
+            logging.error("No token provided")
+            emit('error', {'message': 'No token provided'})
+            return
+        
+        decoded_token = decode_token(token)
+        sub = decoded_token.get('sub', {})
+        
+        user_id = None
+        if isinstance(sub, dict) and 'id' in sub:
+            user_id = sub['id']
+        elif isinstance(sub, str):
+            # If sub is a username string, look up the user_id
+            conn = psycopg2.connect(**DATABASE_CONF)
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM user_db WHERE username = %s", (sub,))
+            result = cursor.fetchone()
+            if result:
+                user_id = result[0]
+            cursor.close()
+            conn.close()
+        
+        if not user_id:
+            logging.error(f"Failed to extract user_id from token: {decoded_token}")
+            emit('error', {'message': 'Invalid token'})
+            return
+        
+        group_id = data.get('group_id')
+        message_content = data.get('message')
+        
+        if not group_id:
+            logging.error("No group_id provided")
+            emit('error', {'message': 'No group_id provided'})
+            return
+        
+        if not message_content:
+            logging.error("No message provided")
+            emit('error', {'message': 'No message provided'})
+            return
+        
+        # Check if user is a member of the group
+        is_member = travel_group_db.is_group_member(group_id, user_id)
+        if not is_member:
+            logging.error(f"User {user_id} is not a member of group {group_id}")
+            emit('error', {'message': 'You are not a member of this group'})
+            return
+        
+        # Save message to database
+        message_id = travel_group_db.add_group_message(group_id, user_id, message_content)
+        
+        if not message_id:
+            logging.error("Failed to save message to database")
+            emit('error', {'message': 'Failed to save message'})
+            return
+        
+        # Get user details
+        conn = psycopg2.connect(**DATABASE_CONF)
+        cursor = conn.cursor()
+        cursor.execute("SELECT username, email FROM user_db WHERE id = %s", (user_id,))
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        
+        if not user:
+            logging.error(f"User {user_id} not found")
+            emit('error', {'message': 'User not found'})
+            return
+        
+        username, email = user
+        
+        # Send message to group room
+        room = f"group_{group_id}"
+        timestamp = datetime.now().isoformat()
+        message_data = {
+            'id': message_id,
+            'group_id': group_id,
+            'sender_id': user_id,
+            'sender_username': username,
+            'sender_email': email,
+            'content': message_content,
+            'timestamp': timestamp,
+            'status': 'sent'
+        }
+        
+        emit('group_message', message_data, room=room)
+        logging.info(f"Group message sent to room {room}: {message_data}")
+    except Exception as e:
+        logging.error(f"Error in group_message: {str(e)}")
+        emit('error', {'message': str(e)})
+
+@socketio.on('group_typing')
+def handle_group_typing(data):
+    try:
+        token = request.args.get('token')
+        logging.info(f"Group typing request received with token: {token}")
+        
+        if not token:
+            logging.error("No token provided")
+            emit('error', {'message': 'No token provided'})
+            return
+        
+        decoded_token = decode_token(token)
+        sub = decoded_token.get('sub', {})
+        
+        user_id = None
+        if isinstance(sub, dict) and 'id' in sub:
+            user_id = sub['id']
+        elif isinstance(sub, str):
+            # If sub is a username string, look up the user_id
+            conn = psycopg2.connect(**DATABASE_CONF)
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM user_db WHERE username = %s", (sub,))
+            result = cursor.fetchone()
+            if result:
+                user_id = result[0]
+            cursor.close()
+            conn.close()
+        
+        if not user_id:
+            logging.error(f"Failed to extract user_id from token: {decoded_token}")
+            emit('error', {'message': 'Invalid token'})
+            return
+        
+        group_id = data.get('group_id')
+        is_typing = data.get('is_typing', False)
+        
+        if not group_id:
+            logging.error("No group_id provided")
+            emit('error', {'message': 'No group_id provided'})
+            return
+        
+        # Check if user is a member of the group
+        is_member = travel_group_db.is_group_member(group_id, user_id)
+        if not is_member:
+            logging.error(f"User {user_id} is not a member of group {group_id}")
+            emit('error', {'message': 'You are not a member of this group'})
+            return
+        
+        # Get user details
+        conn = psycopg2.connect(**DATABASE_CONF)
+        cursor = conn.cursor()
+        cursor.execute("SELECT username FROM user_db WHERE id = %s", (user_id,))
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        
+        if not user:
+            logging.error(f"User {user_id} not found")
+            emit('error', {'message': 'User not found'})
+            return
+        
+        username = user[0]
+        
+        # Send typing status to group room
+        room = f"group_{group_id}"
+        typing_data = {
+            'group_id': group_id,
+            'user_id': user_id,
+            'username': username,
+            'is_typing': is_typing
+        }
+        
+        emit('group_typing', typing_data, room=room)
+        logging.info(f"Group typing status sent to room {room}: {typing_data}")
+    except Exception as e:
+        logging.error(f"Error in group_typing: {str(e)}")
+        emit('error', {'message': str(e)})
+
+def initialize_app():
+    """Initialize the Flask app with proper configurations"""
+    try:
+        app.config['SECRET_KEY'] = JWT_SECRET_KEY  # Use the same secret key as main app
+        app.config['JWT_SECRET_KEY'] = JWT_SECRET_KEY  # Use the same JWT secret as main app
+        app.config['CORS_HEADERS'] = 'Content-Type'
+        
+        # Configure Flask-JWT-Extended
+        jwt.init_app(app)
+        
+        # Enable CORS for all origins
+        CORS(app, resources={r"/*": {"origins": "*"}})
+        
+        logging.info(f"Socket server initialized on port {SOCKET_PORT}")
+    except Exception as e:
+        logging.error(f"Error initializing app: {e}")
+        raise
+
 # Run the socket server standalone if this file is executed directly
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=SOCKET_PORT, debug=True)
-    logging.info(f"Chat socket server running on port {SOCKET_PORT}")
+    initialize_app()
+    logging.info(f"Starting socket server on port {SOCKET_PORT}...")
+    socketio.run(app, host='0.0.0.0', port=SOCKET_PORT)
