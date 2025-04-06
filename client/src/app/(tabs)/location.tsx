@@ -328,7 +328,7 @@ export default function LocationScreen() {
           onPress={() => handleSelectMatch(match)}
         >
           <LinearGradient
-            colors={['#7D5BA6', '#A259FF']}
+            colors={['#7D5BA6', '#9D7EBD']}
             style={styles.markerGradient}
           >
             <Image 
@@ -489,7 +489,7 @@ export default function LocationScreen() {
                 </View>
                 <Text style={styles.matchInfoBio}>{selectedMatch.bio || 'No bio provided'}</Text>
                 <LinearGradient
-                  colors={['#7D5BA6', '#A259FF']}
+                  colors={['#7D5BA6', '#9D7EBD']}
                   start={{x: 0, y: 0}}
                   end={{x: 1, y: 0}}
                   style={styles.matchInfoButton}
@@ -524,7 +524,7 @@ export default function LocationScreen() {
                     onPress={() => handleSelectMatch(match)}
                   >
                     <LinearGradient
-                      colors={['#7D5BA6', '#A259FF']}
+                      colors={['#7D5BA6', '#9D7EBD']}
                       style={[
                         styles.userButtonBorder,
                         selectedMatch?.userId === match.userId && styles.selectedUserButtonBorder
@@ -551,7 +551,7 @@ export default function LocationScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#1D1B26',
   },
   map: {
     width: '100%',
@@ -571,6 +571,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 12,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(125, 91, 166, 0.3)',
   },
   locationInfo: {
     flexDirection: 'row',
@@ -580,6 +582,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Montserrat-Bold',
   },
   ghostButton: {
     padding: 5,
@@ -615,6 +618,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#fff',
     fontWeight: '600',
+    fontFamily: 'Montserrat-Medium',
   },
   placeMarkerContainer: {
     alignItems: 'center',
@@ -631,11 +635,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: 'Montserrat-Medium',
   },
   placeMarkerType: {
     color: '#fff',
     opacity: 0.8,
     fontSize: 10,
+    fontFamily: 'Montserrat',
   },
   quickActions: {
     position: 'absolute',
@@ -646,6 +652,8 @@ const styles = StyleSheet.create({
   actionButton: {
     borderRadius: 20,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(125, 91, 166, 0.3)',
   },
   actionBlur: {
     padding: 12,
@@ -660,6 +668,9 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    borderColor: 'rgba(125, 91, 166, 0.3)',
   },
   bottomNavContent: {
     paddingHorizontal: 8,
@@ -697,18 +708,20 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     marginTop: 4,
+    fontFamily: 'Montserrat-Medium',
   },
   loadingContainer: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(29, 27, 38, 0.7)',
     zIndex: 2,
   },
   loadingText: {
     color: '#fff',
     marginTop: 10,
     fontSize: 16,
+    fontFamily: 'Montserrat',
   },
   matchInfoCardContainer: {
     position: 'absolute',
@@ -744,17 +757,20 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+    fontFamily: 'YoungSerif-Regular',
   },
   matchInfoInterests: {
     color: '#fff',
     fontSize: 14,
     opacity: 0.8,
+    fontFamily: 'Montserrat',
   },
   matchInfoLocation: {
     color: '#fff',
     fontSize: 12,
     opacity: 0.7,
     marginTop: 4,
+    fontFamily: 'Montserrat-Light',
   },
   matchInfoClose: {
     padding: 8,
@@ -764,6 +780,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginVertical: 12,
     lineHeight: 20,
+    fontFamily: 'Montserrat',
   },
   matchInfoButton: {
     borderRadius: 20,
@@ -779,6 +796,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Montserrat-Bold',
   },
   matchInfoButtonIcon: {
     marginLeft: 8,
