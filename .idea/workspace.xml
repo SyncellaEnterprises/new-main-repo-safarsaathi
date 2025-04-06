@@ -5,15 +5,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d6080ac8-7173-4192-944d-77feefd4c71d" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/(tabs)/location.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(tabs)/location.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/onboarding/age.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/onboarding/age.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/onboarding/bio.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/onboarding/bio.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/onboarding/gender.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/onboarding/gender.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/onboarding/interests.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/onboarding/interests.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/onboarding/location.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/onboarding/location.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/onboarding/occupation.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/onboarding/occupation.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/onboarding/photos.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/onboarding/photos.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/app/onboarding/prompts.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/onboarding/prompts.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
