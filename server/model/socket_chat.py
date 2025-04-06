@@ -559,7 +559,7 @@ def handle_typing(data):
         logging.error(f"Error handling typing status: {str(e)}")
 
 # Group-related socket events
-@socketio.on('join_group')
+@socketio.on('join_group_chat')
 def handle_join_group(data):
     try:
         token = request.args.get('token')
@@ -578,7 +578,7 @@ def handle_join_group(data):
             user_id = sub['id']
         elif isinstance(sub, str):
             # If sub is a username string, look up the user_id
-            conn = psycopg2.connect(**DATABASE_CONF)
+            conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT id FROM user_db WHERE username = %s", (sub,))
             result = cursor.fetchone()
@@ -632,7 +632,7 @@ def handle_group_message(data):
             user_id = sub['id']
         elif isinstance(sub, str):
             # If sub is a username string, look up the user_id
-            conn = psycopg2.connect(**DATABASE_CONF)
+            conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT id FROM user_db WHERE username = %s", (sub,))
             result = cursor.fetchone()
@@ -675,7 +675,7 @@ def handle_group_message(data):
             return
         
         # Get user details
-        conn = psycopg2.connect(**DATABASE_CONF)
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT username, email FROM user_db WHERE id = %s", (user_id,))
         user = cursor.fetchone()
@@ -728,7 +728,7 @@ def handle_group_typing(data):
             user_id = sub['id']
         elif isinstance(sub, str):
             # If sub is a username string, look up the user_id
-            conn = psycopg2.connect(**DATABASE_CONF)
+            conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT id FROM user_db WHERE username = %s", (sub,))
             result = cursor.fetchone()
@@ -758,7 +758,7 @@ def handle_group_typing(data):
             return
         
         # Get user details
-        conn = psycopg2.connect(**DATABASE_CONF)
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT username FROM user_db WHERE id = %s", (user_id,))
         user = cursor.fetchone()

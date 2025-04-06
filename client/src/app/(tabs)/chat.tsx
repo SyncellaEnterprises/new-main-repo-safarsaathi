@@ -390,8 +390,8 @@ export default function ChatScreen() {
     } else if (item.type === 'group') {
       // Extract group_id from the id (format: group_123)
       const groupId = item.id.replace('group_', '');
-      // Navigate to group chat detail screen
-      router.push(`/group-chat/index?id=${groupId}`);
+      // Navigate to group chat detail screen using path parameter
+      router.push(`/group-chat/${groupId}`);
     }
   };
 

@@ -162,7 +162,7 @@ export default function GroupChatScreen() {
     };
 
     // Handler for new group messages
-    const handleNewGroupMessage = (message: GroupMessage) => {
+    const handleNewGroupMessage = (message: any) => {
       console.log('New group message received:', JSON.stringify(message));
       
       // Validate the message object
@@ -171,8 +171,19 @@ export default function GroupChatScreen() {
         return;
       }
       
-      if (message.group_id === groupId) {
-        setMessages(prev => [...prev, message]);
+      // Map the server response to our GroupMessage interface
+      const groupMessage: GroupMessage = {
+        message_id: message.id || String(Date.now()),
+        content: message.content || message.message || '',
+        sender_id: String(message.sender_id),
+        sender_name: message.sender_username || '',
+        group_id: String(message.group_id),
+        sent_at: message.timestamp || message.sent_at || new Date().toISOString(),
+        type: message.type || 'text'
+      };
+      
+      if (String(message.group_id) === groupId) {
+        setMessages(prev => [...prev, groupMessage]);
         
         // Scroll to bottom on new message
         setTimeout(() => {
@@ -197,14 +208,14 @@ export default function GroupChatScreen() {
     };
 
     // Set up event listeners
-    socket.on('group_chat_joined', handleGroupChatJoined);
-    socket.on('new_group_message', handleNewGroupMessage);
+    socket.on('joined_group', handleGroupChatJoined);
+    socket.on('group_message', handleNewGroupMessage);
     socket.on('group_member_status', handleMemberStatus);
 
     // Clean up event listeners
     return () => {
-      socket.off('group_chat_joined', handleGroupChatJoined);
-      socket.off('new_group_message', handleNewGroupMessage);
+      socket.off('joined_group', handleGroupChatJoined);
+      socket.off('group_message', handleNewGroupMessage);
       socket.off('group_member_status', handleMemberStatus);
     };
   }, [socket, groupId]);
@@ -213,13 +224,25 @@ export default function GroupChatScreen() {
   const handleSendMessage = () => {
     if (!newMessage.trim() || !isConnected || !groupId) return;
 
-    sendGroupMessage(newMessage.trim(), groupId);
-    setNewMessage('');
+    console.log(`Attempting to send group message to group ${groupId}:`, newMessage.trim());
     
-    // Scroll to bottom after sending
-    setTimeout(() => {
-      messageListRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    try {
+      sendGroupMessage(newMessage.trim(), groupId);
+      console.log('Group message sent successfully');
+      setNewMessage('');
+      
+      // Scroll to bottom after sending
+      setTimeout(() => {
+        messageListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    } catch (error) {
+      console.error('Error sending group message:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to send message. Please try again.'
+      });
+    }
   };
 
   // Format date for display
@@ -397,7 +420,10 @@ export default function GroupChatScreen() {
                 </Text>
               </View>
               {String(member.user_id) !== String(user?.id) && (
-                <TouchableOpacity className="p-2">
+                <TouchableOpacity 
+                  className="p-2"
+                  onPress={() => handleMemberChatPress(member)}
+                >
                   <Ionicons name="chatbubbles-outline" size={20} color="#7D5BA6" />
                 </TouchableOpacity>
               )}
@@ -407,6 +433,18 @@ export default function GroupChatScreen() {
       </View>
     </View>
   );
+
+  // Handle navigation to direct chat with a group member
+  const handleMemberChatPress = (member: GroupMember) => {
+    // Close the members modal
+    setShowMembers(false);
+    
+    // Navigate to the individual chat with this member
+    router.push(`/chat/${member.user_id}`);
+    
+    // Log the navigation
+    console.log(`Navigating to chat with member: ${member.username} (ID: ${member.user_id})`);
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-neutral-light">

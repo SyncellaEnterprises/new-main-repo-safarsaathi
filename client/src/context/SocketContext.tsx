@@ -283,8 +283,8 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const sendGroupMessage = (content: string, groupId: string, type: string = 'text') => {
     if (!socket || !isConnected) return;
     
-    socket.emit('send_group_message', {
-      content: content,
+    socket.emit('group_message', {
+      message: content,
       group_id: groupId,
       type: type
     });
@@ -295,7 +295,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const sendGroupTypingStatus = (groupId: string, isTyping: boolean) => {
     if (!socket || !isConnected) return;
     
-    socket.emit('group_typing_status', {
+    socket.emit('group_typing', {
       group_id: groupId,
       is_typing: isTyping
     });
