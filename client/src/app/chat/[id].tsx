@@ -203,65 +203,39 @@ export default function ChatDetailScreen() {
   const renderMessage = ({ item }: { item: Message }) => {
     // Add null checks to prevent TypeError
     if (!item || !user) {
-      return null; // Skip rendering if item or user is undefined
+      return null;
     }
     
-    // Safely get the sender ID, ensuring it's a string for comparison
-    const senderId = item.sender_id ? String(item.sender_id) : '';
-    const userId = user.id ? String(user.id) : '';
+    // Get the sender ID and current user ID
+    const senderId = String(item.sender_id || '');
+    const userId = String(user.id || '');
     
     // Check if message is from current user
     const isOwnMessage = senderId === userId;
     
     return (
-      <View className={`flex-row ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-3 mx-2`}>
-        {!isOwnMessage && (
-          <Image
-            source={{ 
-              uri: recipient.profile_photo || 'https://via.placeholder.com/400x400?text=No+Profile+Image'
-            }}
-            className="h-8 w-8 rounded-full mr-2 self-end"
-          />
-        )}
-        
-        <View className={`${
-          isOwnMessage 
-            ? 'bg-primary rounded-t-2xl rounded-l-2xl' 
-            : 'bg-white rounded-t-2xl rounded-r-2xl'
-          } p-3 max-w-[75%] shadow-sm`}
-        >
-          <Text className={`${
-            isOwnMessage ? 'text-white' : 'text-gray-800'
-          } text-base`}>
-            {item.content || ''}
-          </Text>
-          
-          <View className="flex-row items-center justify-end mt-1">
-            <Text className={`text-xs mr-1 ${
-              isOwnMessage ? 'text-primary-light' : 'text-gray-500'
-            }`}>
-              {formatMessageTime(item.sent_at || new Date().toISOString())}
+      <View className={`${isOwnMessage ? 'items-end' : 'items-start'} mb-2 px-4`}>
+        {isOwnMessage ? (
+          <LinearGradient
+            colors={['#8a3ab9', '#4c68d7']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            className="rounded-3xl rounded-tr-md px-4 py-2 max-w-[80%]"
+          >
+            <Text className="text-white">
+              {item.content || ''}
             </Text>
-            
-            {isOwnMessage && (
-              <Ionicons 
-                name={
-                  item.status === 'read' 
-                    ? 'checkmark-done' 
-                    : item.status === 'delivered' 
-                    ? 'checkmark-done'
-                    : 'checkmark'
-                } 
-                size={16} 
-                color={
-                  item.status === 'read' 
-                    ? '#E6E4EC'
-                    : '#BFB8D9'
-                }
-              />
-            )}
+          </LinearGradient>
+        ) : (
+          <View className="bg-gray-100 rounded-3xl rounded-tl-md px-4 py-2 max-w-[80%]">
+            <Text className="text-gray-800">
+              {item.content || ''}
+            </Text>
           </View>
-        </View>
+        )}
+        <Text className={`text-xs text-gray-500 mt-0.5 ${isOwnMessage ? 'pr-1' : 'pl-1'}`}>
+          {formatMessageTime(item.sent_at || new Date().toISOString())}
+        </Text>
       </View>
     );
   };

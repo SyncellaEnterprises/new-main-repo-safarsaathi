@@ -295,53 +295,41 @@ export default function GroupChatScreen() {
       return null;
     }
     
-    // Safely get the sender ID, ensuring it's a string for comparison
-    const senderId = String(item.sender_id);
-    const userId = user.id ? String(user.id) : '';
-    
-    // Check if message is from current user
+    // Get the sender ID to check if we need to show the name
+    const senderId = String(item.sender_id || '');
+    const userId = String(user.id || '');
     const isOwnMessage = senderId === userId;
     
     return (
-      <View className={`flex-row ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-3 mx-2`}>
-        {!isOwnMessage && groupInfo?.members && (
-          <View>
-            <Image
-              source={{ 
-                uri: groupInfo.members.find(m => String(m.user_id) === senderId)?.profile_photo || 
-                     'https://via.placeholder.com/400x400?text=User'
-              }}
-              className="h-8 w-8 rounded-full mr-2 self-end"
-            />
+      <View className={`${isOwnMessage ? 'items-end' : 'items-start'} mb-2 px-4`}>
+        {!isOwnMessage && (
+          <Text className="text-xs text-gray-600 mb-1 pl-1">
+            {item.sender_name}
+          </Text>
+        )}
+        
+        {isOwnMessage ? (
+          <LinearGradient
+            colors={['#8a3ab9', '#4c68d7']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            className="rounded-3xl rounded-tr-md px-4 py-2 max-w-[80%]"
+          >
+            <Text className="text-white">
+              {item.content || ''}
+            </Text>
+          </LinearGradient>
+        ) : (
+          <View className="bg-gray-100 rounded-3xl rounded-tl-md px-4 py-2 max-w-[80%]">
+            <Text className="text-gray-800">
+              {item.content || ''}
+            </Text>
           </View>
         )}
         
-        <View className={`${
-          isOwnMessage 
-            ? 'bg-primary rounded-t-2xl rounded-l-2xl' 
-            : 'bg-white rounded-t-2xl rounded-r-2xl'
-          } p-3 max-w-[75%] shadow-sm`}
-        >
-          {!isOwnMessage && (
-            <Text className="text-sm text-primary font-montserratMedium mb-1">
-              {item.sender_name}
-            </Text>
-          )}
-          
-          <Text className={`${
-            isOwnMessage ? 'text-white' : 'text-gray-800'
-          } text-base`}>
-            {item.content || ''}
-          </Text>
-          
-          <View className="flex-row items-center justify-end mt-1">
-            <Text className={`text-xs ${
-              isOwnMessage ? 'text-primary-light' : 'text-gray-500'
-            }`}>
-              {formatMessageTime(item.sent_at || new Date().toISOString())}
-            </Text>
-          </View>
-        </View>
+        <Text className={`text-xs text-gray-500 mt-0.5 ${isOwnMessage ? 'pr-1' : 'pl-1'}`}>
+          {formatMessageTime(item.sent_at || new Date().toISOString())}
+        </Text>
       </View>
     );
   };

@@ -63,41 +63,41 @@ const TRAVEL_GROUPS = [
     id: '1',
     name: 'Himalayan Trekkers',
     members: 128,
-    image: 'https://images.unsplash.com/photo-1454496522488-7a8e488e8606',
     nextTrip: 'Manali to Leh',
     date: '25 Apr',
+    color: '#8a3ab9'
   },
   {
     id: '2',
     name: 'Beach Hoppers',
     members: 95,
-    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e',
     nextTrip: 'Goa Weekend',
     date: '1 May',
+    color: '#4c68d7'
   },
   {
     id: '3',
     name: 'Rajasthan Royal Tour',
     members: 128,
-    image: 'https://images.unsplash.com/photo-1599661046289-e31897846e41',
-    nextTrip: 'Manali to Leh',
+    nextTrip: 'Jaipur Weekend',
     date: '25 Apr',
+    color: '#cd486b'
   },
   {
     id: '4',
     name: 'Northeast Explorer',
     members: 128,
-    image: 'https://images.unsplash.com/photo-1580889240912-c39ecefd3d95',
-    nextTrip: 'Goa Weekend',
+    nextTrip: 'Meghalaya Trip',
     date: '1 May',
+    color: '#517fa4'
   },
   {
     id: '5',
     name: 'Andaman Island Hopping',
     members: 128,
-    image: 'https://images.unsplash.com/photo-1589179447852-768c143a1144',
-    nextTrip: 'Goa Weekend',
+    nextTrip: 'Port Blair',
     date: '1 May',
+    color: '#5851DB'
   }
 ];
 
@@ -162,14 +162,28 @@ export default function HomeScreen() {
 
   const renderGroupCard = ({ item }: { item: any }) => (
     <TouchableOpacity 
-      onPress={() => router.push(`/group/${item.id}`)}
+      onPress={() => {
+        // Use try-catch to handle any navigation errors
+        try {
+          router.push({
+            pathname: "/group-chat/[id]",
+            params: { id: item.id }
+          });
+        } catch (error) {
+          console.log("Navigation error:", error);
+          // Fallback direct approach if the above fails
+          router.navigate(`/group-chat/${item.id}`);
+        }
+      }}
       className="mr-4 w-[220px]"
     >
-      <BlurView intensity={20} className="rounded-2xl overflow-hidden">
-        <Image 
-          source={{ uri: item.image }}
-          className="w-full h-[120px]"
-        />
+      <LinearGradient
+        colors={[item.color, `${item.color}88`]}
+        className="rounded-2xl overflow-hidden"
+      >
+        <View className="h-[120px] items-center justify-center">
+          <Ionicons name="people" size={40} color="white" />
+        </View>
         <View className="p-3">
           <Text className="text-white font-montserratMedium mb-1">{item.name}</Text>
           <View className="flex-row items-center justify-between">
@@ -183,8 +197,16 @@ export default function HomeScreen() {
               <Text className="text-white text-sm font-montserrat">Join</Text>
             </TouchableOpacity>
           </View>
+          <View className="flex-row items-center mt-2">
+            <Ionicons name="airplane-outline" size={14} color="#fff" />
+            <Text className="text-white text-sm ml-1 font-montserrat">{item.nextTrip}</Text>
+          </View>
+          <View className="flex-row items-center mt-1">
+            <Ionicons name="calendar-outline" size={14} color="#fff" />
+            <Text className="text-white text-sm ml-1 font-montserrat">{item.date}</Text>
+          </View>
         </View>
-      </BlurView>
+      </LinearGradient>
     </TouchableOpacity>
   );
 
@@ -256,14 +278,9 @@ export default function HomeScreen() {
 
           {/* Travel Groups */}
           <View className="mt-8">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-white text-xl font-youngSerif">
-                Travel Groups
-              </Text>
-              <TouchableOpacity onPress={() => router.push("/groups")}>
-                <Text className="text-white/80 font-montserrat">See All</Text>
-              </TouchableOpacity>
-            </View>
+            <Text className="text-white text-xl font-youngSerif mb-4">
+              Travel Groups
+            </Text>
             <FlatList
               data={TRAVEL_GROUPS}
               renderItem={renderGroupCard}
@@ -281,7 +298,14 @@ export default function HomeScreen() {
             {UPCOMING_EVENTS.map(event => (
               <TouchableOpacity 
                 key={event.id}
-                onPress={() => router.push(`/event/${event.id}`)}
+                onPress={() => {
+                  try {
+                    console.log("Navigating to event:", event.id);
+                    // We're just logging for now since we don't have actual event screens
+                  } catch (error) {
+                    console.log("Navigation error:", error);
+                  }
+                }}
                 className="mb-4"
               >
                 <BlurView intensity={20} className="rounded-2xl overflow-hidden">
