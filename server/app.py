@@ -12,6 +12,7 @@ from controllers.travel_group_controller import (
     add_member_to_group, remove_member_from_group, get_group_messages, send_group_message
 )
 
+
 # Initialize Flask app
 app = Flask(__name__)
 logging.info("Flask app initialized")
