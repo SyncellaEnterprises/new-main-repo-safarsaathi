@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions } from "react-native";
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions, Image, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import Animated, { 
   FadeInDown, 
@@ -9,16 +9,20 @@ import Animated, {
   withSpring,
   useSharedValue,
   FadeIn,
-  ZoomIn
+  ZoomIn,
+  interpolate,
+  useAnimatedScrollHandler,
+  Extrapolation
 } from "react-native-reanimated";
 import { useToast } from "../../context/ToastContext";
 import { useOnboarding } from "../../context/OnboardingContext";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons, Feather } from "@expo/vector-icons";
 import * as Location from 'expo-location';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+const ITEM_HEIGHT = 70;
 
 type LocationDataType = {
   [state: string]: string[];
@@ -88,11 +92,61 @@ export default function LocationScreen() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isLocationLoading, setIsLocationLoading] = useState(false);
   const scale = useSharedValue(1);
+  const scrollY = useSharedValue(0);
+  const animatedOpacity = useSharedValue(0);
+  
+  // Animated styles
+  const headerStyle = useAnimatedStyle(() => {
+    return {
+      opacity: interpolate(
+        scrollY.value,
+        [0, 100],
+        [1, 0.8],
+        Extrapolation.CLAMP
+      ),
+      transform: [
+        {
+          translateY: interpolate(
+            scrollY.value,
+            [0, 100],
+            [0, -10],
+            Extrapolation.CLAMP
+          ),
+        },
+      ],
+    };
+  });
+
+  const bgStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        {
+          translateY: interpolate(
+            scrollY.value,
+            [0, 100],
+            [0, -20],
+            Extrapolation.CLAMP
+          ),
+        },
+      ],
+    };
+  });
+
+  const scrollHandler = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y;
+  });
+
+  const buttonScale = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: withSpring(selectedState && selectedCity ? 1 : 0.95) }],
+    };
+  });
 
   // Simulate initial loading
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsSkeletonVisible(false);
+      animatedOpacity.value = withSpring(1);
     }, 1500);
     
     return () => clearTimeout(timer);
@@ -237,8 +291,8 @@ export default function LocationScreen() {
       <Animated.View
         key={`skeleton-${index}`}
         entering={FadeIn.delay(index * 100)}
-        className="bg-neutral-dark/50 rounded-xl mb-2 overflow-hidden"
-        style={{ height: 56 }}
+        className="bg-neutral-dark/50 rounded-xl mb-3 overflow-hidden"
+        style={{ height: ITEM_HEIGHT }}
       >
         <LinearGradient
           colors={['rgba(125, 91, 166, 0.1)', 'rgba(125, 91, 166, 0.2)', 'rgba(125, 91, 166, 0.1)']}
@@ -254,35 +308,79 @@ export default function LocationScreen() {
 
   return (
     <View className="flex-1 bg-neutral-darkest">
+      {/* Background Gradient */}
+      <Animated.View 
+        style={[{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: height * 0.7,
+          opacity: 0.5,
+          zIndex: -1,
+        }, bgStyle]}
+      >
+        <LinearGradient
+          colors={['rgba(125, 91, 166, 0.2)', 'rgba(80, 166, 167, 0.1)', 'rgba(30, 27, 38, 0.95)']}
+          style={{width: '100%', height: '100%'}}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+        />
+      </Animated.View>
+
+      {/* Floating Orbs */}
+      <Animated.View style={{ 
+        position: 'absolute', 
+        top: height * 0.15, 
+        right: 30,
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: 'rgba(125, 91, 166, 0.2)',
+        zIndex: -1,
+      }} />
+      
+      <Animated.View style={{ 
+        position: 'absolute', 
+        top: height * 0.35, 
+        left: 20,
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: 'rgba(80, 166, 167, 0.15)',
+        zIndex: -1,
+      }} />
+
       <Animated.View
+        style={headerStyle}
         entering={FadeInDown.duration(1000).springify()}
-        className="flex-1 p-6"
+        className="flex-1 px-6 pt-6"
       >
         {/* Header */}
-        <View className="mb-4">
-          <View className="flex-row items-center mb-2">
-            {selectedState && (
-              <TouchableOpacity 
-                onPress={handleBack}
-                className="mr-4 bg-neutral-dark/80 p-2 rounded-full"
-              >
-                <Ionicons name="arrow-back" size={20} color="#9D7EBD" />
-              </TouchableOpacity>
-            )}
-            <Text className="text-3xl font-bold text-primary font-youngSerif">
-              {selectedState ? 'Select City' : 'Select State'}
-            </Text>
-          </View>
-          <Text className="text-neutral-medium mb-1 font-montserrat">
-            {selectedState ? `Cities in ${selectedState}` : 'Choose your state'}
+        <View className="mb-6">
+          <LinearGradient
+            colors={['#9D7EBD', '#50A6A7']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            className="self-start rounded-xl px-4 py-1 mb-2"
+          >
+            <Text className="text-neutral-darkest font-montserratBold">LOCATION</Text>
+          </LinearGradient>
+          
+          <Text className="text-4xl font-bold text-white font-youngSerif">
+            {selectedState ? 'Select City' : 'Where are you?'}
+          </Text>
+          
+          <Text className="text-neutral-medium mt-2 text-lg font-montserrat">
+            {selectedState ? `Cities in ${selectedState}` : 'Choose your location to find nearby matches'}
           </Text>
           
           {submitError && (
             <Animated.View 
               entering={SlideInRight}
-              className="mt-3 bg-red-900/30 border border-red-500/30 rounded-lg p-3 flex-row items-center"
+              className="mt-4 bg-red-900/30 border border-red-500/30 rounded-xl p-3 flex-row items-center"
             >
-              <Ionicons name="alert-circle" size={20} color="#f87171" />
+              <Ionicons name="alert-circle" size={22} color="#f87171" />
               <Text className="text-red-400 ml-2 font-montserrat">{submitError}</Text>
             </Animated.View>
           )}
@@ -290,56 +388,71 @@ export default function LocationScreen() {
 
         {/* Current Location Card */}
         {address && (
-          <BlurView intensity={20} tint="dark" className="rounded-2xl mb-4 overflow-hidden">
-            <LinearGradient
-              colors={['rgba(125, 91, 166, 0.1)', 'rgba(157, 126, 189, 0.05)']}
-              className="p-4 border border-primary-light/20"
-              style={{ borderRadius: 16 }}
-            >
-              <View className="flex-row items-start">
-                <View className="w-10 h-10 rounded-full bg-primary/20 items-center justify-center mr-3">
-                  <Ionicons name="locate" size={20} color="#9D7EBD" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-neutral-light font-montserratMedium mb-1">Current Location</Text>
-                  <Text className="text-neutral-medium text-sm font-montserrat">
-                    {isLocationLoading ? 'Detecting your location...' : address}
-                  </Text>
-                  {(selectedState && selectedCity) && (
-                    <View className="bg-primary/20 px-3 py-1 rounded-full self-start mt-2">
-                      <Text className="text-primary-light text-xs font-montserratMedium">
-                        {selectedCity}, {selectedState}
-                      </Text>
-                    </View>
+          <Animated.View 
+            entering={FadeInUp.delay(300)}
+            className="mb-6"
+          >
+            <BlurView intensity={30} tint="dark" className="rounded-2xl overflow-hidden">
+              <LinearGradient
+                colors={['rgba(125, 91, 166, 0.2)', 'rgba(157, 126, 189, 0.15)']}
+                className="p-4 border border-primary-light/30"
+                style={{ borderRadius: 16 }}
+              >
+                <View className="flex-row items-center">
+                  <View className="w-12 h-12 rounded-full bg-primary/30 items-center justify-center mr-4">
+                    <Ionicons name="locate-outline" size={26} color="#fff" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-white font-montserratMedium text-lg mb-1">Current Location</Text>
+                    <Text className="text-neutral-light text-base font-montserrat">
+                      {isLocationLoading ? 'Detecting your location...' : address}
+                    </Text>
+                    {(selectedState && selectedCity) && (
+                      <View className="bg-primary/30 px-4 py-1.5 rounded-full self-start mt-3 border border-primary/30">
+                        <Text className="text-white text-sm font-montserratMedium">
+                          {selectedCity}, {selectedState}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  {isLocationLoading ? (
+                    <ActivityIndicator size="small" color="#9D7EBD" />
+                  ) : (
+                    <TouchableOpacity 
+                      onPress={requestLocation}
+                      className="w-10 h-10 bg-primary/20 rounded-full items-center justify-center"
+                    >
+                      <Feather name="refresh-cw" size={18} color="#9D7EBD" />
+                    </TouchableOpacity>
                   )}
                 </View>
-                {isLocationLoading && (
-                  <ActivityIndicator size="small" color="#9D7EBD" />
-                )}
-              </View>
-            </LinearGradient>
-          </BlurView>
+              </LinearGradient>
+            </BlurView>
+          </Animated.View>
         )}
 
         {/* Search Bar */}
-        <View className="relative mb-4">
-          <BlurView intensity={15} tint="dark" className="overflow-hidden rounded-xl">
+        <Animated.View 
+          entering={FadeInUp.delay(400)}
+          className="relative mb-5"
+        >
+          <BlurView intensity={25} tint="dark" className="overflow-hidden rounded-xl">
             <LinearGradient
-              colors={['rgba(30, 27, 38, 0.8)', 'rgba(30, 27, 38, 0.6)']}
-              className="border border-primary-light/20 rounded-xl"
+              colors={['rgba(30, 27, 38, 0.9)', 'rgba(30, 27, 38, 0.7)']}
+              className="border border-primary-light/30 rounded-xl"
             >
               <View className="flex-row items-center">
                 <Ionicons 
                   name="search" 
-                  size={20} 
-                  color="#7D5BA6" 
-                  style={{ marginLeft: 12 }}
+                  size={22} 
+                  color="#9D7EBD" 
+                  style={{ marginLeft: 16 }}
                 />
                 <TextInput
                   value={searchQuery}
                   onChangeText={(text) => setSearchQuery(text)}
                   placeholder={selectedState ? "Search cities..." : "Search states..."}
-                  className="flex-1 px-3 py-3.5 text-neutral-light font-montserrat"
+                  className="flex-1 px-3 py-4 text-white text-base font-montserrat"
                   autoCapitalize="none"
                   autoCorrect={false}
                   placeholderTextColor="#686680"
@@ -347,120 +460,189 @@ export default function LocationScreen() {
                 {searchQuery ? (
                   <TouchableOpacity 
                     onPress={() => setSearchQuery("")}
-                    className="mr-3"
+                    className="mr-4 bg-neutral-dark/80 p-1 rounded-full"
                   >
-                    <Ionicons name="close-circle" size={20} color="#7D5BA6" />
+                    <Ionicons name="close" size={16} color="#9D7EBD" />
                   </TouchableOpacity>
                 ) : null}
               </View>
             </LinearGradient>
           </BlurView>
-        </View>
+        </Animated.View>
 
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-          <View className="space-y-2">
+        {/* Results Count */}
+        <Animated.View 
+          entering={FadeInUp.delay(500)}
+          className="mb-3"
+        >
+          <Text className="text-neutral-light font-montserratMedium">
+            {!isSkeletonVisible && filteredLocations.data.length > 0 && 
+              `Showing ${filteredLocations.data.length} ${filteredLocations.type}`
+            }
+          </Text>
+        </Animated.View>
+
+        {/* Navigation Bar if in State Selection */}
+        {selectedState && (
+          <Animated.View 
+            entering={SlideInRight}
+            className="flex-row items-center mb-3"
+          >
+            <TouchableOpacity 
+              onPress={handleBack}
+              className="mr-3 bg-neutral-dark/80 p-2 rounded-full border border-primary-light/20"
+            >
+              <Ionicons name="arrow-back" size={20} color="#9D7EBD" />
+            </TouchableOpacity>
+            <View className="flex-1 flex-row items-center">
+              <Text className="text-neutral-light font-montserratMedium">
+                {selectedState}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color="#686680" style={{marginHorizontal: 4}} />
+              <Text className="text-primary-light font-montserratMedium">
+                Select City
+              </Text>
+            </View>
+          </Animated.View>
+        )}
+
+        <ScrollView 
+          className="flex-1" 
+          showsVerticalScrollIndicator={false}
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
+        >
+          <View className="space-y-3 pb-32">
             {isSkeletonVisible ? (
               renderSkeletons()
             ) : filteredLocations.data.length > 0 ? (
               filteredLocations.data.map((item: string, index: number) => (
                 <Animated.View
                   key={item}
-                  entering={SlideInRight.delay(index * 50)}
+                  entering={SlideInRight.delay(index * 50 + 200)}
                 >
                   <TouchableOpacity
                     onPress={() => handleSelect(item)}
-                    className={`p-4 rounded-xl shadow-lg overflow-hidden ${
+                    className={`rounded-xl shadow-lg overflow-hidden ${
                       (selectedState === item || selectedCity === item)
-                        ? 'border border-primary' 
-                        : 'border border-primary-light/20'
+                        ? 'border-2 border-primary' 
+                        : 'border border-primary-light/30'
                     }`}
                     style={{
-                      elevation: (selectedState === item || selectedCity === item) ? 4 : 1,
+                      height: ITEM_HEIGHT,
+                      shadowColor: (selectedState === item || selectedCity === item) ? '#7D5BA6' : 'transparent',
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 5,
+                      elevation: (selectedState === item || selectedCity === item) ? 8 : 2,
                     }}
                     disabled={isLoading}
                   >
-                    <LinearGradient
-                      colors={(selectedState === item || selectedCity === item)
-                        ? ['rgba(125, 91, 166, 0.3)', 'rgba(125, 91, 166, 0.1)']
-                        : ['rgba(30, 27, 38, 0.8)', 'rgba(30, 27, 38, 0.6)']}
-                      className="absolute inset-0"
-                    />
-                    <View className="flex-row items-center justify-between">
-                      <View className="flex-row items-center">
-                        <Ionicons 
-                          name={filteredLocations.type === 'states' ? 'map-outline' : 'location-outline'} 
-                          size={20} 
-                          color={(selectedState === item || selectedCity === item) ? '#fff' : '#9D7EBD'} 
-                          style={{ marginRight: 12 }}
-                        />
-                        <Text 
-                          className={`text-lg ${
-                            (selectedState === item || selectedCity === item) 
-                              ? 'text-white font-montserratMedium' 
-                              : 'text-neutral-light font-montserrat'
-                          }`}
-                        >
-                          {item}
-                        </Text>
-                      </View>
-                      {(selectedState === item || selectedCity === item) && (
-                        <Ionicons name="checkmark-circle" size={20} color="#50A6A7" />
-                      )}
-                    </View>
-                    {searchQuery && item.toLowerCase().startsWith(searchQuery.toLowerCase().trim()) && (
-                      <Text className="text-xs text-primary-light ml-8 mt-1">Best match</Text>
-                    )}
+                    <BlurView intensity={20} tint="dark" style={{flex: 1}}>
+                      <LinearGradient
+                        colors={(selectedState === item || selectedCity === item)
+                          ? ['rgba(125, 91, 166, 0.3)', 'rgba(125, 91, 166, 0.2)']
+                          : ['rgba(30, 27, 38, 0.8)', 'rgba(30, 27, 38, 0.6)']}
+                        className="flex-1 p-4"
+                      >
+                        <View className="flex-row items-center justify-between">
+                          <View className="flex-row items-center">
+                            <View className={`w-12 h-12 rounded-xl items-center justify-center mr-3 ${
+                              (selectedState === item || selectedCity === item) 
+                                ? 'bg-primary/30' 
+                                : 'bg-neutral-dark/70'
+                            }`}>
+                              <Ionicons 
+                                name={filteredLocations.type === 'states' ? 'map' : 'location'} 
+                                size={22} 
+                                color={(selectedState === item || selectedCity === item) ? '#fff' : '#9D7EBD'} 
+                              />
+                            </View>
+                            <View>
+                              <Text 
+                                className={`text-xl ${
+                                  (selectedState === item || selectedCity === item) 
+                                    ? 'text-white font-montserratBold' 
+                                    : 'text-neutral-light font-montserratMedium'
+                                }`}
+                              >
+                                {item}
+                              </Text>
+                              <Text className="text-neutral-medium font-montserrat mt-1">
+                                {filteredLocations.type === 'states' 
+                                  ? `${LOCATION_DATA[item].length} cities` 
+                                  : 'Tap to select'
+                                }
+                              </Text>
+                            </View>
+                          </View>
+                          {(selectedState === item || selectedCity === item) && (
+                            <View className="bg-secondary/20 w-8 h-8 rounded-full items-center justify-center">
+                              <Ionicons name="checkmark" size={20} color="#50A6A7" />
+                            </View>
+                          )}
+                        </View>
+                      </LinearGradient>
+                    </BlurView>
                   </TouchableOpacity>
                 </Animated.View>
               ))
             ) : (
-              <View className="items-center py-8 bg-neutral-dark/30 rounded-xl">
-                <Ionicons name="search" size={40} color="#686680" />
-                <Text className="text-neutral-medium font-montserrat mt-4">No {filteredLocations.type} found</Text>
+              <Animated.View 
+                entering={FadeIn}
+                className="items-center py-10 bg-neutral-dark/30 rounded-xl border border-neutral-dark/50"
+              >
+                <Ionicons name="search" size={50} color="#686680" />
+                <Text className="text-neutral-medium font-montserrat mt-4 text-lg">
+                  No {filteredLocations.type} found
+                </Text>
                 <TouchableOpacity
                   onPress={() => setSearchQuery('')}
-                  className="mt-4 bg-primary/20 px-4 py-2 rounded-lg"
+                  className="mt-5 bg-primary/20 px-5 py-3 rounded-xl border border-primary/30"
                 >
                   <Text className="text-primary-light font-montserratMedium">Clear search</Text>
                 </TouchableOpacity>
-              </View>
+              </Animated.View>
             )}
           </View>
-          <View className="h-16" />
         </ScrollView>
 
         {/* Continue Button */}
         <View className="absolute bottom-6 left-6 right-6">
-          <LinearGradient
-            colors={(selectedState && selectedCity) ? ['#7D5BA6', '#9D7EBD'] : ['#3E3C47', '#3E3C47']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            className="rounded-xl overflow-hidden"
-          >
-            <TouchableOpacity
-              onPress={handleNext}
-              disabled={!selectedState || !selectedCity || isLoading || isSkeletonVisible}
-              className="py-4 px-6"
-            >
-              {isLoading ? (
-                <View className="flex-row items-center justify-center">
-                  <ActivityIndicator color="white" size="small" />
-                  <Text className="text-white ml-2 font-montserratBold">Saving...</Text>
-                </View>
-              ) : (
-                <View className="flex-row items-center justify-center">
-                  <Text className={`text-center text-lg font-montserratBold ${
-                    (selectedState && selectedCity) ? 'text-white' : 'text-neutral-medium'
-                  }`}>
-                    {selectedState && selectedCity ? 'Continue' : 'Select your location'}
-                  </Text>
-                  {(selectedState && selectedCity) && (
-                    <Ionicons name="arrow-forward" size={20} color="white" className="ml-2" />
+          <Animated.View style={buttonScale}>
+            <BlurView intensity={30} tint="dark" className="overflow-hidden rounded-xl">
+              <LinearGradient
+                colors={(selectedState && selectedCity) ? ['#7D5BA6', '#50A6A7'] : ['#3E3C47', '#3E3C47']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                className="rounded-xl overflow-hidden"
+              >
+                <TouchableOpacity
+                  onPress={handleNext}
+                  disabled={!selectedState || !selectedCity || isLoading || isSkeletonVisible}
+                  className="py-4 px-6"
+                >
+                  {isLoading ? (
+                    <View className="flex-row items-center justify-center">
+                      <ActivityIndicator color="white" size="small" />
+                      <Text className="text-white ml-2 font-montserratBold">Saving...</Text>
+                    </View>
+                  ) : (
+                    <View className="flex-row items-center justify-center">
+                      <Text className={`text-center text-lg font-montserratBold ${
+                        (selectedState && selectedCity) ? 'text-white' : 'text-neutral-medium'
+                      }`}>
+                        {selectedState && selectedCity ? 'Continue' : 'Select your location'}
+                      </Text>
+                      {(selectedState && selectedCity) && (
+                        <Ionicons name="arrow-forward" size={20} color="white" style={{marginLeft: 8}} />
+                      )}
+                    </View>
                   )}
-                </View>
-              )}
-            </TouchableOpacity>
-          </LinearGradient>
+                </TouchableOpacity>
+              </LinearGradient>
+            </BlurView>
+          </Animated.View>
         </View>
       </Animated.View>
     </View>

@@ -8,7 +8,8 @@ import Animated, {
   useAnimatedStyle, 
   withSpring,
   useSharedValue,
-  ZoomIn
+  ZoomIn,
+  interpolate
 } from 'react-native-reanimated';
 import { useToast } from "../../context/ToastContext";
 import { useOnboarding } from "../../context/OnboardingContext";
@@ -33,20 +34,38 @@ export default function InterestsScreen() {
   const MIN_INTERESTS = 3;
   const scale = useSharedValue(1);
   const progressWidth = useSharedValue(0);
+  const scrollY = useSharedValue(0);
 
-  // Simulate initial loading
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsSkeletonVisible(false);
     }, 1500);
-    
     return () => clearTimeout(timer);
   }, []);
+
+  const headerStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateY: interpolate(
+          scrollY.value,
+          [0, 100],
+          [0, -20],
+          'clamp'
+        ),
+      },
+    ],
+    opacity: interpolate(
+      scrollY.value,
+      [0, 100],
+      [1, 0.9],
+      'clamp'
+    ),
+  }));
 
   const progressStyle = useAnimatedStyle(() => ({
     width: `${withSpring((100 * selectedInterests.length) / MAX_INTERESTS)}%`,
     height: 4,
-    backgroundColor: selectedInterests.length >= MIN_INTERESTS ? '#50A6A7' : '#7D5BA6',
+    backgroundColor: selectedInterests.length >= MIN_INTERESTS ? '#50A6A7' : '#FF6B6B',
     borderRadius: 4,
   }));
 
@@ -91,7 +110,6 @@ export default function InterestsScreen() {
     }
   };
   
-  // Render skeleton loaders for interests
   const renderSkeletons = (count: number) => {
     return Array(count).fill(0).map((_, index) => (
       <Animated.View
@@ -107,7 +125,7 @@ export default function InterestsScreen() {
         className="bg-neutral-dark/30"
       >
         <LinearGradient
-          colors={['rgba(125, 91, 166, 0.1)', 'rgba(125, 91, 166, 0.2)', 'rgba(125, 91, 166, 0.1)']}
+          colors={['rgba(255, 107, 107, 0.1)', 'rgba(255, 142, 142, 0.2)', 'rgba(255, 107, 107, 0.1)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           className="w-full h-full"
@@ -125,24 +143,41 @@ export default function InterestsScreen() {
 
   return (
     <View className="flex-1 bg-neutral-darkest">
-      <ScrollView className="flex-1">
+      <ScrollView 
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        onScroll={(e) => {
+          scrollY.value = e.nativeEvent.contentOffset.y;
+        }}
+        scrollEventThrottle={16}
+      >
         <Animated.View 
-          entering={FadeInDown.duration(1000).springify()}
-          className="flex-1 p-6"
+          style={headerStyle}
+          className="px-6 pt-6"
         >
+          {/* Romantic Journey Progress */}
+          <View className="flex-row items-center mb-4">
+            <View className="w-8 h-8 rounded-full bg-[#FF6B6B]/20 items-center justify-center">
+              <Ionicons name="heart" size={16} color="#FF6B6B" />
+            </View>
+            <View className="flex-1 h-1 bg-neutral-dark/50 rounded-full ml-2">
+              <View className="w-1/5 h-full bg-gradient-to-r from-[#FF6B6B] to-[#FF8E8E] rounded-full" />
+            </View>
+          </View>
+
           {/* Header */}
-          <View className="mb-4">
-            <Text className="text-3xl font-bold mb-2 text-primary font-youngSerif">
-              What interests you?
+          <View className="mb-6">
+            <Text className="text-4xl font-youngSerif mb-3 text-white">
+              What Moves You?
             </Text>
-            <Text className="text-neutral-medium mb-1 font-montserrat">
-              Select {MIN_INTERESTS}-{MAX_INTERESTS} interests to help us find your perfect match
+            <Text className="text-lg text-neutral-light font-montserrat leading-relaxed">
+              Choose interests that spark joy and connection
             </Text>
             
             {submitError && (
               <Animated.View 
                 entering={SlideInRight}
-                className="mt-3 bg-red-900/30 border border-red-500/30 rounded-lg p-3 flex-row items-center"
+                className="mt-4 bg-red-900/30 border border-red-500/30 rounded-xl p-4 flex-row items-center"
               >
                 <Ionicons name="alert-circle" size={20} color="#f87171" />
                 <Text className="text-red-400 ml-2 font-montserrat">{submitError}</Text>
@@ -157,13 +192,13 @@ export default function InterestsScreen() {
             </View>
             <View className="flex-row items-center justify-between mt-3">
               <View className="flex-row items-center">
-                <Ionicons name="heart-outline" size={18} color="#9D7EBD" />
-                <Text className="text-primary-light font-montserratMedium ml-2">
+                <Ionicons name="heart-outline" size={18} color="#FF6B6B" />
+                <Text className="text-white font-montserratMedium ml-2">
                   {selectedInterests.length}/{MAX_INTERESTS} selected
                 </Text>
               </View>
-              <Text className={`text-sm font-montserrat ${selectedInterests.length >= MIN_INTERESTS ? 'text-secondary' : 'text-neutral-medium'}`}>
-                {selectedInterests.length >= MIN_INTERESTS ? '✓ Minimum reached' : `Select at least ${MIN_INTERESTS}`}
+              <Text className={`text-sm font-montserrat ${selectedInterests.length >= MIN_INTERESTS ? 'text-[#50A6A7]' : 'text-neutral-medium'}`}>
+                {selectedInterests.length >= MIN_INTERESTS ? '✓ Great choices!' : `Select ${MIN_INTERESTS - selectedInterests.length} more`}
               </Text>
             </View>
           </View>
@@ -172,11 +207,10 @@ export default function InterestsScreen() {
           {selectedInterests.length > 0 && (
             <BlurView intensity={20} tint="dark" className="rounded-2xl mb-6 overflow-hidden">
               <LinearGradient
-                colors={['rgba(125, 91, 166, 0.1)', 'rgba(157, 126, 189, 0.05)']}
-                className="p-4 border border-primary-light/20"
-                style={{ borderRadius: 16 }}
+                colors={['rgba(255, 107, 107, 0.1)', 'rgba(255, 142, 142, 0.05)']}
+                className="p-5 border border-[#FF6B6B]/20"
               >
-                <Text className="text-neutral-light font-montserratMedium mb-3">Your Selections</Text>
+                <Text className="text-white font-montserratBold text-lg mb-3">Your Interests</Text>
                 <View className="flex-row flex-wrap gap-2">
                   {selectedInterests.map((interest, index) => (
                     <Animated.View
@@ -185,10 +219,10 @@ export default function InterestsScreen() {
                     >
                       <TouchableOpacity
                         onPress={() => handleSelect(interest)}
-                        className="flex-row items-center bg-primary/20 border border-primary px-3 py-1.5 rounded-full"
+                        className="flex-row items-center bg-[#FF6B6B]/20 border border-[#FF6B6B] px-3 py-1.5 rounded-full"
                       >
                         <Text className="text-white font-montserratMedium mr-2">{interest}</Text>
-                        <Ionicons name="close-circle" size={16} color="#9D7EBD" />
+                        <Ionicons name="close-circle" size={16} color="#FF6B6B" />
                       </TouchableOpacity>
                     </Animated.View>
                   ))}
@@ -206,7 +240,7 @@ export default function InterestsScreen() {
             <View className="flex-row space-x-2">
               <TouchableOpacity
                 onPress={() => setActiveCategory('All')}
-                className={`px-4 py-2 rounded-full ${activeCategory === 'All' ? 'bg-primary' : 'bg-neutral-dark'}`}
+                className={`px-4 py-2 rounded-full ${activeCategory === 'All' ? 'bg-[#FF6B6B]' : 'bg-neutral-dark'}`}
               >
                 <Text className={`${activeCategory === 'All' ? 'text-white' : 'text-neutral-light'} font-montserratMedium`}>All</Text>
               </TouchableOpacity>
@@ -214,7 +248,7 @@ export default function InterestsScreen() {
                 <TouchableOpacity
                   key={category.name}
                   onPress={() => setActiveCategory(category.name)}
-                  className={`px-4 py-2 rounded-full ${activeCategory === category.name ? 'bg-primary' : 'bg-neutral-dark'}`}
+                  className={`px-4 py-2 rounded-full ${activeCategory === category.name ? 'bg-[#FF6B6B]' : 'bg-neutral-dark'}`}
                 >
                   <Text className={`${activeCategory === category.name ? 'text-white' : 'text-neutral-light'} font-montserratMedium`}>{category.name}</Text>
                 </TouchableOpacity>
@@ -236,12 +270,12 @@ export default function InterestsScreen() {
               >
                 <View className="flex-row items-center mb-4">
                   <LinearGradient
-                    colors={['#7D5BA6', '#9D7EBD']}
+                    colors={['#FF6B6B', '#FF8E8E']}
                     className="w-6 h-6 rounded-full items-center justify-center mr-2"
                   >
                     <Text className="text-white font-montserratBold text-xs">{categoryIndex + 1}</Text>
                   </LinearGradient>
-                  <Text className="text-xl font-semibold text-neutral-light font-youngSerif">
+                  <Text className="text-xl font-youngSerif text-white">
                     {category.name}
                   </Text>
                 </View>
@@ -258,16 +292,9 @@ export default function InterestsScreen() {
                         disabled={isLoading}
                         className={`px-3 py-2.5 rounded-xl border items-center justify-center ${
                           selectedInterests.includes(interest)
-                            ? 'bg-primary border-primary'
-                            : 'bg-neutral-dark/70 border-primary-light/20'
+                            ? 'bg-[#FF6B6B] border-[#FF6B6B]'
+                            : 'bg-neutral-dark/70 border-[#FF6B6B]/20'
                         }`}
-                        style={{
-                          shadowColor: selectedInterests.includes(interest) ? '#7D5BA6' : 'transparent',
-                          shadowOffset: { width: 0, height: 4 },
-                          shadowOpacity: 0.3,
-                          shadowRadius: 5,
-                          elevation: selectedInterests.includes(interest) ? 5 : 0,
-                        }}
                       >
                         <Text 
                           className={`text-center ${
@@ -287,15 +314,18 @@ export default function InterestsScreen() {
             ))
           )}
         </Animated.View>
-        <View className="h-24" />
+        <View className="h-32" />
       </ScrollView>
 
+      {/* Floating Action Button */}
       <Animated.View 
         entering={FadeInDown.delay(300)}
-        className="absolute bottom-0 left-0 right-0 p-6 bg-neutral-dark/80 backdrop-blur-md border-t border-primary-light/20 shadow-lg"
+        className="absolute bottom-0 left-0 right-0 p-6 bg-neutral-darkest/80 backdrop-blur-xl border-t border-white/5"
       >
         <LinearGradient
-          colors={selectedInterests.length >= MIN_INTERESTS ? ['#7D5BA6', '#9D7EBD'] : ['#3E3C47', '#3E3C47']}
+          colors={selectedInterests.length >= MIN_INTERESTS 
+            ? ['#FF6B6B', '#FF8E8E']
+            : ['rgba(30, 27, 38, 0.8)', 'rgba(30, 27, 38, 0.6)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           className="rounded-xl overflow-hidden"
@@ -308,14 +338,14 @@ export default function InterestsScreen() {
             {isLoading ? (
               <View className="flex-row items-center justify-center">
                 <ActivityIndicator color="white" size="small" />
-                <Text className="text-white ml-2 font-montserratBold">Saving...</Text>
+                <Text className="text-white ml-2 font-montserratBold">Finding your matches...</Text>
               </View>
             ) : (
               <View className="flex-row items-center justify-center">
                 <Text className={`text-center text-lg font-montserratBold ${
                   selectedInterests.length >= MIN_INTERESTS ? 'text-white' : 'text-neutral-medium'
                 }`}>
-                  {selectedInterests.length < MIN_INTERESTS ? `Select ${MIN_INTERESTS - selectedInterests.length} more` : 'Continue'}
+                  {selectedInterests.length < MIN_INTERESTS ? `Select ${MIN_INTERESTS - selectedInterests.length} more interests` : 'Continue Your Journey'}
                 </Text>
                 {selectedInterests.length >= MIN_INTERESTS && (
                   <Ionicons name="arrow-forward" size={20} color="white" className="ml-2" />

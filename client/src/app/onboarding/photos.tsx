@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, Image, ActivityIndicator, Dimensions } from "react-native";
+import { View, Text, TouchableOpacity, Image, ActivityIndicator, Dimensions, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import Animated, { 
@@ -9,7 +9,8 @@ import Animated, {
   useSharedValue,
   FadeIn,
   SlideInRight,
-  ZoomIn
+  ZoomIn,
+  interpolate
 } from "react-native-reanimated";
 import { useState, useEffect } from "react";
 import { useToast } from "../../context/ToastContext";
@@ -36,20 +37,38 @@ export default function PhotosScreen() {
   
   const scale = useSharedValue(1);
   const progressWidth = useSharedValue(0);
+  const scrollY = useSharedValue(0);
 
-  // Simulate initial loading
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsSkeletonVisible(false);
     }, 1500);
-    
     return () => clearTimeout(timer);
   }, []);
+
+  const headerStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateY: interpolate(
+          scrollY.value,
+          [0, 100],
+          [0, -20],
+          'clamp'
+        ),
+      },
+    ],
+    opacity: interpolate(
+      scrollY.value,
+      [0, 100],
+      [1, 0.9],
+      'clamp'
+    ),
+  }));
 
   const progressStyle = useAnimatedStyle(() => ({
     width: `${withSpring((100 * photos.length) / 6)}%`,
     height: 4,
-    backgroundColor: photos.length >= 2 ? '#50A6A7' : '#7D5BA6',
+    backgroundColor: photos.length >= 2 ? '#50A6A7' : '#FF6B6B',
     borderRadius: 4,
   }));
 
@@ -143,9 +162,8 @@ export default function PhotosScreen() {
     }
   };
 
-  // Render skeleton loaders
   const renderSkeletons = () => {
-    return Array(3).fill(0).map((_, index) => (
+    return Array(4).fill(0).map((_, index) => (
       <Animated.View
         key={`skeleton-${index}`}
         entering={FadeIn.delay(index * 200)}
@@ -153,13 +171,10 @@ export default function PhotosScreen() {
         style={{ width: PHOTO_SIZE, height: PHOTO_SIZE, marginBottom: GRID_GAP }}
       >
         <LinearGradient
-          colors={['rgba(125, 91, 166, 0.1)', 'rgba(125, 91, 166, 0.2)', 'rgba(125, 91, 166, 0.1)']}
+          colors={['rgba(255, 107, 107, 0.1)', 'rgba(255, 142, 142, 0.2)', 'rgba(255, 107, 107, 0.1)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           className="w-full h-full"
-          style={{
-            opacity: isSkeletonVisible ? 1 : 0,
-          }}
         />
       </Animated.View>
     ));
@@ -167,71 +182,92 @@ export default function PhotosScreen() {
 
   return (
     <View className="flex-1 bg-neutral-darkest">
-      <Animated.View 
-        entering={FadeInDown.duration(800).springify()}
-        className="flex-1 p-6"
+      <ScrollView 
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        onScroll={(e) => {
+          scrollY.value = e.nativeEvent.contentOffset.y;
+        }}
+        scrollEventThrottle={16}
       >
-        {/* Header */}
-        <View className="mb-6">
-          <Text className="text-3xl font-bold mb-3 text-primary font-youngSerif">
-            Your Best Shots
-          </Text>
-          <Text className="text-neutral-medium font-montserrat">
-            Add photos that show your personality and lifestyle
-          </Text>
-          {uploadError && (
-            <Animated.View 
-              entering={SlideInRight}
-              className="mt-3 bg-red-900/30 border border-red-500/30 rounded-lg p-3 flex-row items-center"
-            >
-              <Ionicons name="alert-circle" size={20} color="#f87171" />
-              <Text className="text-red-400 ml-2 font-montserrat">{uploadError}</Text>
-            </Animated.View>
-          )}
-        </View>
-
-        {/* Progress Indicator */}
-        <View className="mb-8">
-          <View className="bg-neutral-dark/50 h-4 rounded-full overflow-hidden">
-            <Animated.View style={progressStyle} />
+        <Animated.View 
+          style={headerStyle}
+          className="px-6 pt-6"
+        >
+          {/* Romantic Journey Progress */}
+          <View className="flex-row items-center mb-4">
+            <View className="w-8 h-8 rounded-full bg-[#FF6B6B]/20 items-center justify-center">
+              <Ionicons name="heart" size={16} color="#FF6B6B" />
+            </View>
+            <View className="flex-1 h-1 bg-neutral-dark/50 rounded-full ml-2">
+              <View className="w-4/5 h-full bg-gradient-to-r from-[#FF6B6B] to-[#FF8E8E] rounded-full" />
+            </View>
           </View>
-          <View className="flex-row items-center justify-between mt-3">
-            <View className="flex-row items-center">
-              <Ionicons name="images-outline" size={18} color="#9D7EBD" />
-              <Text className="text-primary-light font-montserratMedium ml-2">
-                {photos.length}/6 photos
+
+          {/* Header */}
+          <View className="mb-6">
+            <Text className="text-4xl font-youngSerif mb-3 text-white">
+              Show Your Best Side
+            </Text>
+            <Text className="text-lg text-neutral-light font-montserrat leading-relaxed">
+              Share photos that tell your story and capture attention
+            </Text>
+            
+            {uploadError && (
+              <Animated.View 
+                entering={SlideInRight}
+                className="mt-4 bg-red-900/30 border border-red-500/30 rounded-xl p-4 flex-row items-center"
+              >
+                <Ionicons name="alert-circle" size={20} color="#f87171" />
+                <Text className="text-red-400 ml-2 font-montserrat">{uploadError}</Text>
+              </Animated.View>
+            )}
+          </View>
+
+          {/* Progress Indicator */}
+          <View className="mb-6">
+            <View className="bg-neutral-dark/50 h-4 rounded-full overflow-hidden">
+              <Animated.View style={progressStyle} />
+            </View>
+            <View className="flex-row items-center justify-between mt-3">
+              <View className="flex-row items-center">
+                <Ionicons name="images-outline" size={18} color="#FF6B6B" />
+                <Text className="text-white font-montserratMedium ml-2">
+                  {photos.length}/6 photos
+                </Text>
+              </View>
+              <Text className={`text-sm font-montserrat ${photos.length >= 2 ? 'text-[#50A6A7]' : 'text-neutral-medium'}`}>
+                {photos.length >= 2 ? '✓ Looking good!' : 'Add at least 2 photos'}
               </Text>
             </View>
-            <Text className={`text-sm font-montserrat ${photos.length >= 2 ? 'text-secondary' : 'text-neutral-medium'}`}>
-              {photos.length >= 2 ? '✓ Minimum reached' : 'Add at least 2 photos'}
-            </Text>
           </View>
-        </View>
 
-        {/* Main Content */}
-        <View className="flex-1">
           {/* Photo Tips Card */}
           <BlurView intensity={20} tint="dark" className="rounded-2xl mb-6 overflow-hidden">
             <LinearGradient
-              colors={['rgba(125, 91, 166, 0.1)', 'rgba(157, 126, 189, 0.05)']}
-              className="p-4 border border-primary-light/20"
-              style={{ borderRadius: 16 }}
+              colors={['rgba(255, 107, 107, 0.1)', 'rgba(255, 142, 142, 0.05)']}
+              className="p-5 border border-[#FF6B6B]/20"
             >
               <View className="flex-row items-start">
-                <View className="w-10 h-10 rounded-full bg-primary/20 items-center justify-center mr-3">
-                  <Ionicons name="bulb-outline" size={20} color="#9D7EBD" />
+                <View className="w-12 h-12 rounded-full bg-[#FF6B6B]/20 items-center justify-center mr-4">
+                  <Ionicons name="camera" size={24} color="#FF6B6B" />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-neutral-light font-montserratMedium mb-1">Photo Tips</Text>
-                  <Text className="text-neutral-medium text-sm font-montserrat">
-                    Clear face photos work best. Variety in your photos (activities, travel, etc.) helps show your personality.
+                  <Text className="text-white font-montserratBold text-lg mb-2">Photo Tips</Text>
+                  <Text className="text-neutral-light font-montserrat leading-relaxed">
+                    • Start with a clear face photo{'\n'}
+                    • Show your interests and travels{'\n'}
+                    • Add group photos with friends{'\n'}
+                    • Include action shots from adventures
                   </Text>
                 </View>
               </View>
             </LinearGradient>
           </BlurView>
+        </Animated.View>
 
-          {/* Photos Grid */}
+        {/* Photos Grid */}
+        <View className="px-6 pb-32">
           <View className="flex-row flex-wrap justify-between">
             {isSkeletonVisible ? (
               renderSkeletons()
@@ -246,7 +282,7 @@ export default function PhotosScreen() {
                     style={{ width: PHOTO_SIZE, height: PHOTO_SIZE }}
                   >
                     <LinearGradient
-                      colors={['#7D5BA6', '#9D7EBD']}
+                      colors={['#FF6B6B', '#FF8E8E']}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       className="rounded-2xl p-1 w-full h-full"
@@ -260,14 +296,14 @@ export default function PhotosScreen() {
                     
                     <TouchableOpacity
                       onPress={() => removePhoto(photo.id)}
-                      className="absolute -top-2 -right-2 bg-neutral-dark border border-red-500 rounded-full p-1.5"
+                      className="absolute -top-2 -right-2 bg-neutral-darkest border-2 border-red-500 rounded-full p-1.5 shadow-lg"
                     >
                       <Ionicons name="close" size={16} color="#f87171" />
                     </TouchableOpacity>
                     
                     {index === 0 && (
-                      <View className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-primary/90 border border-primary rounded-full px-3 py-1 shadow-lg">
-                        <Text className="text-white text-xs font-montserratBold">Profile</Text>
+                      <View className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-[#FF6B6B] rounded-full px-3 py-1 shadow-lg">
+                        <Text className="text-white text-xs font-montserratBold">Profile Photo</Text>
                       </View>
                     )}
                   </Animated.View>
@@ -283,15 +319,15 @@ export default function PhotosScreen() {
                   >
                     <TouchableOpacity
                       onPress={pickImage}
-                      className="bg-neutral-dark/60 rounded-2xl items-center justify-center border border-primary-light/20 w-full h-full"
+                      className="bg-neutral-dark/60 rounded-2xl items-center justify-center border border-[#FF6B6B]/20 w-full h-full"
                       disabled={isPickerLoading || isLoading}
                     >
                       {isPickerLoading && i === 0 ? (
-                        <ActivityIndicator color="#9D7EBD" size="small" />
+                        <ActivityIndicator color="#FF6B6B" size="small" />
                       ) : (
                         <>
-                          <View className="w-12 h-12 rounded-full bg-primary/10 items-center justify-center mb-2">
-                            <Ionicons name="add" size={24} color="#9D7EBD" />
+                          <View className="w-12 h-12 rounded-full bg-[#FF6B6B]/10 items-center justify-center mb-2">
+                            <Ionicons name="add" size={24} color="#FF6B6B" />
                           </View>
                           <Text className="text-neutral-medium text-xs font-montserrat">
                             {i === 0 ? 'Add Photo' : ''}
@@ -305,40 +341,45 @@ export default function PhotosScreen() {
             )}
           </View>
         </View>
+      </ScrollView>
 
-        {/* Continue Button */}
-        <View className="mt-auto pt-6">
-          <LinearGradient
-            colors={photos.length >= 2 ? ['#7D5BA6', '#9D7EBD'] : ['#3E3C47', '#3E3C47']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            className="rounded-xl overflow-hidden"
+      {/* Floating Action Button */}
+      <Animated.View 
+        entering={FadeInDown.delay(300)}
+        className="absolute bottom-0 left-0 right-0 p-6 bg-neutral-darkest/80 backdrop-blur-xl border-t border-white/5"
+      >
+        <LinearGradient
+          colors={photos.length >= 2 
+            ? ['#FF6B6B', '#FF8E8E']
+            : ['rgba(30, 27, 38, 0.8)', 'rgba(30, 27, 38, 0.6)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          className="rounded-xl overflow-hidden"
+        >
+          <TouchableOpacity
+            onPress={handleNext}
+            disabled={photos.length < 2 || isLoading}
+            className="py-4 px-6"
           >
-            <TouchableOpacity
-              onPress={handleNext}
-              disabled={photos.length < 2 || isLoading}
-              className="py-4 px-6"
-            >
-              {isLoading ? (
-                <View className="flex-row items-center justify-center">
-                  <ActivityIndicator color="white" size="small" />
-                  <Text className="text-white ml-2 font-montserratBold">Uploading...</Text>
-                </View>
-              ) : (
-                <View className="flex-row items-center justify-center">
-                  <Text className={`text-center text-lg font-montserratBold ${
-                    photos.length >= 2 ? 'text-white' : 'text-neutral-medium'
-                  }`}>
-                    {photos.length < 2 ? 'Add more photos' : 'Continue'}
-                  </Text>
-                  {photos.length >= 2 && (
-                    <Ionicons name="arrow-forward" size={20} color="white" className="ml-2" />
-                  )}
-                </View>
-              )}
-            </TouchableOpacity>
-          </LinearGradient>
-        </View>
+            {isLoading ? (
+              <View className="flex-row items-center justify-center">
+                <ActivityIndicator color="white" size="small" />
+                <Text className="text-white ml-2 font-montserratBold">Uploading your story...</Text>
+              </View>
+            ) : (
+              <View className="flex-row items-center justify-center">
+                <Text className={`text-center text-lg font-montserratBold ${
+                  photos.length >= 2 ? 'text-white' : 'text-neutral-medium'
+                }`}>
+                  {photos.length < 2 ? 'Add more photos to continue' : 'Continue Your Journey'}
+                </Text>
+                {photos.length >= 2 && (
+                  <Ionicons name="arrow-forward" size={20} color="white" className="ml-2" />
+                )}
+              </View>
+            )}
+          </TouchableOpacity>
+        </LinearGradient>
       </Animated.View>
     </View>
   );
