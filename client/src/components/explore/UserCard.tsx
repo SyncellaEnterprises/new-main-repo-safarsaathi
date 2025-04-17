@@ -1,13 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, Image, ScrollView, Dimensions, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Image, StyleSheet, Dimensions, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { useAnimatedStyle, withSpring, useSharedValue } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 const { width, height } = Dimensions.get('window');
 
-const DEFAULT_PROFILE_IMAGE = 'https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png';
+const DEFAULT_PROFILE_IMAGE = 'https://filmfare.wwmindia.com/content/2024/aug/sharvariwaghinspiration31725098613.jpg';
 
 interface UserCardProps {
   user: {
@@ -31,105 +31,38 @@ interface UserCardProps {
 }
 
 export function UserCard({ user }: UserCardProps) {
-  // If user is undefined, show a placeholder
   if (!user) {
     return (
-      <View className="flex-1 items-center justify-center bg-neutral-lightest rounded-3xl p-8">
-        <Text className="text-xl text-neutral-dark text-center font-montserrat">
+      <View style={styles.noProfileContainer}>
+        <Text style={styles.noProfileText}>
           No more profiles available. Check back later!
         </Text>
       </View>
     );
   }
 
-  console.log('Rendering user card:', user.username);
-  
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [imageLoadError, setImageLoadError] = useState<string[]>([]);
-  const [isScrolling, setIsScrolling] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
-  const scrollViewRef = useRef<ScrollView>(null);
-  const scale = useSharedValue(1);
+  const [imageError, setImageError] = useState(false);
 
-  // Process the profile photo - handles both string URLs and JSON strings
+  // Process the profile photo
   const processProfilePhoto = () => {
     if (!user.profile_photo) return null;
     
     try {
-      // Check if it's a JSON string
       if (typeof user.profile_photo === 'string' && 
           (user.profile_photo.startsWith('{') || user.profile_photo.startsWith('['))) {
         const parsed = JSON.parse(user.profile_photo);
         return parsed.url || parsed[0]?.url || parsed;
       }
-      // Just return the string
       return user.profile_photo;
     } catch (e) {
       console.error('Error processing profile photo:', e);
-      return user.profile_photo; // Return original on error
+      return user.profile_photo;
     }
   };
 
   const profilePhoto = processProfilePhoto();
-  const images = profilePhoto ? [profilePhoto] : [DEFAULT_PROFILE_IMAGE];
-
-  // Auto-slide images with error handling
-  useEffect(() => {
-    if (isScrolling || images.length <= 1) return;
-
-    const interval = setInterval(() => {
-      try {
-        if (activeImageIndex < images.length - 1) {
-          scrollViewRef.current?.scrollTo({
-            x: width * (activeImageIndex + 1),
-            animated: true
-          });
-          setActiveImageIndex(prev => prev + 1);
-        } else {
-          scrollViewRef.current?.scrollTo({
-            x: 0,
-            animated: true
-          });
-          setActiveImageIndex(0);
-        }
-      } catch (error) {
-        console.error('Error in image auto-scroll:', error);
-      }
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [activeImageIndex, isScrolling, images.length]);
-
-  // Debug user data on load
-  useEffect(() => {
-    console.log('User data for card:', {
-      username: user.username,
-      interests: user.interests,
-      similarity_score: user.similarity_score,
-      profile_photo: user.profile_photo,
-      id: user.recommended_user_profile_id
-    });
-  }, [user]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }]
-  }));
-
-  const handleImageError = (imageUrl: string) => {
-    console.error('Image failed to load:', imageUrl);
-    setImageLoadError(prev => [...prev, imageUrl]);
-  };
-
-  const handleImageLoad = () => {
-    setImageLoading(false);
-  };
-
-  const renderVerifiedBadge = () => (
-    <BlurView intensity={80} className="absolute top-4 right-4 flex-row items-center px-3 py-1.5 rounded-full">
-      <Ionicons name="checkmark-circle" size={16} color="#50A6A7" />
-      <Text className="text-white text-sm ml-1 font-montserratMedium">Verified</Text>
-    </BlurView>
-  );
+  const photoUrl = profilePhoto || DEFAULT_PROFILE_IMAGE;
 
   // Process interests to ensure it's always an array of strings
   const processInterests = () => {
@@ -140,9 +73,8 @@ export function UserCard({ user }: UserCardProps) {
     }
 
     if (typeof user.interests === 'string') {
-      // Handle potential JSON format with braces and quotes
       return user.interests
-        .replace(/[{}"]/g, '') // Remove all braces and quotes
+        .replace(/[{}"]/g, '')
         .split(',')
         .map(i => i.trim())
         .filter(i => i);
@@ -154,168 +86,323 @@ export function UserCard({ user }: UserCardProps) {
   const interestsArray = processInterests();
 
   return (
-    <Animated.View style={animatedStyle} className="flex-1">
-      <ScrollView 
-        className="flex-1 bg-neutral-lightest rounded-3xl overflow-hidden shadow-md"
-        bounces={false}
-        showsVerticalScrollIndicator={false}
-        onScrollBeginDrag={() => setIsScrolling(true)}
-        onScrollEndDrag={() => setIsScrolling(false)}
+    <Animated.View 
+      entering={FadeIn.duration(300)}
+      style={styles.container}
+    >
+      {/* Main Card with Gradient Border */}
+      <LinearGradient
+        colors={['#7D5BA6', '#50A6A7']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.cardBorder}
       >
-        {/* Images Section */}
-        <View className="relative">
+        <View style={styles.cardContent}>
+          {/* Profile Image - Fixed at top */}
+          <View style={styles.imageContainer}>
+            {imageLoading && (
+              <View style={styles.loaderContainer}>
+                <ActivityIndicator size="large" color="#7D5BA6" />
+              </View>
+            )}
+            <Image
+              source={{ uri: imageError ? DEFAULT_PROFILE_IMAGE : photoUrl }}
+              style={styles.profileImage}
+              onLoad={() => setImageLoading(false)}
+              onError={() => {
+                setImageLoading(false);
+                setImageError(true);
+              }}
+            />
+            <LinearGradient
+              colors={['rgba(0,0,0,0.6)', 'transparent']}
+              style={styles.imageOverlay}
+            />
+            <View style={styles.verifiedBadge}>
+              <BlurView intensity={80} tint="dark" style={styles.badgeContent}>
+                <Ionicons name="checkmark-circle" size={14} color="#50A6A7" />
+                <Text style={styles.badgeText}>Verified</Text>
+              </BlurView>
+            </View>
+          </View>
+
+          {/* Scrollable Content Section */}
           <ScrollView 
-            ref={scrollViewRef}
-            horizontal 
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={(e) => {
-              const offset = e.nativeEvent.contentOffset.x;
-              const newIndex = Math.round(offset / width);
-              setActiveImageIndex(newIndex);
-            }}
-            scrollEventThrottle={16}
+            style={styles.scrollContainer}
+            showsVerticalScrollIndicator={false}
+            bounces={true}
           >
-            {images.map((image, index) => (
-              <View key={index} className="relative">
-                {imageLoading && (
-                  <View style={{ width, height: height * 0.7 }} className="absolute items-center justify-center bg-neutral-medium">
-                    <ActivityIndicator size="large" color="#7D5BA6" />
+            <View style={styles.infoContainer}>
+              <View style={styles.infoHeader}>
+                <View>
+                  <Text style={styles.userName}>
+                    {user.username.replace('user_', '')}, {user.age || 'N/A'}
+                  </Text>
+                  <View style={styles.infoRow}>
+                    <Ionicons name="location-outline" size={16} color="#7D5BA6" />
+                    <Text style={styles.infoText}>
+                      {user.location || 'Location not specified'}
+                    </Text>
                   </View>
-                )}
-                <Image
-                  source={{ 
-                    uri: imageLoadError.includes(image) 
-                      ? DEFAULT_PROFILE_IMAGE 
-                      : image 
-                  }}
-                  style={{ width, height: height * 0.7 }}
-                  className="bg-neutral-medium"
-                  resizeMode="cover"
-                  onError={() => handleImageError(image)}
-                  onLoad={handleImageLoad}
-                />
-                <LinearGradient
-                  colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.6)']}
-                  style={{ position: 'absolute', width: '100%', height: '100%' }}
-                />
-              </View>
-            ))}
-          </ScrollView>
-
-          {/* Image Indicators */}
-          {images.length > 1 && (
-            <View className="absolute top-4 w-full flex-row justify-center gap-1.5">
-              {images.map((_, index) => (
-                <View 
-                  key={index}
-                  className={`h-1 rounded-full ${index === activeImageIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/50'}`}
-                />
-              ))}
-            </View>
-          )}
-
-          {renderVerifiedBadge()}
-
-          {/* Image Navigation Controls */}
-          {images.length > 1 && (
-            <>
-              <View className="absolute top-1/2 left-4 transform -translate-y-1/2">
-                <TouchableOpacity onPress={() => setActiveImageIndex((prev) => prev - 1 < 0 ? images.length - 1 : prev - 1)}>
-                  <Ionicons name="chevron-back-circle" size={40} color="#fff" />
-                </TouchableOpacity>
-              </View>
-
-              <View className="absolute top-1/2 right-4 transform -translate-y-1/2">
-                <TouchableOpacity onPress={() => setActiveImageIndex((prev) => (prev + 1) % images.length)}>
-                  <Ionicons name="chevron-forward-circle" size={40} color="#fff" />
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
-        </View>
-
-        {/* User Info */}
-        <View className="px-5 py-6">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-2xl font-youngSerif text-primary-dark">
-              {user.username.replace('user_', '')}, {user.age || 'N/A'}
-            </Text>
-            <View className="bg-primary-light/20 px-3 py-1 rounded-full">
-              <Text className="text-primary-dark font-montserratMedium">
-                {Math.round((user.similarity_score || 0) * 100)}%
-              </Text>
-            </View>
-          </View>
-          
-          <View className="flex-row items-center mt-2">
-            <Ionicons name="location-outline" size={18} color="#7D5BA6" />
-            <Text className="text-base text-neutral-dark ml-1.5 font-montserrat">
-              {user.location || 'Location not specified'}
-            </Text>
-          </View>
-
-          <View className="flex-row items-center mt-2">
-            <Ionicons name="briefcase-outline" size={18} color="#7D5BA6" />
-            <Text className="text-base text-neutral-dark ml-1.5 font-montserrat">
-              {user.occupation || 'Occupation not specified'}
-            </Text>
-          </View>
-
-          {/* Gender */}
-          <View className="flex-row items-center mt-2">
-            <Ionicons name="person-outline" size={18} color="#7D5BA6" />
-            <Text className="text-base text-neutral-dark ml-1.5 font-montserrat capitalize">
-              {user.gender || 'Not specified'}
-            </Text>
-          </View>
-
-          {/* About Section */}
-          {user.bio && (
-            <View className="mt-6">
-              <Text className="text-lg font-youngSerif text-primary-dark mb-2">About</Text>
-              <Text className="text-neutral-dark font-montserrat">{user.bio}</Text>
-            </View>
-          )}
-
-          {/* Interests Section */}
-          {interestsArray.length > 0 && (
-            <View className="mt-6">
-              <Text className="text-lg font-youngSerif mb-3 text-primary-dark">Interests</Text>
-              <View className="flex-row flex-wrap gap-2">
-                {interestsArray.map((interest: string, index: number) => (
-                  <View key={index} className="bg-secondary/10 rounded-full px-4 py-2">
-                    <Text className="text-secondary-dark font-montserratMedium">{interest}</Text>
+                  <View style={styles.infoRow}>
+                    <Ionicons name="briefcase-outline" size={16} color="#7D5BA6" />
+                    <Text style={styles.infoText}>
+                      {user.occupation || 'Occupation not specified'}
+                    </Text>
                   </View>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* Prompts Section */}
-          {user.prompts?.prompts?.length > 0 && (
-            <View className="mt-6 bg-neutral-light rounded-2xl p-5">
-              <Text className="text-lg font-youngSerif mb-4 text-primary-dark">Prompts</Text>
-              {user.prompts.prompts.map((prompt, index) => (
-                <View key={index} className="mb-4 last:mb-0">
-                  <Text className="text-primary font-montserratMedium mb-2">{prompt.question}</Text>
-                  <Text className="text-neutral-dark font-montserrat">{prompt.answer}</Text>
                 </View>
-              ))}
+                <View style={styles.matchScore}>
+                  <Text style={styles.matchText}>
+                    {Math.round((user.similarity_score || 0) * 100)}%
+                  </Text>
+                </View>
+              </View>
+
+              {/* Gender */}
+              <View style={styles.infoRow}>
+                <Ionicons name="person-outline" size={16} color="#7D5BA6" />
+                <Text style={styles.infoText}>
+                  {user.gender || 'Gender not specified'}
+                </Text>
+              </View>
+
+              {/* About Section */}
+              {user.bio && (
+                <View style={styles.bioSection}>
+                  <Text style={styles.sectionTitle}>About</Text>
+                  <Text style={styles.bioText}>{user.bio}</Text>
+                </View>
+              )}
+
+              {/* Interests Section */}
+              {interestsArray.length > 0 && (
+                <View style={styles.interestsSection}>
+                  <Text style={styles.sectionTitle}>Interests</Text>
+                  <View style={styles.interestTags}>
+                    {interestsArray.map((interest: string, index: number) => (
+                      <View key={index} style={styles.interestTag}>
+                        <Text style={styles.interestText}>{interest}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* Prompts Section - Show all prompts */}
+              {user.prompts?.prompts?.length > 0 && (
+                <View style={styles.promptSection}>
+                  <Text style={styles.sectionTitle}>Prompts</Text>
+                  {user.prompts.prompts.map((prompt, index) => (
+                    <BlurView key={index} intensity={10} tint="light" style={[styles.promptCard, { marginBottom: index < user.prompts.prompts.length - 1 ? 10 : 0 }]}>
+                      <Text style={styles.promptQuestion}>{prompt.question}</Text>
+                      <Text style={styles.promptAnswer}>{prompt.answer}</Text>
+                    </BlurView>
+                  ))}
+                </View>
+              )}
+
+              {/* Match Score Details */}
+              <View style={styles.matchDetailSection}>
+                <Text style={styles.sectionTitle}>Match Score</Text>
+                <View style={styles.matchDetailCard}>
+                  <Text style={styles.matchDetailText}>
+                    You are {Math.round((user.similarity_score || 0) * 100)}% compatible with {user.username.replace('user_', '')}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Bottom padding for scrolling */}
+              <View style={{ height: 20 }} />
             </View>
-          )}
-
-          {/* Match Score */}
-          <View className="mt-6 bg-accent/10 rounded-2xl p-5">
-            <Text className="text-lg font-youngSerif mb-2 text-accent-dark">Match Score</Text>
-            <Text className="text-accent-dark text-base font-montserratMedium">
-              {Math.round((user.similarity_score || 0) * 100)}% Compatible
-            </Text>
-          </View>
-
-          <View className="h-20" />
+          </ScrollView>
         </View>
-      </ScrollView>
+      </LinearGradient>
     </Animated.View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  cardBorder: {
+    flex: 1,
+    padding: 2,
+    borderRadius: 24,
+  },
+  cardContent: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
+  noProfileContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 24,
+  },
+  noProfileText: {
+    fontSize: 18,
+    color: '#333',
+    textAlign: 'center',
+    fontFamily: 'Montserrat',
+  },
+  imageContainer: {
+    height: '45%', // Reduced height to make more room for scrollable content
+    width: '100%',
+    position: 'relative',
+  },
+  loaderContainer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F0F0F0',
+    zIndex: 1,
+  },
+  profileImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  imageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+  },
+  verifiedBadge: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+  },
+  badgeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 12,
+    marginLeft: 4,
+    fontFamily: 'Montserrat-Medium',
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  infoContainer: {
+    padding: 16,
+  },
+  infoHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  userName: {
+    fontSize: 24,
+    fontFamily: 'YoungSerif-Regular',
+    color: '#333',
+    marginBottom: 8,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 6,
+    fontFamily: 'Montserrat',
+  },
+  matchScore: {
+    backgroundColor: 'rgba(125, 91, 166, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  matchText: {
+    color: '#7D5BA6',
+    fontSize: 16,
+    fontFamily: 'Montserrat-Bold',
+  },
+  bioSection: {
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    color: '#333',
+    marginBottom: 10,
+    fontFamily: 'YoungSerif-Regular',
+  },
+  bioText: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+    fontFamily: 'Montserrat',
+  },
+  interestsSection: {
+    marginBottom: 20,
+  },
+  interestTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  interestTag: {
+    backgroundColor: 'rgba(80, 166, 167, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  interestText: {
+    color: '#50A6A7',
+    fontSize: 12,
+    fontFamily: 'Montserrat-Medium',
+  },
+  promptSection: {
+    marginBottom: 20,
+  },
+  promptCard: {
+    padding: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(125, 91, 166, 0.05)',
+  },
+  promptQuestion: {
+    fontSize: 14,
+    color: '#7D5BA6',
+    marginBottom: 6,
+    fontFamily: 'Montserrat-Medium',
+  },
+  promptAnswer: {
+    fontSize: 14,
+    color: '#666',
+    fontFamily: 'Montserrat',
+    lineHeight: 20,
+  },
+  matchDetailSection: {
+    marginBottom: 16,
+  },
+  matchDetailCard: {
+    padding: 12,
+    borderRadius: 16,
+    backgroundColor: 'rgba(125, 91, 166, 0.1)',
+  },
+  matchDetailText: {
+    fontSize: 14,
+    color: '#7D5BA6',
+    fontFamily: 'Montserrat-Medium',
+    textAlign: 'center',
+  },
+});

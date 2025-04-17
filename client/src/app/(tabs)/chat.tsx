@@ -31,6 +31,14 @@ interface Match {
   profile_photo?: string | null;
 }
 
+// Add new message status interface
+interface MessageStatus {
+  sent: boolean;
+  delivered: boolean;
+  read: boolean;
+  timestamp: string;
+}
+
 // Chat preview interface
 interface ChatPreview {
   id: string;
@@ -44,6 +52,8 @@ interface ChatPreview {
   lastMessageType?: 'text' | 'image' | 'audio' | 'document';
   match_data?: Match;
   group_data?: TravelGroup;
+  messageStatus?: MessageStatus;
+  typing?: boolean;
 }
 
 // Group creation form interface
@@ -429,47 +439,56 @@ export default function ChatScreen() {
     <Animated.View entering={FadeInDown.delay(parseInt(item.id.replace(/\D/g, '')) * 100)}>
       <TouchableOpacity
         onPress={() => handleChatPress(item)}
-        className="flex-row items-center px-4 py-3.5"
-        activeOpacity={0.7}
+        className="flex-row items-center px-4 py-3.5 active:bg-neutral-medium/10"
       >
         <View className="relative">
           {item.type === 'group' ? (
-            // Group avatar with counter
-            <View className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center">
+            // Group avatar with member count
+            <LinearGradient
+              colors={['#3D90E3', '#70AEF0']}
+              className="w-14 h-14 rounded-full items-center justify-center"
+            >
               <Ionicons name="people" size={24} color="#fff" />
               {item.group_data && (
-                <View className="absolute -bottom-1 -right-1 bg-primary-light rounded-full min-w-5 h-5 items-center justify-center px-1 border border-neutral-lightest">
+                <View className="absolute -bottom-1 -right-1 bg-primary rounded-full min-w-5 h-5 items-center justify-center px-1 border-2 border-neutral-lightest">
                   <Text className="text-xs text-white font-montserratBold">
                     {item.group_data.member_count}
                   </Text>
                 </View>
               )}
-            </View>
+            </LinearGradient>
           ) : (
-            // Regular user avatar
-            <Image
-              source={{ uri: item.image }}
-              className="w-14 h-14 rounded-full"
-            />
-          )}
-          
-          {item.isOnline && item.type !== 'group' && (
-            <View className="absolute bottom-0 right-0 w-3 h-3 bg-secondary rounded-full border-2 border-neutral-lightest" />
-          )}
-          
-          {item.type === 'match' && (
-            <View className="absolute -bottom-1 -right-1 bg-primary-light rounded-full w-5 h-5 items-center justify-center border border-neutral-lightest">
-              <Ionicons name="heart" size={10} color="#fff" />
+            // User avatar with online indicator and match badge
+            <View className="relative">
+              <LinearGradient
+                colors={['#FF4D6D', '#FF758F']}
+                className="w-14 h-14 rounded-full p-[2px]"
+              >
+                <Image
+                  source={{ uri: item.image }}
+                  className="w-full h-full rounded-full border-2 border-neutral-lightest"
+                />
+              </LinearGradient>
+              
+              {item.isOnline && (
+                <View className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-secondary rounded-full border-2 border-neutral-lightest" />
+              )}
+              
+              {item.type === 'match' && (
+                <View className="absolute -top-1 -right-1 bg-primary rounded-full w-5 h-5 items-center justify-center border-2 border-neutral-lightest">
+                  <Ionicons name="heart" size={12} color="#fff" />
+                </View>
+              )}
             </View>
           )}
         </View>
 
-        <View className="flex-1 ml-3 border-b border-neutral-medium pb-3.5">
+        <View className="flex-1 ml-3 border-b border-neutral-medium/30 pb-3.5">
           <View className="flex-row items-center justify-between">
-            <Text className="text-base font-montserratMedium text-neutral-darkest">
+            <Text className={`text-base ${item.unreadCount > 0 ? 'font-montserratBold text-neutral-darkest' : 'font-montserratMedium text-neutral-dark'}`}>
               {item.name}
             </Text>
-            <Text className="text-xs text-neutral-dark font-montserrat">
+            <Text className={`text-xs ${item.unreadCount > 0 ? 'text-primary font-montserratBold' : 'text-neutral-dark font-montserrat'}`}>
               {getTimeDisplay(item.last_active)}
             </Text>
           </View>
@@ -477,15 +496,33 @@ export default function ChatScreen() {
           <View className="flex-row items-center justify-between mt-1">
             <View className="flex-1 mr-3">
               {item.type === 'group' && item.group_data?.destination && (
-                <Text className="text-xs text-primary font-montserrat mb-1">
-                  {item.group_data.destination}
+                <Text className="text-xs text-secondary font-montserratMedium mb-1">
+                  📍 {item.group_data.destination}
                 </Text>
               )}
-              {renderMessagePreview(item.lastMessage, item.lastMessageType)}
+              <View className="flex-row items-center">
+                {item.messageStatus?.read && (
+                  <Ionicons name="checkmark-done" size={16} color="#3D90E3" className="mr-1" />
+                )}
+                {item.messageStatus?.delivered && !item.messageStatus?.read && (
+                  <Ionicons name="checkmark-done" size={16} color="#9CA3AF" className="mr-1" />
+                )}
+                {item.messageStatus?.sent && !item.messageStatus?.delivered && (
+                  <Ionicons name="checkmark" size={16} color="#9CA3AF" className="mr-1" />
+                )}
+                {item.typing ? (
+                  <View className="flex-row items-center">
+                    <Ionicons name="pencil" size={16} color="#FF4D6D" />
+                    <Text className="text-primary text-sm font-montserratMedium ml-1">typing...</Text>
+                  </View>
+                ) : (
+                  renderMessagePreview(item.lastMessage, item.lastMessageType)
+                )}
+              </View>
             </View>
             
             {item.unreadCount > 0 && (
-              <View className="bg-primary rounded-full min-w-5 h-5 items-center justify-center px-1">
+              <View className="bg-primary rounded-full min-w-5 h-5 items-center justify-center px-1.5">
                 <Text className="text-neutral-lightest text-xs font-montserratBold">
                   {item.unreadCount}
                 </Text>
@@ -500,22 +537,32 @@ export default function ChatScreen() {
   // Empty state component
   const renderEmptyComponent = () => (
     <View className="flex-1 items-center justify-center py-20">
-      <Ionicons name="chatbubbles-outline" size={48} color="#E6E4EC" />
-      <Text className="mt-4 text-center text-neutral-dark font-montserrat">
-        {error || "No matches or groups yet.\nKeep swiping to find connections or create a group!"}
+      <LinearGradient
+        colors={['rgba(255,77,109,0.1)', 'rgba(61,144,227,0.1)']}
+        className="w-20 h-20 rounded-full items-center justify-center mb-4"
+      >
+        <Ionicons name="chatbubbles-outline" size={40} color="#FF4D6D" />
+      </LinearGradient>
+      <Text className="text-lg text-center text-neutral-darkest font-youngSerif mb-2">
+        No Conversations Yet
       </Text>
-      <View className="flex-row mt-6">
+      <Text className="text-center text-neutral-dark font-montserrat mb-6 px-8">
+        {error || "Start connecting with other travelers and join travel groups to begin your journey!"}
+      </Text>
+      <View className="flex-row gap-3">
         <TouchableOpacity 
           onPress={() => router.push("/(tabs)/explore")}
-          className="mr-2 bg-primary px-6 py-3 rounded-xl"
+          className="bg-gradient-romance px-6 py-3 rounded-xl flex-row items-center"
         >
-          <Text className="text-white font-montserratMedium">Explore Users</Text>
+          <Ionicons name="search" size={18} color="white" />
+          <Text className="text-white font-montserratBold ml-2">Find Matches</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           onPress={() => setIsGroupModalVisible(true)}
-          className="ml-2 bg-secondary px-6 py-3 rounded-xl"
+          className="bg-gradient-travel px-6 py-3 rounded-xl flex-row items-center"
         >
-          <Text className="text-white font-montserratMedium">Create Group</Text>
+          <Ionicons name="people" size={18} color="white" />
+          <Text className="text-white font-montserratBold ml-2">Create Group</Text>
         </TouchableOpacity>
       </View>
     </View>

@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 // Environment configuration
 const API_URL = 'http://10.0.2.2:5000';
@@ -301,36 +302,43 @@ export default function GroupChatScreen() {
     const isOwnMessage = senderId === userId;
     
     return (
-      <View className={`${isOwnMessage ? 'items-end' : 'items-start'} mb-2 px-4`}>
+      <Animated.View 
+        entering={FadeIn}
+        className={`flex-row ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-2 px-4`}
+      >
         {!isOwnMessage && (
-          <Text className="text-xs text-gray-600 mb-1 pl-1">
-            {item.sender_name}
-          </Text>
+          <Image
+            source={{ 
+              uri: groupInfo?.members.find(m => String(m.user_id) === senderId)?.profile_photo || 
+                  'https://via.placeholder.com/400x400?text=No+Profile+Image'
+            }}
+            className="h-8 w-8 rounded-full mr-2 mt-1"
+          />
         )}
-        
-        {isOwnMessage ? (
-          <LinearGradient
-            colors={['#8a3ab9', '#4c68d7']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            className="rounded-3xl rounded-tr-md px-4 py-2 max-w-[80%]"
+        <View className={`max-w-[80%] ${isOwnMessage ? 'items-end' : 'items-start'}`}>
+          <View 
+            className={`rounded-2xl px-4 py-2.5 shadow-sm ${
+              isOwnMessage 
+                ? 'rounded-tr-sm bg-gradient-romance ml-auto' 
+                : 'rounded-tl-sm bg-white mr-auto'
+            }`}
           >
-            <Text className="text-white">
-              {item.content || ''}
-            </Text>
-          </LinearGradient>
-        ) : (
-          <View className="bg-gray-100 rounded-3xl rounded-tl-md px-4 py-2 max-w-[80%]">
-            <Text className="text-gray-800">
+            {!isOwnMessage && (
+              <Text className="text-primary-dark text-xs font-montserratMedium mb-1">
+                {item.sender_name}
+              </Text>
+            )}
+            <Text className={`${isOwnMessage ? 'text-white' : 'text-neutral-darkest'} font-montserrat`}>
               {item.content || ''}
             </Text>
           </View>
-        )}
-        
-        <Text className={`text-xs text-gray-500 mt-0.5 ${isOwnMessage ? 'pr-1' : 'pl-1'}`}>
-          {formatMessageTime(item.sent_at || new Date().toISOString())}
-        </Text>
-      </View>
+          <View className={`flex-row items-center mt-1 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+            <Text className="text-xs text-neutral-dark font-montserrat">
+              {formatMessageTime(item.sent_at || new Date().toISOString())}
+            </Text>
+          </View>
+        </View>
+      </Animated.View>
     );
   };
 

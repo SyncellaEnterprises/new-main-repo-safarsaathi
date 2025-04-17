@@ -6,6 +6,7 @@ import { useAuth } from '@/src/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 interface Message {
   message_id: string;
@@ -201,51 +202,77 @@ export default function ChatDetailScreen() {
 
   // Render message items
   const renderMessage = ({ item }: { item: Message }) => {
-    // Add null checks to prevent TypeError
-    if (!item || !user) {
-      return null;
-    }
+    if (!item || !user) return null;
     
-    // Get the sender ID and current user ID
     const senderId = String(item.sender_id || '');
     const userId = String(user.id || '');
-    
-    // Check if message is from current user
     const isOwnMessage = senderId === userId;
     
     return (
-      <View className={`${isOwnMessage ? 'items-end' : 'items-start'} mb-2 px-4`}>
-        {isOwnMessage ? (
-          <LinearGradient
-            colors={['#8a3ab9', '#4c68d7']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            className="rounded-3xl rounded-tr-md px-4 py-2 max-w-[80%]"
+      <Animated.View 
+        entering={FadeIn}
+        className={`flex-row ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-2 px-4`}
+      >
+        {!isOwnMessage && (
+          <Image
+            source={{ uri: recipient.profile_photo || 'https://via.placeholder.com/400x400?text=No+Profile+Image' }}
+            className="h-8 w-8 rounded-full mr-2 mt-1"
+          />
+        )}
+        <View className={`max-w-[80%] ${isOwnMessage ? 'items-end' : 'items-start'}`}>
+          <View 
+            className={`rounded-2xl px-4 py-2.5 shadow-sm ${
+              isOwnMessage 
+                ? 'rounded-tr-sm bg-gradient-romance ml-auto' 
+                : 'rounded-tl-sm bg-white mr-auto'
+            }`}
           >
-            <Text className="text-white">
-              {item.content || ''}
-            </Text>
-          </LinearGradient>
-        ) : (
-          <View className="bg-gray-100 rounded-3xl rounded-tl-md px-4 py-2 max-w-[80%]">
-            <Text className="text-gray-800">
+            {!isOwnMessage && (
+              <Text className="text-primary-dark text-xs font-montserratMedium mb-1">
+                {item.sender_name}
+              </Text>
+            )}
+            <Text className={`${isOwnMessage ? 'text-white' : 'text-neutral-darkest'} font-montserrat`}>
               {item.content || ''}
             </Text>
           </View>
-        )}
-        <Text className={`text-xs text-gray-500 mt-0.5 ${isOwnMessage ? 'pr-1' : 'pl-1'}`}>
-          {formatMessageTime(item.sent_at || new Date().toISOString())}
-        </Text>
-      </View>
+          <View className={`flex-row items-center mt-1 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+            <Text className="text-xs text-neutral-dark font-montserrat">
+              {formatMessageTime(item.sent_at || new Date().toISOString())}
+            </Text>
+            {isOwnMessage && (
+              <View className="flex-row ml-1">
+                {item.status === 'sent' && (
+                  <Ionicons name="checkmark" size={14} color="#9CA3AF" />
+                )}
+                {item.status === 'delivered' && (
+                  <Ionicons name="checkmark-done" size={14} color="#9CA3AF" />
+                )}
+                {item.status === 'read' && (
+                  <Ionicons name="checkmark-done" size={14} color="#3D90E3" />
+                )}
+              </View>
+            )}
+          </View>
+        </View>
+      </Animated.View>
     );
   };
 
   // Empty state for no messages
   const renderEmptyMessages = () => (
-    <View className="flex-1 items-center justify-center p-4">
-      <Ionicons name="chatbubbles-outline" size={64} color="#E6E4EC" />
-      <Text className="text-neutral-dark mt-4 text-center font-montserrat">
-        No messages yet.{'\n'}Start the conversation!
+    <View className="flex-1 items-center justify-center p-8">
+      <LinearGradient
+        colors={['rgba(255,77,109,0.1)', 'rgba(61,144,227,0.1)']}
+        className="w-20 h-20 rounded-full items-center justify-center mb-4"
+      >
+        <Ionicons name="chatbubbles-outline" size={40} color="#FF4D6D" />
+      </LinearGradient>
+      <Text className="text-lg text-center text-neutral-darkest font-youngSerif mb-2">
+        Start the Conversation
+      </Text>
+      <Text className="text-center text-neutral-dark font-montserrat">
+        Say hello and begin your journey together!
       </Text>
     </View>
   );
@@ -277,40 +304,52 @@ export default function ChatDetailScreen() {
     <SafeAreaView className="flex-1 bg-neutral-light">
       {/* Header */}
       <LinearGradient
-        colors={['rgba(125, 91, 166, 0.9)', 'rgba(90, 65, 128, 0.8)']}
+        colors={['#FF4D6D', '#FF758F']}
         className="px-4 py-3"
       >
         <View className="flex-row items-center">
           <TouchableOpacity 
             onPress={() => router.back()}
-            className="mr-3"
+            className="mr-3 p-1"
           >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
 
-          <Image
-            source={{ uri: recipient.profile_photo || 'https://via.placeholder.com/400x400?text=No+Profile+Image' }}
-            className="h-10 w-10 rounded-full"
-          />
-          
-          <View className="flex-1 ml-3">
-            <Text className="text-white text-lg font-montserratMedium">
-              {recipient.username}
-            </Text>
-            <Text className="text-primary-light text-sm font-montserrat">
-              {recipient.isOnline ? 'Online' : 'Offline'}
-              {isTyping ? ' • Typing...' : ''}
-            </Text>
-          </View>
+          <TouchableOpacity 
+            onPress={() => router.push({
+              pathname: '/(tabs)/profile',
+              params: { id: recipient.id }
+            })}
+            className="flex-row items-center flex-1"
+          >
+            <View className="relative">
+              <Image
+                source={{ uri: recipient.profile_photo || 'https://via.placeholder.com/400x400?text=No+Profile+Image' }}
+                className="h-10 w-10 rounded-full border-2 border-white/30"
+              />
+              {recipient.isOnline && (
+                <View className="absolute bottom-0 right-0 w-3 h-3 bg-secondary rounded-full border-2 border-white" />
+              )}
+            </View>
+            
+            <View className="flex-1 ml-3">
+              <Text className="text-white text-lg font-montserratBold">
+                {recipient.username}
+              </Text>
+              <Text className="text-white/80 text-sm font-montserrat">
+                {recipient.isOnline ? (isTyping ? 'typing...' : 'Online') : 'Offline'}
+              </Text>
+            </View>
+          </TouchableOpacity>
 
           <View className="flex-row">
-            <TouchableOpacity className="mr-4">
+            <TouchableOpacity className="p-2">
               <Ionicons name="videocam" size={24} color="white" />
             </TouchableOpacity>
-            <TouchableOpacity className="mr-4">
+            <TouchableOpacity className="p-2">
               <Ionicons name="call" size={24} color="white" />
             </TouchableOpacity>
-            <TouchableOpacity>
+            <TouchableOpacity className="p-2">
               <Ionicons name="ellipsis-vertical" size={24} color="white" />
             </TouchableOpacity>
           </View>
@@ -322,7 +361,10 @@ export default function ChatDetailScreen() {
         data={messages}
         renderItem={renderMessage}
         keyExtractor={(item) => item.message_id}
-        contentContainerStyle={messages.length === 0 ? { flex: 1 } : { paddingVertical: 16 }}
+        contentContainerStyle={[
+          messages.length === 0 ? { flex: 1 } : { paddingVertical: 16 },
+          { paddingBottom: 80 }
+        ]}
         ListEmptyComponent={renderEmptyMessages}
         inverted={false}
         className="flex-1"
@@ -332,40 +374,43 @@ export default function ChatDetailScreen() {
       {/* Message Input */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="border-t border-gray-200 bg-white"
+        className="border-t border-neutral-medium/20 bg-neutral-lightest"
       >
-        <View className="flex-row items-center p-2">
-          <TouchableOpacity className="p-2">
-            <Ionicons name="add-circle-outline" size={24} color="#6B7280" />
-          </TouchableOpacity>
-          
-          <View className="flex-1 flex-row items-center bg-gray-100 rounded-full px-4 py-2 mx-2">
+        <View className="flex-row items-end p-2">
+          <View className="flex-row items-end flex-1 bg-white rounded-2xl px-4 py-2 mr-2 shadow-sm">
             <TextInput
               value={newMessage}
               onChangeText={handleTyping}
               placeholder="Message..."
-              className="flex-1 text-base text-gray-800 font-montserrat"
+              className="flex-1 max-h-24 text-base text-neutral-darkest font-montserrat"
               multiline
               maxLength={500}
             />
             
-            <TouchableOpacity className="mr-2">
-              <Ionicons name="camera-outline" size={24} color="#6B7280" />
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <Ionicons name="mic-outline" size={24} color="#6B7280" />
-            </TouchableOpacity>
+            <View className="flex-row items-center">
+              <TouchableOpacity className="p-2">
+                <Ionicons name="happy-outline" size={24} color="#6B7280" />
+              </TouchableOpacity>
+              <TouchableOpacity className="p-2">
+                <Ionicons name="camera-outline" size={24} color="#6B7280" />
+              </TouchableOpacity>
+              <TouchableOpacity className="p-2">
+                <Ionicons name="mic-outline" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <TouchableOpacity
             onPress={handleSendMessage}
-            className={`p-2 rounded-full ${newMessage.trim() ? 'bg-primary' : 'bg-neutral-medium'}`}
             disabled={!newMessage.trim() || !isConnected}
+            className={`p-2 rounded-full ${
+              newMessage.trim() ? 'bg-gradient-romance' : 'bg-neutral-medium'
+            } h-12 w-12 items-center justify-center shadow-sm`}
           >
             <Ionicons 
-              name="send" 
+              name={newMessage.trim() ? "send" : "mic"} 
               size={20} 
-              color="white" 
+              color="white"
             />
           </TouchableOpacity>
         </View>

@@ -1,9 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, SafeAreaView, ActivityIndicator, Text, TouchableOpacity } from 'react-native';
-import Swiper from 'react-native-deck-swiper';
-import ConfettiCannon from 'react-native-confetti-cannon';
+import { View, SafeAreaView, ActivityIndicator, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { UserCard } from '@/src/components/explore/UserCard';
-import { SwipeButtons } from '@/src/components/explore/SwipeButtons';
 import TabHeader from '@/src/components/shared/TabHeader';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -11,8 +8,8 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import Explosion from 'react-native-confetti-cannon';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Set API URL to your local server
 const API_URL = 'http://10.0.2.2:5000';
@@ -83,17 +80,19 @@ interface SwipeResponse {
 
 export default function ExploreScreen() {
   const router = useRouter();
-  const swiperRef = useRef<Swiper<TransformedProfile>>(null);
-  const confettiRef = useRef<Explosion>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [swipesRemaining, setSwipesRemaining] = useState(10); // Default value
   const [totalLimit, setTotalLimit] = useState(10); // Default value
-  const [timeUntilReset, setTimeUntilReset] = useState<string>('');
   const [isLimited, setIsLimited] = useState(false);
   const [recommendations, setRecommendations] = useState<TransformedProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Animation values
+  const cardOpacity = useSharedValue(1);
+  const cardScale = useSharedValue(1);
+  const cardOffsetY = useSharedValue(0);
 
   // Check remaining swipes
   const checkRemainingSwipes = useCallback(async () => {
@@ -312,8 +311,8 @@ export default function ExploreScreen() {
     }
   };
 
-  const handleSwipe = (direction: string) => {
-    // Only handle UI animations here, not API calls
+  // Function to handle swipe action
+  const handleSwipe = async (direction: string) => {
     if (isLimited) {
       Toast.show({
         type: 'info',
@@ -323,24 +322,125 @@ export default function ExploreScreen() {
       return;
     }
 
-    // Trigger swipe animations
-    switch (direction) {
-      case 'left':
-        swiperRef.current?.swipeLeft();
-        break;
-      case 'right':
-      case 'superlike': // Handle superlike as a right swipe with confetti
-        swiperRef.current?.swipeRight();
-        break;
+    if (!recommendations[currentIndex]) {
+      return;
     }
-    
-    // Update index immediately after swipe
-    setCurrentIndex(prev => Math.min(prev + 1, recommendations.length - 1));
+
+    // Animate card out
+    if (direction === 'right') {
+      cardScale.value = withTiming(1.05, { duration: 200 });
+      cardOpacity.value = withTiming(0, { duration: 300 });
+      cardOffsetY.value = withTiming(-100, { duration: 300 });
+    } else {
+      cardScale.value = withTiming(0.95, { duration: 200 });
+      cardOpacity.value = withTiming(0, { duration: 300 });
+      cardOffsetY.value = withTiming(100, { duration: 300 });
+    }
+
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) throw new Error('No access token found');
+
+      const targetUsername = recommendations[currentIndex].username;
+      const apiPayload = {
+        target_username: targetUsername,
+        direction: direction === 'right' ? 'right' : 'left'
+      };
+
+      const swipeResponse = await axios.post(
+        `${API_URL}/api/swipe`,
+        apiPayload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 5000
+        }
+      );
+
+      if (swipeResponse.data.status === 'success') {
+        setSwipesRemaining(swipeResponse.data.remaining_swipes);
+        setTotalLimit(swipeResponse.data.total_limit);
+        setIsLimited(swipeResponse.data.remaining_swipes <= 0);
+      }
+
+      // Check for matches only after successful right swipe
+      if (direction === 'right' && swipeResponse.data.status === 'success') {
+        try {
+          const matchResponse = await axios.get(
+            `${API_URL}/api/matches/me`,
+            {
+              headers: { 
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+
+          if (matchResponse.data?.matches?.length > 0) {
+            const isMatch = matchResponse.data.matches.some(
+              (match: any) => match.matched_username === targetUsername
+            );
+
+            if (isMatch) {
+              Toast.show({
+                type: 'success',
+                text1: 'Match! 🎉',
+                text2: `You matched with ${targetUsername}!`,
+                visibilityTime: 4000,
+                autoHide: true,
+                topOffset: 60
+              });
+            }
+          }
+        } catch (matchError: any) {
+          console.error('Match check error:', matchError);
+        }
+      }
+
+      // Update index and reset animation values after a small delay
+      setTimeout(() => {
+        setCurrentIndex(prev => Math.min(prev + 1, recommendations.length - 1));
+        cardOpacity.value = withTiming(1, { duration: 300 });
+        cardScale.value = withTiming(1, { duration: 300 });
+        cardOffsetY.value = withTiming(0, { duration: 300 });
+      }, 300);
+
+    } catch (error: any) {
+      console.error('Swipe error:', error);
+      
+      const errorMessage = error.response?.data?.message || 
+                        error.response?.status === 404 ? 'Endpoint not found or invalid username' :
+                        error.message || 'Swipe failed';
+
+      Toast.show({ 
+        type: 'error', 
+        text1: 'Swipe Error', 
+        text2: errorMessage,
+        visibilityTime: 3000
+      });
+      
+      // Reset animation
+      cardOpacity.value = withTiming(1, { duration: 300 });
+      cardScale.value = withTiming(1, { duration: 300 });
+      cardOffsetY.value = withTiming(0, { duration: 300 });
+    }
   };
+
+  const animatedCardStyle = useAnimatedStyle(() => {
+    return {
+      opacity: cardOpacity.value,
+      transform: [
+        { scale: cardScale.value },
+        { translateY: cardOffsetY.value }
+      ]
+    };
+  });
 
   if (loading && !refreshing) {
     return (
-      <SafeAreaView className="flex-1 bg-primary">
+      <SafeAreaView style={styles.container}>
         <TabHeader
           title="Explore"
           leftIcon="people-outline"
@@ -349,9 +449,9 @@ export default function ExploreScreen() {
           onRightPress={() => router.push("/(tabs)/filters" as any)}
           gradientColors={['rgba(125, 91, 166, 0.9)', 'rgba(90, 65, 128, 0.8)']}
         />
-        <View className="flex-1 items-center justify-center">
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#FFF" />
-          <Text className="text-white mt-4 font-montserrat">Finding your matches...</Text>
+          <Text style={styles.loadingText}>Finding your matches...</Text>
         </View>
       </SafeAreaView>
     );
@@ -359,7 +459,7 @@ export default function ExploreScreen() {
 
   if (error || recommendations.length === 0) {
     return (
-      <SafeAreaView className="flex-1 bg-primary">
+      <SafeAreaView style={styles.container}>
         <TabHeader
           title="Explore"
           leftIcon="people-outline"
@@ -368,17 +468,17 @@ export default function ExploreScreen() {
           onRightPress={() => router.push("/(tabs)/filters" as any)}
           gradientColors={['rgba(125, 91, 166, 0.9)', 'rgba(90, 65, 128, 0.8)']}
         />
-        <View className="flex-1 items-center justify-center p-6">
-          <BlurView intensity={20} className="p-6 rounded-3xl items-center">
+        <View style={styles.errorContainer}>
+          <BlurView intensity={20} style={styles.errorBlur}>
             <Ionicons name="search" size={48} color="#fff" />
-            <Text className="text-white text-xl font-youngSerif mt-4 text-center">
+            <Text style={styles.errorText}>
               {error || 'No recommendations found'}
             </Text>
             <TouchableOpacity 
               onPress={refreshAll}
-              className="mt-6 bg-white/20 px-6 py-3 rounded-xl"
+              style={styles.retryButton}
             >
-              <Text className="text-white font-montserratMedium">Try Again</Text>
+              <Text style={styles.retryText}>Try Again</Text>
             </TouchableOpacity>
           </BlurView>
         </View>
@@ -387,7 +487,7 @@ export default function ExploreScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-primary">
+    <SafeAreaView style={styles.container}>
       <TabHeader
         title="Explore"
         leftIcon="people-outline"
@@ -398,112 +498,164 @@ export default function ExploreScreen() {
         subtitle={isLimited ? `Swipes Reset Soon` : `${swipesRemaining}/${totalLimit} swipes left`}
       />
 
-      <View className="flex-1">
+      <View style={styles.cardContainer}>
         {refreshing ? (
-          <View className="absolute inset-0 items-center justify-center z-20 bg-black/20">
+          <View style={styles.refreshOverlay}>
             <ActivityIndicator size="large" color="#fff" />
           </View>
         ) : null}
         
-        <Swiper
-          ref={swiperRef}
-          cards={recommendations}
-          renderCard={(user) => <UserCard user={user} />}
-          onSwipedLeft={(cardIndex) => {
-            console.log('Disliked', cardIndex);
-            setCurrentIndex(cardIndex + 1);
-          }}
-          onSwipedRight={(cardIndex) => {
-            console.log('Liked', cardIndex);
-            setCurrentIndex(cardIndex + 1);
-          }}
-          onSwipedAll={() => {
-            Toast.show({
-              type: 'info',
-              text1: 'No more profiles',
-              text2: 'Check back later for more recommendations!'
-            });
-          }}
-          cardIndex={currentIndex}
-          backgroundColor={'transparent'}
-          stackSize={3}    
-          stackScale={12}  
-          stackSeparation={10}
-          animateOverlayLabelsOpacity
-          animateCardOpacity
-          swipeBackCard
-          verticalSwipe={false}
-          cardVerticalMargin={0}
-          cardHorizontalMargin={0}
-          overlayLabels={{
-            left: {
-              title: 'NOPE',
-              style: {
-                label: {
-                  backgroundColor: '#FF6F3C',
-                  color: 'white',
-                  fontSize: 24
-                },
-                wrapper: {
-                  flexDirection: 'column',
-                  alignItems: 'flex-end',
-                  justifyContent: 'flex-start',
-                  marginTop: 30,
-                  marginLeft: -30
-                }
-              }
-            },
-            right: {
-              title: 'LIKE',
-              style: {
-                label: {
-                  backgroundColor: '#50A6A7',
-                  color: 'white',
-                  fontSize: 24
-                },
-                wrapper: {
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  justifyContent: 'flex-start',
-                  marginTop: 30,
-                  marginLeft: 30
-                }
-              }
-            }
-          }}
-        />
+        {/* Profile Card */}
+        {recommendations.length > currentIndex && (
+          <Animated.View style={[styles.cardWrapper, animatedCardStyle]}>
+            <UserCard user={recommendations[currentIndex]} />
+          </Animated.View>
+        )}
 
-        <SwipeButtons
-          className="absolute bottom-20 w-full z-10"
-          onSwipe={handleSwipe}
-          disabled={isLimited}
-          currentUser={recommendations[currentIndex]}
-          apiUrl={API_URL}
-          confettiRef={confettiRef}
-          updateSwipesRemaining={(remaining, total) => {
-            setSwipesRemaining(remaining);
-            setTotalLimit(total);
-            setIsLimited(remaining <= 0);
-          }}
-        />
+        {/* Action Buttons */}
+        <View style={styles.actionButtons}>
+          <TouchableOpacity 
+            style={styles.dislikeButton} 
+            onPress={() => handleSwipe('left')}
+            disabled={isLimited || currentIndex >= recommendations.length}
+          >
+            <LinearGradient
+              colors={['#FF3B30', '#FF6E67']}
+              style={styles.gradientButton}
+            >
+              <Ionicons name="close" size={32} color="#FFF" />
+            </LinearGradient>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.likeButton}
+            onPress={() => handleSwipe('right')}
+            disabled={isLimited || currentIndex >= recommendations.length}
+          >
+            <LinearGradient
+              colors={['#50A6A7', '#7CD3D4']}
+              style={styles.gradientButton}
+            >
+              <Ionicons name="heart" size={32} color="#FFF" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity 
           onPress={refreshAll}
-          className="absolute top-4 right-4 z-20 bg-white/20 p-2 rounded-full"
-          style={{ right: 20 }}
+          style={styles.refreshButton}
         >
           <Ionicons name="refresh" size={24} color="#fff" />
         </TouchableOpacity>
-
-        <ConfettiCannon
-          ref={confettiRef}
-          count={200}
-          origin={{ x: -10, y: 0 }}
-          autoStart={false}
-          fadeOut={true}
-          colors={['#D6A655', '#50A6A7', '#7D5BA6', '#E6C489']}
-        />
       </View>
     </SafeAreaView>
   );
-} 
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#1D1B26',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    color: '#FFF',
+    marginTop: 16,
+    fontFamily: 'Montserrat',
+    fontSize: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  errorBlur: {
+    padding: 24,
+    borderRadius: 24,
+    alignItems: 'center',
+    width: '100%',
+  },
+  errorText: {
+    color: '#FFF',
+    fontSize: 18,
+    fontFamily: 'YoungSerif-Regular',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  retryText: {
+    color: '#FFF',
+    fontFamily: 'Montserrat-Medium',
+    fontSize: 16,
+  },
+  cardContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  cardWrapper: {
+    width: '100%',
+    height: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    paddingHorizontal: 32,
+    marginTop: 24,
+  },
+  dislikeButton: {
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  likeButton: {
+    shadowColor: '#50A6A7',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.5, 
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  gradientButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 15,
+  },
+  refreshButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    padding: 10,
+    borderRadius: 20,
+  },
+  refreshOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 10,
+  },
+}); 

@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Platform } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ImageBackground } from "react-native";
 import { Link, useRouter } from "expo-router";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useToast } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, FontAwesome } from "@expo/vector-icons";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -72,103 +72,136 @@ export default function LoginScreen() {
     }
   };
   
-
   const isLoading = isSubmitting || authLoading;
 
   return (
-    <View className="flex-1 bg-neutral-light">
-      <Animated.View 
-        entering={FadeInDown.duration(1000).springify()}
-        className="flex-1 justify-center px-6 py-8"
+    <View className="flex-1">
+      <ImageBackground 
+        source={{ uri: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1473&auto=format&fit=crop&ixlib=rb-4.0.3" }}
+        className="flex-1"
+        resizeMode="cover"
       >
-        <Animated.Text 
-          entering={FadeInUp.delay(300)}
-          className="text-3xl font-youngSerif mb-2 text-primary-dark"
-        >
-          Welcome Back
-        </Animated.Text>
-        <Animated.Text 
-          entering={FadeInUp.delay(400)}
-          className="text-neutral-dark mb-8 font-montserratLight text-base"
-        >
-          Sign in to continue your journey
-        </Animated.Text>
-
-        <View className="space-y-5">
-          <Animated.View entering={FadeInUp.delay(500)}>
-            <Text className="text-neutral-dark mb-2 ml-1 font-montserratMedium text-sm">Email</Text>
-            <TextInput
-              value={formData.email}
-              onChangeText={(text) => setFormData({ ...formData, email: text })}
-              className="bg-neutral-lightest px-4 py-3.5 rounded-xl border border-neutral-medium font-montserrat"
-              placeholder="your@email.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              placeholderTextColor="#9CA3AF"
-              editable={!isLoading}
-            />
-          </Animated.View>
-
-          <Animated.View entering={FadeInUp.delay(600)}>
-            <Text className="text-neutral-dark mb-2 ml-1 font-montserratMedium text-sm">Password</Text>
-            <View className="relative">
-              <TextInput
-                value={formData.password}
-                onChangeText={(text) => setFormData({ ...formData, password: text })}
-                className="bg-neutral-lightest px-4 py-3.5 rounded-xl border border-neutral-medium font-montserrat"
-                secureTextEntry={!showPassword}
-                placeholder="Min. 6 characters"
-                placeholderTextColor="#9CA3AF"
-                editable={!isLoading}
-              />
-              <TouchableOpacity 
-                onPress={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-3.5"
-                disabled={isLoading}
-              >
-                <Ionicons 
-                  name={showPassword ? "eye-off" : "eye"} 
-                  size={24} 
-                  color="#7D5BA6"
-                />
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-        </View>
-
-        <Animated.View 
-          entering={FadeInUp.delay(700)}
-          className="mt-3"
-        >
-          <Link href="/auth/forgot-password" className="text-primary-dark text-right font-montserratMedium text-sm">
-            Forgot Password?
-          </Link>
-        </Animated.View>
-
-        <Animated.View entering={FadeInUp.delay(800)}>
-          <TouchableOpacity
-            onPress={handleLogin}
-            disabled={isLoading}
-            className="bg-primary py-4 rounded-xl mt-8 flex-row justify-center items-center shadow-sm"
+        <View className="flex-1 bg-black/25 bg-pattern">
+          <Animated.ScrollView 
+            entering={FadeInDown.duration(1000).springify()}
+            className="flex-1 px-6 py-8"
+            showsVerticalScrollIndicator={false}
           >
-            {isLoading ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text className="text-neutral-lightest text-base font-montserratBold">Sign In</Text>
-            )}
-          </TouchableOpacity>
-        </Animated.View>
-
-        <Animated.View 
-          entering={FadeInUp.delay(900)}
-          className="flex-row justify-center mt-8"
-        >
-          <Text className="text-neutral-dark font-montserrat">Don't have an account? </Text>
-          <Link href="/auth/register" className="text-primary-dark font-montserratBold">
-            Sign Up
-          </Link>
-        </Animated.View>
-      </Animated.View>
+            <View className="h-16" />
+  
+            <View className="bg-white/90 rounded-3xl p-8 shadow-card">
+              <Animated.Text 
+                entering={FadeInUp.delay(300)}
+                className="text-3xl font-youngSerif mb-2 text-primary"
+              >
+                Welcome Back
+              </Animated.Text>
+              <Animated.Text 
+                entering={FadeInUp.delay(400)}
+                className="text-neutral-dark mb-8 font-montserratLight text-base"
+              >
+                Sign in to continue your journey
+              </Animated.Text>
+  
+              <View className="space-y-5">
+                <Animated.View entering={FadeInUp.delay(500)}>
+                  <Text className="text-neutral-dark mb-2 ml-1 font-montserratMedium text-sm">Email</Text>
+                  <View className="relative">
+                    <View className="absolute left-3.5 top-3.5 z-10">
+                      <Ionicons name="mail-outline" size={22} color="#3D90E3" />
+                    </View>
+                    <TextInput
+                      value={formData.email}
+                      onChangeText={(text) => setFormData({ ...formData, email: text })}
+                      className="bg-neutral-lightest pl-11 pr-4 py-3.5 rounded-xl border border-neutral-medium font-montserrat"
+                      placeholder="your@email.com"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      placeholderTextColor="#9CA3AF"
+                      editable={!isLoading}
+                    />
+                  </View>
+                </Animated.View>
+  
+                <Animated.View entering={FadeInUp.delay(600)}>
+                  <Text className="text-neutral-dark mb-2 ml-1 font-montserratMedium text-sm">Password</Text>
+                  <View className="relative">
+                    <View className="absolute left-3.5 top-3.5 z-10">
+                      <Ionicons name="lock-closed-outline" size={22} color="#3D90E3" />
+                    </View>
+                    <TextInput
+                      value={formData.password}
+                      onChangeText={(text) => setFormData({ ...formData, password: text })}
+                      className="bg-neutral-lightest pl-11 pr-12 py-3.5 rounded-xl border border-neutral-medium font-montserrat"
+                      secureTextEntry={!showPassword}
+                      placeholder="Min. 6 characters"
+                      placeholderTextColor="#9CA3AF"
+                      editable={!isLoading}
+                    />
+                    <TouchableOpacity 
+                      onPress={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-3.5 z-10"
+                      disabled={isLoading}
+                    >
+                      <Ionicons 
+                        name={showPassword ? "eye-off" : "eye"} 
+                        size={22} 
+                        color="#FF4D6D"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </Animated.View>
+              </View>
+  
+              <Animated.View 
+                entering={FadeInUp.delay(700)}
+                className="mt-3"
+              >
+                <Link href="/auth/forgot-password" className="text-primary-dark text-right font-montserratMedium text-sm">
+                  Forgot Password?
+                </Link>
+              </Animated.View>
+  
+              <Animated.View entering={FadeInUp.delay(800)}>
+                <TouchableOpacity
+                  onPress={handleLogin}
+                  disabled={isLoading}
+                  className="bg-gradient-romance py-4 rounded-xl mt-8 flex-row justify-center items-center shadow-button"
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <>
+                      <FontAwesome name="sign-in" size={18} color="white" />
+                      <Text className="text-neutral-lightest text-base font-montserratBold ml-2">Sign In</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </Animated.View>
+  
+              <Animated.View 
+                entering={FadeInUp.delay(900)}
+                className="flex-row justify-center mt-8"
+              >
+                <Text className="text-neutral-dark font-montserrat">Don't have an account? </Text>
+                <Link href="/auth/register" className="text-primary font-montserratBold">
+                  Sign Up
+                </Link>
+              </Animated.View>
+            </View>
+            
+            <TouchableOpacity
+              onPress={() => router.back()}
+              className="mt-6 mb-4 self-center"
+            >
+              <View className="flex-row items-center">
+                <Ionicons name="arrow-back-circle" size={24} color="white" />
+                <Text className="text-white ml-2 font-montserratMedium">Back</Text>
+              </View>
+            </TouchableOpacity>
+          </Animated.ScrollView>
+        </View>
+      </ImageBackground>
     </View>
   );
 }

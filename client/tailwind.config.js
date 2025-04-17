@@ -22,19 +22,19 @@ module.exports = {
       },
       colors: {
         primary: {
-          DEFAULT: "#7D5BA6", // Soft purple - elegant and romantic
-          light: "#9D7EBD", // Light purple
-          dark: "#5A4180", // Deep purple
+          DEFAULT: "#FF4D6D", // Vibrant pink/red - romance/passion
+          light: "#FF758F", // Light pink
+          dark: "#D62E4D", // Deep red/pink
         },
         secondary: {
-          DEFAULT: "#50A6A7", // Soft teal - travel/adventure feel
-          light: "#7FC2C3", // Light teal
-          dark: "#398788", // Deep teal
+          DEFAULT: "#3D90E3", // Bright blue - travel/adventure
+          light: "#70AEF0", // Light blue
+          dark: "#1A6BBF", // Deep blue
         },
         accent: {
-          DEFAULT: "#D6A655", // Warm gold - subtle warmth
-          light: "#E6C489", // Light gold
-          dark: "#B38B40", // Deep gold
+          DEFAULT: "#FFB626", // Warm vibrant gold - energy/excitement
+          light: "#FFCB5C", // Light gold
+          dark: "#E09600", // Deep gold
         },
         neutral: {
           lightest: "#FFFFFF",
@@ -57,6 +57,15 @@ module.exports = {
         'lg': '1.5rem',
         'xl': '2rem',
         '2xl': '3rem',
+      },
+      backgroundImage: {
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+        'gradient-travel': 'linear-gradient(135deg, #3D90E3 0%, #1A6BBF 100%)',
+        'gradient-romance': 'linear-gradient(135deg, #FF4D6D 0%, #D62E4D 100%)',
+      },
+      boxShadow: {
+        'card': '0 4px 15px rgba(0, 0, 0, 0.08)',
+        'button': '0 4px 8px rgba(0, 0, 0, 0.15)',
       }
     },
   },
