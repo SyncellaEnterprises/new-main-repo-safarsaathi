@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, SafeAreaView, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, SafeAreaView, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, ActivityIndicator, Dimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSocket } from '@/src/context/SocketContext';
 import { useAuth } from '@/src/context/AuthContext';
@@ -8,7 +8,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, { FadeIn, SlideInRight } from 'react-native-reanimated';
+import { Camera } from 'expo-camera';
+import { BlurView } from 'expo-blur';
+
+const { width, height } = Dimensions.get('window');
 
 // Environment configuration
 const API_URL = 'http://10.0.2.2:5000';
@@ -21,6 +25,7 @@ interface GroupMessage {
   group_id: string;
   sent_at: string;
   type: 'text' | 'image' | 'video';
+  expires_at?: string; // For ephemeral messages
 }
 
 interface GroupMember {
@@ -61,7 +66,18 @@ export default function GroupChatScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [showMembers, setShowMembers] = useState(false);
   const [onlineMembers, setOnlineMembers] = useState<Set<string>>(new Set());
+  const [showCamera, setShowCamera] = useState(false);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const messageListRef = useRef<FlatList>(null);
+  const cameraRef = useRef<Camera | null>(null);
+
+  // Request camera permissions
+  useEffect(() => {
+    (async () => {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setHasPermission(status === 'granted');
+    })();
+  }, []);
 
   // Fetch group details
   const fetchGroupDetails = useCallback(async () => {
@@ -289,14 +305,10 @@ export default function GroupChatScreen() {
     }
   };
 
-  // Render message items
+  // Render message items with Snapchat-style bubbles
   const renderMessage = ({ item }: { item: GroupMessage }) => {
-    // Add null checks to prevent TypeError
-    if (!item || !user) {
-      return null;
-    }
+    if (!item || !user) return null;
     
-    // Get the sender ID to check if we need to show the name
     const senderId = String(item.sender_id || '');
     const userId = String(user.id || '');
     const isOwnMessage = senderId === userId;
@@ -304,7 +316,7 @@ export default function GroupChatScreen() {
     return (
       <Animated.View 
         entering={FadeIn}
-        className={`flex-row ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-2 px-4`}
+        className={`flex-row ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-3 px-2`}
       >
         {!isOwnMessage && (
           <Image
@@ -312,31 +324,40 @@ export default function GroupChatScreen() {
               uri: groupInfo?.members.find(m => String(m.user_id) === senderId)?.profile_photo || 
                   'https://via.placeholder.com/400x400?text=No+Profile+Image'
             }}
-            className="h-8 w-8 rounded-full mr-2 mt-1"
+            className="h-6 w-6 rounded-full mr-2 mt-2"
           />
         )}
-        <View className={`max-w-[80%] ${isOwnMessage ? 'items-end' : 'items-start'}`}>
-          <View 
-            className={`rounded-2xl px-4 py-2.5 shadow-sm ${
-              isOwnMessage 
-                ? 'rounded-tr-sm bg-gradient-romance ml-auto' 
-                : 'rounded-tl-sm bg-white mr-auto'
+        <View className={`max-w-[75%] ${isOwnMessage ? 'items-end' : 'items-start'}`}>
+          {!isOwnMessage && (
+            <Text className="text-xs text-gray-500 mb-1 ml-1">
+              {item.sender_name}
+            </Text>
+          )}
+          <LinearGradient
+            colors={isOwnMessage 
+              ? ['#1E9AFF', '#1E9AFF']  // Snapchat blue for own messages
+              : ['#E8E8E8', '#E8E8E8']} // Light gray for received messages
+            className={`rounded-3xl px-4 py-3 ${
+              isOwnMessage ? 'rounded-tr-sm' : 'rounded-tl-sm'
             }`}
           >
-            {!isOwnMessage && (
-              <Text className="text-primary-dark text-xs font-montserratMedium mb-1">
-                {item.sender_name}
+            {item.type === 'text' && (
+              <Text className={`${isOwnMessage ? 'text-white' : 'text-black'} font-medium text-base`}>
+                {item.content}
               </Text>
             )}
-            <Text className={`${isOwnMessage ? 'text-white' : 'text-neutral-darkest'} font-montserrat`}>
-              {item.content || ''}
-            </Text>
-          </View>
-          <View className={`flex-row items-center mt-1 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-            <Text className="text-xs text-neutral-dark font-montserrat">
-              {formatMessageTime(item.sent_at || new Date().toISOString())}
-            </Text>
-          </View>
+            {item.type === 'image' && (
+              <Image 
+                source={{ uri: item.content }}
+                className="w-48 h-48 rounded-2xl"
+                resizeMode="cover"
+              />
+            )}
+          </LinearGradient>
+          
+          <Text className="text-xs text-gray-500 mt-1 mx-1">
+            {formatMessageTime(item.sent_at)}
+          </Text>
         </View>
       </Animated.View>
     );
@@ -352,14 +373,44 @@ export default function GroupChatScreen() {
     </View>
   );
 
+  // Camera view component
+  const renderCameraView = () => (
+    <View className="absolute inset-0 bg-black">
+      {hasPermission && (
+        <Camera
+          ref={cameraRef}
+          className="flex-1"
+          type={Camera.Constants.Type.back}
+        >
+          <View className="flex-1 bg-transparent">
+            <BlurView intensity={100} className="absolute bottom-0 left-0 right-0 h-24">
+              <View className="flex-row items-center justify-around py-4">
+                <TouchableOpacity onPress={() => setShowCamera(false)}>
+                  <Ionicons name="close" size={30} color="white" />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  className="w-16 h-16 rounded-full border-4 border-white items-center justify-center"
+                  onPress={() => {/* Handle capture */}}
+                >
+                  <View className="w-12 h-12 rounded-full bg-white" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => {/* Switch camera */}}>
+                  <Ionicons name="camera-reverse" size={30} color="white" />
+                </TouchableOpacity>
+              </View>
+            </BlurView>
+          </View>
+        </Camera>
+      )}
+    </View>
+  );
+
   // Show loading state
   if (isConnecting || isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-neutral-light">
-        <ActivityIndicator size="large" color="#7D5BA6" />
-        <Text className="mt-4 text-center text-neutral-dark font-montserrat">
-          Loading group chat...
-        </Text>
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator size="large" color="#1E9AFF" />
+        <Text className="mt-4 text-gray-500">Loading group chat...</Text>
       </View>
     );
   }
@@ -377,130 +428,99 @@ export default function GroupChatScreen() {
 
   // Render group members modal
   const renderMembersModal = () => (
-    <View className={`absolute inset-0 bg-black/50 ${showMembers ? 'flex' : 'hidden'}`}>
-      <View className="bg-white m-4 rounded-2xl max-h-[80%] mt-24">
-        <View className="p-4 border-b border-neutral-medium flex-row justify-between items-center">
-          <Text className="text-xl font-montserratBold text-neutral-darkest">
+    <BlurView intensity={90} className="absolute inset-0">
+      <View className="flex-1 m-4 mt-16 bg-white rounded-3xl overflow-hidden">
+        <View className="p-4 border-b border-gray-100 flex-row items-center justify-between">
+          <Text className="text-xl font-bold text-gray-900">
             Group Members ({groupInfo?.members?.length || 0})
           </Text>
           <TouchableOpacity onPress={() => setShowMembers(false)}>
-            <Ionicons name="close" size={24} color="#6B7280" />
+            <Ionicons name="close" size={24} color="#666" />
           </TouchableOpacity>
         </View>
         
-        <ScrollView className="p-4">
-          {groupInfo?.members?.map(member => (
-            <View 
-              key={member.user_id} 
-              className="flex-row items-center p-3 border-b border-neutral-light"
-            >
+        <FlatList
+          data={groupInfo?.members}
+          keyExtractor={item => String(item.user_id)}
+          renderItem={({ item }) => (
+            <View className="flex-row items-center p-4 border-b border-gray-100">
               <Image 
                 source={{ 
-                  uri: member.profile_photo || 'https://via.placeholder.com/400x400?text=User'
+                  uri: item.profile_photo || 'https://via.placeholder.com/400x400?text=User'
                 }}
-                className="w-12 h-12 rounded-full"
+                className="w-10 h-10 rounded-full"
               />
               <View className="flex-1 ml-3">
                 <View className="flex-row items-center">
-                  <Text className="text-base font-montserratMedium text-neutral-darkest">
-                    {member.username}
+                  <Text className="text-base font-medium text-gray-900">
+                    {item.username}
                   </Text>
-                  {member.is_admin && (
-                    <View className="ml-2 px-2 py-0.5 bg-primary/20 rounded-full">
-                      <Text className="text-xs text-primary font-montserratMedium">Admin</Text>
+                  {item.is_admin && (
+                    <View className="ml-2 px-2 py-0.5 bg-blue-100 rounded-full">
+                      <Text className="text-xs text-blue-500 font-medium">Admin</Text>
                     </View>
                   )}
                 </View>
-                <Text className="text-sm text-neutral-dark font-montserrat">
-                  {onlineMembers.has(String(member.user_id)) ? 'Online' : 'Offline'}
+                <Text className="text-sm text-gray-500">
+                  {onlineMembers.has(String(item.user_id)) ? 'Online' : 'Offline'}
                 </Text>
               </View>
-              {String(member.user_id) !== String(user?.id) && (
+              {String(item.user_id) !== String(user?.id) && (
                 <TouchableOpacity 
                   className="p-2"
-                  onPress={() => handleMemberChatPress(member)}
+                  onPress={() => {
+                    setShowMembers(false);
+                    router.push(`/chat/${item.user_id}`);
+                  }}
                 >
-                  <Ionicons name="chatbubbles-outline" size={20} color="#7D5BA6" />
+                  <Ionicons name="chatbubble" size={20} color="#1E9AFF" />
                 </TouchableOpacity>
               )}
             </View>
-          ))}
-        </ScrollView>
+          )}
+        />
       </View>
-    </View>
+    </BlurView>
   );
 
-  // Handle navigation to direct chat with a group member
-  const handleMemberChatPress = (member: GroupMember) => {
-    // Close the members modal
-    setShowMembers(false);
-    
-    // Navigate to the individual chat with this member
-    router.push(`/chat/${member.user_id}`);
-    
-    // Log the navigation
-    console.log(`Navigating to chat with member: ${member.username} (ID: ${member.user_id})`);
-  };
-
   return (
-    <SafeAreaView className="flex-1 bg-neutral-light">
-      {/* Header */}
-      <LinearGradient
-        colors={['rgba(125, 91, 166, 0.9)', 'rgba(90, 65, 128, 0.8)']}
-        className="px-4 py-3"
-      >
-        <View className="flex-row items-center">
-          <TouchableOpacity 
-            onPress={() => router.back()}
-            className="mr-3"
-          >
-            <Ionicons name="arrow-back" size={24} color="white" />
-          </TouchableOpacity>
+    <SafeAreaView className="flex-1 bg-white">
+      {/* Minimal Header */}
+      <View className="px-4 py-2 flex-row items-center border-b border-gray-100">
+        <TouchableOpacity 
+          onPress={() => router.back()}
+          className="p-2"
+        >
+          <Ionicons name="chevron-back" size={24} color="#1E9AFF" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          onPress={() => router.push({
+            pathname: "/groups/[id]",
+            params: { id: groupId }
+          })}
+          className="flex-row items-center flex-1 ml-2"
+        >
+          <View className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center">
+            <Ionicons name="people" size={16} color="#1E9AFF" />
+          </View>
+          <View className="ml-2 flex-1">
+            <Text className="text-base font-bold text-gray-900">
+              {groupInfo?.name || 'Travel Group'}
+            </Text>
+            <Text className="text-xs text-gray-500">
+              {groupInfo?.member_count || 0} members
+            </Text>
+          </View>
+        </TouchableOpacity>
 
-          <TouchableOpacity 
-            onPress={() => router.push({
-              pathname: "/groups/[id]",
-              params: { id: groupId }
-            })}
-            className="flex-row items-center flex-1"
-            activeOpacity={0.7}
-          >
-            <View className="h-10 w-10 rounded-full bg-secondary items-center justify-center">
-              <Ionicons name="people" size={20} color="white" />
-            </View>
-            
-            <View className="flex-1 ml-3">
-              <Text className="text-white text-lg font-montserratMedium">
-                {groupInfo?.name || 'Travel Group'}
-              </Text>
-              <Text className="text-primary-light text-sm font-montserrat">
-                {groupInfo?.destination || ''} {formatDateRange()}
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            onPress={() => setShowMembers(true)}
-            className="bg-primary/30 p-2 rounded-full"
-          >
-            <Ionicons name="people" size={20} color="white" />
-            <View className="absolute -top-1 -right-1 bg-secondary rounded-full min-w-5 h-5 items-center justify-center px-1">
-              <Text className="text-xs text-white font-montserratBold">
-                {groupInfo?.member_count || 0}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
-
-      {/* Group Info */}
-      {groupInfo?.description && (
-        <View className="bg-white p-4 border-b border-neutral-light">
-          <Text className="text-sm text-neutral-dark font-montserrat">
-            {groupInfo.description}
-          </Text>
-        </View>
-      )}
+        <TouchableOpacity 
+          onPress={() => setShowMembers(true)}
+          className="p-2"
+        >
+          <Ionicons name="people" size={24} color="#1E9AFF" />
+        </TouchableOpacity>
+      </View>
 
       {/* Messages List */}
       <FlatList
@@ -508,58 +528,67 @@ export default function GroupChatScreen() {
         data={messages}
         renderItem={renderMessage}
         keyExtractor={(item) => item.message_id}
-        contentContainerStyle={messages.length === 0 ? { flex: 1 } : { paddingVertical: 16 }}
-        ListEmptyComponent={renderEmptyMessages}
-        inverted={false}
-        className="flex-1"
-        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          messages.length === 0 ? { flex: 1 } : { paddingVertical: 16 },
+          { paddingBottom: 80 }
+        ]}
+        className="flex-1 bg-white"
         onContentSizeChange={() => messageListRef.current?.scrollToEnd({ animated: false })}
       />
 
-      {/* Message Input */}
+      {/* Input Bar */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="border-t border-gray-200 bg-white"
+        className="border-t border-gray-100"
       >
-        <View className="flex-row items-center p-2">
-          <TouchableOpacity className="p-2">
-            <Ionicons name="add-circle-outline" size={24} color="#6B7280" />
+        <View className="flex-row items-center p-2 bg-white">
+          <TouchableOpacity 
+            onPress={() => setShowCamera(true)}
+            className="p-2"
+          >
+            <Ionicons name="camera" size={28} color="#1E9AFF" />
           </TouchableOpacity>
-          
-          <View className="flex-1 flex-row items-center bg-gray-100 rounded-full px-4 py-2 mx-2">
+
+          <View className="flex-1 flex-row items-center bg-gray-100 rounded-full mx-2 px-4 py-2">
             <TextInput
               value={newMessage}
               onChangeText={setNewMessage}
-              placeholder="Message..."
-              className="flex-1 text-base text-gray-800 font-montserrat"
+              placeholder="Send to group"
+              className="flex-1 text-base text-gray-900"
               multiline
-              maxLength={500}
+              maxLength={1000}
             />
             
-            <TouchableOpacity className="mr-2">
-              <Ionicons name="camera-outline" size={24} color="#6B7280" />
-            </TouchableOpacity>
             <TouchableOpacity>
-              <Ionicons name="image-outline" size={24} color="#6B7280" />
+              <Ionicons name="happy" size={24} color="#666" />
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity
-            onPress={handleSendMessage}
-            className={`p-2 rounded-full ${newMessage.trim() ? 'bg-primary' : 'bg-neutral-medium'}`}
-            disabled={!newMessage.trim() || !isConnected}
-          >
-            <Ionicons 
-              name="send" 
-              size={20} 
-              color="white" 
-            />
-          </TouchableOpacity>
+          {newMessage.trim() ? (
+            <TouchableOpacity
+              onPress={() => {
+                if (newMessage.trim()) {
+                  sendGroupMessage(newMessage.trim(), groupId);
+                  setNewMessage('');
+                }
+              }}
+              className="w-10 h-10 rounded-full bg-blue-500 items-center justify-center"
+            >
+              <Ionicons name="send" size={20} color="white" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity className="p-2">
+              <Ionicons name="image" size={28} color="#1E9AFF" />
+            </TouchableOpacity>
+          )}
         </View>
       </KeyboardAvoidingView>
-      
+
       {/* Members Modal */}
-      {renderMembersModal()}
+      {showMembers && renderMembersModal()}
+
+      {/* Camera Overlay */}
+      {showCamera && renderCameraView()}
     </SafeAreaView>
   );
 } 

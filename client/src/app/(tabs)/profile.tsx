@@ -1,11 +1,26 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, TouchableOpacity, Image, ActivityIndicator, SafeAreaView, ScrollView, RefreshControl } from "react-native";
+import { View, Text, TouchableOpacity, Image, ActivityIndicator, SafeAreaView, ScrollView, RefreshControl, Dimensions, Animated as RNAnimated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import Animated, { 
+  FadeIn, 
+  FadeInDown, 
+  SlideInDown,
+  withSpring,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  interpolate,
+  Extrapolate
+} from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+
+const { width, height } = Dimensions.get('window');
 
 // Set API URL based on platform and environment
 const API_URL = __DEV__ 
@@ -36,12 +51,75 @@ interface UserProfile {
   };
 }
 
+const SNAP_POINTS = [-height + 100, -height / 1.5, -height / 3];
+
 export default function ProfileScreen() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedSection, setSelectedSection] = useState<string | null>(null);
+
+  // Animation values
+  const translateY = useSharedValue(0);
+  const context = useSharedValue({ y: 0 });
+  const scrollY = useSharedValue(0);
+  const headerOpacity = useSharedValue(1);
+
+  // Gesture handler for bottom sheet
+  const gesture = Gesture.Pan()
+    .onStart(() => {
+      context.value = { y: translateY.value };
+    })
+    .onUpdate((event) => {
+      translateY.value = event.translationY + context.value.y;
+      translateY.value = Math.max(SNAP_POINTS[0], Math.min(0, translateY.value));
+    })
+    .onEnd((event) => {
+      const velocity = event.velocityY;
+      const shouldSnap = Math.abs(velocity) > 500;
+      
+      if (shouldSnap) {
+        if (velocity > 0) {
+          // Swiping down
+          translateY.value = withSpring(0);
+          setSelectedSection(null);
+        } else {
+          // Swiping up
+          translateY.value = withSpring(SNAP_POINTS[0]);
+        }
+      } else {
+        // Find nearest snap point
+        const currentPosition = translateY.value;
+        const nearestSnap = SNAP_POINTS.reduce((prev, curr) => 
+          Math.abs(curr - currentPosition) < Math.abs(prev - currentPosition) ? curr : prev
+        );
+        translateY.value = withSpring(nearestSnap);
+      }
+    });
+
+  // Animated styles
+  const bottomSheetStyle = useAnimatedStyle(() => {
+    const borderRadius = interpolate(
+      translateY.value,
+      [SNAP_POINTS[0], 0],
+      [25, 25],
+      Extrapolate.CLAMP
+    );
+
+    return {
+      transform: [{ translateY: translateY.value }],
+      borderTopLeftRadius: borderRadius,
+      borderTopRightRadius: borderRadius,
+    };
+  });
+
+  const headerStyle = useAnimatedStyle(() => {
+    return {
+      opacity: headerOpacity.value,
+    };
+  });
 
   const fetchProfile = async () => {
     try {
@@ -89,10 +167,28 @@ export default function ProfileScreen() {
     return profile.interest.split(',').filter(item => item.trim().length > 0).length;
   };
 
+  const openSection = (section: string) => {
+    setSelectedSection(section);
+    translateY.value = withSpring(SNAP_POINTS[0]);
+  };
+
   if (loading && !refreshing) {
     return (
       <View className="flex-1 bg-neutral-light items-center justify-center">
-        <ActivityIndicator size="large" color="#7D5BA6" />
+        <LinearGradient
+          colors={['#7C3AED', '#06B6D4']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="w-32 h-32 rounded-3xl items-center justify-center"
+        >
+          <ActivityIndicator size="large" color="#fff" />
+        </LinearGradient>
+        <Animated.Text 
+          entering={FadeInDown.delay(300).springify()} 
+          className="mt-4 text-lg font-montserrat text-neutral-dark"
+        >
+          Loading your profile...
+        </Animated.Text>
       </View>
     );
   }
@@ -100,49 +196,71 @@ export default function ProfileScreen() {
   if (error) {
     return (
       <View className="flex-1 bg-neutral-light items-center justify-center p-4">
-        <Text className="text-primary-dark text-center mb-4 font-montserrat">{error}</Text>
-        <TouchableOpacity 
-          onPress={fetchProfile}
-          className="bg-primary px-6 py-3 rounded-xl"
-        >
-          <Text className="text-neutral-lightest font-montserratMedium">Retry</Text>
-        </TouchableOpacity>
+        <BlurView intensity={70} tint="light" className="p-8 rounded-3xl items-center">
+          <Animated.View 
+            entering={FadeIn.delay(300).springify()}
+            className="items-center"
+          >
+            <Ionicons name="alert-circle" size={60} color="#EF4444" />
+            <Text className="text-xl font-youngSerif text-neutral-darkest mt-4 text-center">{error}</Text>
+            <TouchableOpacity 
+              onPress={fetchProfile}
+              className="mt-6 bg-primary px-8 py-3 rounded-2xl"
+            >
+              <Text className="text-white font-montserratMedium">Try Again</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </BlurView>
       </View>
     );
   }
 
   return (
     <SafeAreaView className="flex-1 bg-neutral-light">
-      {/* Header with Gradient */}
-      <LinearGradient
-        colors={['#7D5BA6', '#5A4180']}
-        className="px-4 pt-12 pb-20"
-      >
-        <View className="flex-row items-center justify-between mb-6">
-          <Text className="text-2xl text-white font-youngSerif">Profile</Text>
-          <TouchableOpacity 
-            onPress={() => router.push("/(profile)")}
-            className="bg-white/20 p-2 rounded-full"
-          >
-            <Ionicons name="pencil" size={20} color="white" />
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
+      {/* Animated Header */}
+      <Animated.View style={headerStyle}>
+        <LinearGradient
+          colors={['#7C3AED', '#06B6D4']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="px-4 pt-12 pb-24"
+        >
+          <View className="flex-row items-center justify-between mb-6">
+            <Text className="text-2xl text-white font-youngSerif">Profile</Text>
+            <TouchableOpacity 
+              onPress={() => router.push("/(profile)")}
+              className="bg-white/20 p-2 rounded-full"
+            >
+              <Ionicons name="pencil" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
+      </Animated.View>
 
       <ScrollView 
         className="flex-1 -mt-16"
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#7D5BA6"]} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#7C3AED"]} />
         }
+        onScroll={(event) => {
+          const scrollPosition = event.nativeEvent.contentOffset.y;
+          headerOpacity.value = withTiming(scrollPosition > 50 ? 0 : 1);
+        }}
+        scrollEventThrottle={16}
       >
         <View className="px-4">
           {/* Profile Card */}
-          <View className="bg-white rounded-2xl p-4 shadow-sm">
+          <Animated.View 
+            entering={FadeInDown.delay(300).springify()}
+            className="bg-white rounded-3xl p-6 shadow-card"
+          >
             <View className="items-center">
-              {/* Profile Photo */}
+              {/* Profile Photo with Gradient Border */}
               <View className="relative">
                 <LinearGradient
-                  colors={['#7D5BA6', '#9D7EBD']}
+                  colors={['#7C3AED', '#06B6D4']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
                   className="w-32 h-32 rounded-full p-2"
                 >
                   {profile?.profile_photo ? (
@@ -153,7 +271,7 @@ export default function ProfileScreen() {
                     />
                   ) : (
                     <View className="w-full h-full rounded-full bg-white items-center justify-center">
-                      <Ionicons name="person" size={50} color="#7D5BA6" />
+                      <Ionicons name="person" size={50} color="#7C3AED" />
                     </View>
                   )}
                 </LinearGradient>
@@ -162,7 +280,7 @@ export default function ProfileScreen() {
                 </View>
               </View>
 
-              {/* Basic Info */}
+              {/* User Info */}
               <Text className="text-2xl font-youngSerif text-neutral-darkest mt-4">
                 {profile?.username || 'User'}
               </Text>
@@ -175,7 +293,7 @@ export default function ProfileScreen() {
               
               {profile?.location && (
                 <View className="flex-row items-center mt-2 bg-neutral-lightest px-4 py-2 rounded-full">
-                  <Ionicons name="location" size={16} color="#7D5BA6" />
+                  <Ionicons name="location" size={16} color="#7C3AED" />
                   <Text className="text-neutral-dark font-montserrat ml-1">
                     {profile.location}
                   </Text>
@@ -183,41 +301,70 @@ export default function ProfileScreen() {
               )}
             </View>
 
-            {/* Stats Row */}
-            <View className="flex-row justify-around mt-6 pt-6 border-t border-neutral-light">
-              <View className="items-center">
-                <Text className="text-2xl font-youngSerif text-primary">
-                  {getInterestCount()}
-                </Text>
-                <Text className="text-neutral-dark font-montserrat text-sm">
-                  Interests
-                </Text>
-              </View>
-              <View className="items-center">
-                <Text className="text-2xl font-youngSerif text-secondary">
-                  0
-                </Text>
-                <Text className="text-neutral-dark font-montserrat text-sm">
-                  Matches
-                </Text>
-              </View>
-              <View className="items-center">
-                <Text className="text-2xl font-youngSerif text-tertiary">
-                  0
-                </Text>
-                <Text className="text-neutral-dark font-montserrat text-sm">
-                  Trips
-                </Text>
-              </View>
+            {/* Stats Row with Gradient Cards */}
+            <View className="flex-row justify-around mt-8">
+              <TouchableOpacity 
+                onPress={() => openSection('interests')}
+                className="items-center"
+              >
+                <LinearGradient
+                  colors={['rgba(124, 58, 237, 0.1)', 'rgba(6, 182, 212, 0.1)']}
+                  className="w-20 h-20 rounded-2xl items-center justify-center"
+                >
+                  <Text className="text-2xl font-youngSerif text-primary">
+                    {getInterestCount()}
+                  </Text>
+                  <Text className="text-neutral-dark font-montserrat text-sm mt-1">
+                    Interests
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                onPress={() => openSection('matches')}
+                className="items-center"
+              >
+                <LinearGradient
+                  colors={['rgba(245, 158, 11, 0.1)', 'rgba(239, 68, 68, 0.1)']}
+                  className="w-20 h-20 rounded-2xl items-center justify-center"
+                >
+                  <Text className="text-2xl font-youngSerif text-accent">
+                    0
+                  </Text>
+                  <Text className="text-neutral-dark font-montserrat text-sm mt-1">
+                    Matches
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                onPress={() => openSection('trips')}
+                className="items-center"
+              >
+                <LinearGradient
+                  colors={['rgba(16, 185, 129, 0.1)', 'rgba(6, 182, 212, 0.1)']}
+                  className="w-20 h-20 rounded-2xl items-center justify-center"
+                >
+                  <Text className="text-2xl font-youngSerif text-success">
+                    0
+                  </Text>
+                  <Text className="text-neutral-dark font-montserrat text-sm mt-1">
+                    Trips
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
             </View>
-          </View>
+          </Animated.View>
 
           {/* About Section */}
-          <View className="mt-6 bg-white rounded-2xl p-4 shadow-sm">
+          <Animated.View 
+            entering={FadeInDown.delay(400).springify()}
+            className="mt-6 bg-white rounded-3xl p-6 shadow-card"
+          >
             <View className="flex-row items-center mb-4">
               <LinearGradient
-                colors={['#7D5BA6', '#9D7EBD']}
-                className="w-10 h-10 rounded-full items-center justify-center"
+                colors={['#7C3AED', '#06B6D4']}
+                className="w-10 h-10 rounded-xl items-center justify-center"
               >
                 <Ionicons name="information-circle" size={20} color="white" />
               </LinearGradient>
@@ -228,15 +375,18 @@ export default function ProfileScreen() {
             <Text className="text-neutral-dark leading-relaxed font-montserrat">
               {profile?.bio || 'No bio available. Tap the edit button to add more about yourself.'}
             </Text>
-          </View>
+          </Animated.View>
 
           {/* Interests Section */}
           {profile?.interest && (
-            <View className="mt-6 bg-white rounded-2xl p-4 shadow-sm">
+            <Animated.View 
+              entering={FadeInDown.delay(500).springify()}
+              className="mt-6 bg-white rounded-3xl p-6 shadow-card"
+            >
               <View className="flex-row items-center mb-4">
                 <LinearGradient
-                  colors={['#7D5BA6', '#9D7EBD']}
-                  className="w-10 h-10 rounded-full items-center justify-center"
+                  colors={['#7C3AED', '#06B6D4']}
+                  className="w-10 h-10 rounded-xl items-center justify-center"
                 >
                   <Ionicons name="heart" size={20} color="white" />
                 </LinearGradient>
@@ -247,27 +397,35 @@ export default function ProfileScreen() {
               <View className="flex-row flex-wrap gap-2">
                 {(Array.isArray(profile.interest) ? profile.interest : profile.interest.split(','))
                   .map((interest, index) => (
-                    <View 
+                    <Animated.View
                       key={index}
-                      className="bg-primary/10 px-4 py-2 rounded-full"
+                      entering={FadeInDown.delay(600 + index * 100).springify()}
                     >
-                      <Text className="text-primary font-montserratMedium">
-                        {interest.trim()}
-                      </Text>
-                    </View>
+                      <LinearGradient
+                        colors={['rgba(124, 58, 237, 0.1)', 'rgba(6, 182, 212, 0.1)']}
+                        className="px-4 py-2 rounded-xl"
+                      >
+                        <Text className="text-primary font-montserratMedium">
+                          {interest.trim()}
+                        </Text>
+                      </LinearGradient>
+                    </Animated.View>
                   ))
                 }
               </View>
-            </View>
+            </Animated.View>
           )}
 
           {/* Prompts Section */}
           {profile?.prompts?.prompts && profile.prompts.prompts.length > 0 && (
-            <View className="mt-6 bg-white rounded-2xl p-4 shadow-sm mb-6">
+            <Animated.View 
+              entering={FadeInDown.delay(600).springify()}
+              className="mt-6 bg-white rounded-3xl p-6 shadow-card mb-6"
+            >
               <View className="flex-row items-center mb-4">
                 <LinearGradient
-                  colors={['#7D5BA6', '#9D7EBD']}
-                  className="w-10 h-10 rounded-full items-center justify-center"
+                  colors={['#7C3AED', '#06B6D4']}
+                  className="w-10 h-10 rounded-xl items-center justify-center"
                 >
                   <Ionicons name="chatbubbles" size={20} color="white" />
                 </LinearGradient>
@@ -276,19 +434,45 @@ export default function ProfileScreen() {
                 </Text>
               </View>
               {profile.prompts.prompts.map((prompt, index) => (
-                <View key={index} className="mb-4 last:mb-0">
+                <Animated.View 
+                  key={index} 
+                  entering={FadeInDown.delay(700 + index * 100).springify()}
+                  className="mb-4 last:mb-0"
+                >
                   <Text className="text-primary font-montserratBold mb-1">
                     {prompt.question}
                   </Text>
                   <Text className="text-neutral-dark font-montserrat">
                     {prompt.answer}
                   </Text>
-                </View>
+                </Animated.View>
               ))}
-            </View>
+            </Animated.View>
           )}
         </View>
       </ScrollView>
+
+      {/* Bottom Sheet */}
+      {selectedSection && (
+        <GestureDetector gesture={gesture}>
+          <Animated.View 
+            style={[bottomSheetStyle]} 
+            className="absolute left-0 right-0 bg-white h-screen shadow-lg"
+          >
+            <View className="items-center py-2">
+              <View className="w-16 h-1 bg-neutral-medium rounded-full" />
+            </View>
+            <View className="p-6">
+              <Text className="text-2xl font-youngSerif text-neutral-darkest mb-4">
+                {selectedSection === 'interests' && 'Your Interests'}
+                {selectedSection === 'matches' && 'Your Matches'}
+                {selectedSection === 'trips' && 'Your Trips'}
+              </Text>
+              {/* Add content based on selected section */}
+            </View>
+          </Animated.View>
+        </GestureDetector>
+      )}
     </SafeAreaView>
   );
 } 

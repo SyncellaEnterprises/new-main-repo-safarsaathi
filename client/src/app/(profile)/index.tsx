@@ -10,6 +10,10 @@ import { INTEREST_CATEGORIES } from '@/src/constants/interests';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Animated, { FadeIn, SlideInRight } from 'react-native-reanimated';
+import { MotiView, MotiText, AnimatePresence } from 'moti';
+import { Skeleton } from 'moti/skeleton';
+import { useHeaderHeight } from '@react-navigation/elements';
+import { StatusBar } from 'expo-status-bar';
 
 const { width } = Dimensions.get('window');
 
@@ -92,9 +96,15 @@ export default function ProfileEditScreen() {
   const [activePrompt, setActivePrompt] = useState<number | null>(null);
   const [promptQuestion, setPromptQuestion] = useState("");
   const [promptAnswer, setPromptAnswer] = useState("");
+  const headerHeight = useHeaderHeight();
+  const [activeTab, setActiveTab] = useState(0);
+  const [showSkeleton, setShowSkeleton] = useState(true);
 
   useEffect(() => {
     fetchUserProfile();
+    // Hide skeleton after 1.5s for smooth loading experience
+    const timer = setTimeout(() => setShowSkeleton(false), 1500);
+    return () => clearTimeout(timer);
   }, []);
 
   // Fetch user profile data
@@ -436,838 +446,605 @@ export default function ProfileEditScreen() {
     });
   };
 
-  if (loading) {
+  // Loading state with skeleton
+  if (loading && !showSkeleton) {
     return (
-      <View style={styles.loadingContainer}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
+        <StatusBar style="light" />
         <LinearGradient
-          colors={['#7D5BA6', '#50A6A7']}
-          start={{x: 0, y: 0}}
-          end={{x: 1, y: 1}}
-          style={styles.loadingGradient}
+          colors={['#7C3AED', '#06B6D4']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="px-4 pt-12 pb-6"
         >
-          <ActivityIndicator size="large" color="#FFF" />
-          <Text style={styles.loadingText}>Loading your profile...</Text>
+          <View className="flex-row items-center justify-between">
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={24} color="#FFF" />
+            </TouchableOpacity>
+            <Text className="text-xl text-white font-youngSerif">Edit Profile</Text>
+            <View style={{ width: 24 }} />
+          </View>
         </LinearGradient>
-      </View>
+
+        <ScrollView className="flex-1 px-4 pt-4">
+          <MotiView 
+            animate={{ opacity: 1 }}
+            transition={{ type: 'timing', duration: 1000 }}
+            style={{ opacity: 0.7 }}
+          >
+            <Skeleton
+              colorMode="light"
+              radius="round"
+              height={120}
+              width={120}
+              colors={['#E5E7EB', '#F3F4F6']}
+            />
+            {[...Array(3)].map((_, i) => (
+              <Skeleton
+                key={i}
+                colorMode="light"
+                width={width - 32}
+                height={60}
+                radius={16}
+                colors={['#E5E7EB', '#F3F4F6']}
+              />
+            ))}
+          </MotiView>
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 
+  // Error state with animation
   if (error) {
     return (
-      <View style={styles.errorContainer}>
-        <BlurView intensity={20} tint="dark" style={styles.errorBlur}>
-          <Ionicons name="alert-circle" size={60} color="#E85B81" />
-          <Text style={styles.errorTitle}>Something went wrong</Text>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity 
-            onPress={fetchUserProfile}
-            style={styles.retryButton}
-          >
-            <Text style={styles.retryText}>Try Again</Text>
-          </TouchableOpacity>
-        </BlurView>
-      </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
+        <StatusBar style="light" />
+        <LinearGradient
+          colors={['#7C3AED', '#06B6D4']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="px-4 pt-12 pb-6"
+        >
+          <View className="flex-row items-center justify-between">
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={24} color="#FFF" />
+            </TouchableOpacity>
+            <Text className="text-xl text-white font-youngSerif">Error</Text>
+            <View style={{ width: 24 }} />
+          </View>
+        </LinearGradient>
+
+        <MotiView 
+          from={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring' }}
+          className="flex-1 items-center justify-center p-4"
+        >
+          <BlurView intensity={70} tint="light" className="p-8 rounded-3xl items-center">
+            <Ionicons name="alert-circle" size={60} color="#EF4444" />
+            <Text className="text-xl font-youngSerif text-neutral-darkest mt-4 text-center">{error}</Text>
+            <TouchableOpacity 
+              onPress={fetchUserProfile}
+              className="mt-6 bg-primary px-8 py-3 rounded-2xl"
+            >
+              <Text className="text-white font-montserratMedium">Try Again</Text>
+            </TouchableOpacity>
+          </BlurView>
+        </MotiView>
+      </SafeAreaView>
     );
   }
 
-  // Main profile edit view
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
+      <StatusBar style="light" />
       {/* Header */}
       <LinearGradient
-        colors={['#7D5BA6', '#50A6A7']}
-        start={{x: 0, y: 0}}
-        end={{x: 1, y: 1}}
-        style={styles.header}
+        colors={['#7C3AED', '#06B6D4']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        className="px-4 pt-12 pb-20"
       >
-        <TouchableOpacity 
-          onPress={() => {
-            if (activeSection) {
-              setActiveSection(null);
-            } else {
-              router.back();
-            }
-          }}
-          style={styles.backButton}
-        >
-          <Ionicons name="arrow-back" size={24} color="#FFF" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {activeSection ? `Edit ${activeSection}` : 'Edit Profile'}
-        </Text>
-        <View style={{ width: 24 }} />
-      </LinearGradient>
+        <View className="flex-row items-center justify-between mb-6">
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#FFF" />
+          </TouchableOpacity>
+          <Text className="text-xl text-white font-youngSerif">Edit Profile</Text>
+          <View style={{ width: 24 }} />
+        </View>
 
-      {!activeSection ? (
-        <ScrollView style={styles.contentContainer} showsVerticalScrollIndicator={false}>
-          {/* Profile Picture Section */}
-          <View style={styles.profileImageContainer}>
+        {/* Profile Image Section */}
+        <MotiView 
+          from={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring' }}
+          className="items-center"
+        >
+          <View className="relative">
             <LinearGradient
-              colors={['#7D5BA6', '#50A6A7']}
-              start={{x: 0, y: 0}}
-              end={{x: 1, y: 1}}
-              style={styles.profileImageGradient}
+              colors={['#7C3AED', '#06B6D4']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              className="w-32 h-32 rounded-full p-2"
             >
               {profile?.profile_photo ? (
                 <Image
                   source={{ uri: profile.profile_photo }}
-                  style={styles.profileImage}
+                  className="w-full h-full rounded-full border-4 border-white"
                   defaultSource={require('@/assets/images/avatar.png')}
                 />
               ) : (
-                <View style={styles.defaultProfileImage}>
-                  <Ionicons name="person" size={60} color="#FFF" />
+                <View className="w-full h-full rounded-full bg-white items-center justify-center">
+                  <Ionicons name="person" size={50} color="#7C3AED" />
                 </View>
               )}
             </LinearGradient>
-            <TouchableOpacity style={styles.editPhotoButton}>
-              <MaterialCommunityIcons name="camera-plus" size={20} color="#FFF" />
+            <TouchableOpacity className="absolute bottom-0 right-0 bg-secondary w-10 h-10 rounded-full items-center justify-center border-4 border-white">
+              <Ionicons name="camera" size={16} color="white" />
             </TouchableOpacity>
-            
-            <Text style={styles.usernameText}>{profile?.username}</Text>
-            <View style={styles.statsContainer}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{profile?.age || '--'}</Text>
-                <Text style={styles.statLabel}>Age</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{interests.length}</Text>
-                <Text style={styles.statLabel}>Interests</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{prompts.length}</Text>
-                <Text style={styles.statLabel}>Prompts</Text>
-              </View>
-            </View>
           </View>
+        </MotiView>
+      </LinearGradient>
 
-          {/* Edit Options List */}
-          <View style={styles.editSectionsContainer}>
-            <Text style={styles.sectionTitle}>Profile Details</Text>
-            
-            {/* Basic Info Section */}
-            <View style={styles.editSectionGroup}>
-              {/* Username */}
-              <Animated.View 
-                entering={FadeIn.delay(100).duration(500)}
-                style={styles.editButton}
-              >
-                <LinearGradient
-                  colors={['rgba(125, 91, 166, 0.15)', 'rgba(80, 166, 167, 0.15)']}
-                  start={{x: 0, y: 0}}
-                  end={{x: 1, y: 0}}
-                  style={styles.editButtonGradient}
-                >
-                  <TouchableOpacity
-                    style={styles.editButtonContent}
-                    onPress={() => setActiveSection('Username')}
-                  >
-                    <View style={[styles.iconContainer, { backgroundColor: '#7D5BA6' }]}>
-                      <FontAwesome5 name="user-alt" size={16} color="#FFF" />
-                    </View>
-                    <View style={styles.editButtonTextContainer}>
-                      <Text style={styles.editButtonLabel}>Username</Text>
-                      <Text style={styles.editButtonValue} numberOfLines={1}>
-                        {profile?.username || 'Not set'}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color="#7D5BA6" />
-                  </TouchableOpacity>
-                </LinearGradient>
-              </Animated.View>
-              
-              {/* Age */}
-              <Animated.View 
-                entering={FadeIn.delay(200).duration(500)}
-                style={styles.editButton}
-              >
-                <LinearGradient
-                  colors={['rgba(125, 91, 166, 0.15)', 'rgba(80, 166, 167, 0.15)']}
-                  start={{x: 0, y: 0}}
-                  end={{x: 1, y: 0}}
-                  style={styles.editButtonGradient}
-                >
-                  <TouchableOpacity
-                    style={styles.editButtonContent}
-                    onPress={() => setActiveSection('Age')}
-                  >
-                    <View style={[styles.iconContainer, { backgroundColor: '#4A90E2' }]}>
-                      <FontAwesome5 name="birthday-cake" size={16} color="#FFF" />
-                    </View>
-                    <View style={styles.editButtonTextContainer}>
-                      <Text style={styles.editButtonLabel}>Age</Text>
-                      <Text style={styles.editButtonValue} numberOfLines={1}>
-                        {profile?.age || 'Not set'}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color="#7D5BA6" />
-                  </TouchableOpacity>
-                </LinearGradient>
-              </Animated.View>
-              
-              {/* Bio */}
-              <Animated.View 
-                entering={FadeIn.delay(300).duration(500)}
-                style={styles.editButton}
-              >
-                <LinearGradient
-                  colors={['rgba(125, 91, 166, 0.15)', 'rgba(80, 166, 167, 0.15)']}
-                  start={{x: 0, y: 0}}
-                  end={{x: 1, y: 0}}
-                  style={styles.editButtonGradient}
-                >
-                  <TouchableOpacity
-                    style={styles.editButtonContent}
-                    onPress={() => setActiveSection('Bio')}
-                  >
-                    <View style={[styles.iconContainer, { backgroundColor: '#27AE60' }]}>
-                      <Ionicons name="text" size={16} color="#FFF" />
-                    </View>
-                    <View style={styles.editButtonTextContainer}>
-                      <Text style={styles.editButtonLabel}>Bio</Text>
-                      <Text style={styles.editButtonValue} numberOfLines={1}>
-                        {profile?.bio ? (profile.bio.length > 30 ? profile.bio.substring(0, 30) + '...' : profile.bio) : 'Not set'}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color="#7D5BA6" />
-                  </TouchableOpacity>
-                </LinearGradient>
-              </Animated.View>
-            </View>
-            
-            <Text style={styles.sectionTitle}>Personal Details</Text>
-            
-            <View style={styles.editSectionGroup}>
-              {/* Gender */}
-              <Animated.View 
-                entering={FadeIn.delay(400).duration(500)}
-                style={styles.editButton}
-              >
-                <LinearGradient
-                  colors={['rgba(125, 91, 166, 0.15)', 'rgba(80, 166, 167, 0.15)']}
-                  start={{x: 0, y: 0}}
-                  end={{x: 1, y: 0}}
-                  style={styles.editButtonGradient}
-                >
-                  <TouchableOpacity
-                    style={styles.editButtonContent}
-                    onPress={() => setActiveSection('Gender')}
-                  >
-                    <View style={[styles.iconContainer, { backgroundColor: '#E85B81' }]}>
-                      <Ionicons name="transgender" size={16} color="#FFF" />
-                    </View>
-                    <View style={styles.editButtonTextContainer}>
-                      <Text style={styles.editButtonLabel}>Gender</Text>
-                      <Text style={styles.editButtonValue} numberOfLines={1}>
-                        {profile?.gender || 'Not set'}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color="#7D5BA6" />
-                  </TouchableOpacity>
-                </LinearGradient>
-              </Animated.View>
-              
-              {/* Occupation */}
-              <Animated.View 
-                entering={FadeIn.delay(500).duration(500)}
-                style={styles.editButton}
-              >
-                <LinearGradient
-                  colors={['rgba(125, 91, 166, 0.15)', 'rgba(80, 166, 167, 0.15)']}
-                  start={{x: 0, y: 0}}
-                  end={{x: 1, y: 0}}
-                  style={styles.editButtonGradient}
-                >
-                  <TouchableOpacity
-                    style={styles.editButtonContent}
-                    onPress={() => setActiveSection('Occupation')}
-                  >
-                    <View style={[styles.iconContainer, { backgroundColor: '#9B59B6' }]}>
-                      <Ionicons name="briefcase" size={16} color="#FFF" />
-                    </View>
-                    <View style={styles.editButtonTextContainer}>
-                      <Text style={styles.editButtonLabel}>Occupation</Text>
-                      <Text style={styles.editButtonValue} numberOfLines={1}>
-                        {profile?.occupation || 'Not set'}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color="#7D5BA6" />
-                  </TouchableOpacity>
-                </LinearGradient>
-              </Animated.View>
-              
-              {/* Location */}
-              <Animated.View 
-                entering={FadeIn.delay(600).duration(500)}
-                style={styles.editButton}
-              >
-                <LinearGradient
-                  colors={['rgba(125, 91, 166, 0.15)', 'rgba(80, 166, 167, 0.15)']}
-                  start={{x: 0, y: 0}}
-                  end={{x: 1, y: 0}}
-                  style={styles.editButtonGradient}
-                >
-                  <TouchableOpacity
-                    style={styles.editButtonContent}
-                    onPress={() => setActiveSection('Location')}
-                  >
-                    <View style={[styles.iconContainer, { backgroundColor: '#50A6A7' }]}>
-                      <Ionicons name="location" size={16} color="#FFF" />
-                    </View>
-                    <View style={styles.editButtonTextContainer}>
-                      <Text style={styles.editButtonLabel}>Location</Text>
-                      <Text style={styles.editButtonValue} numberOfLines={1}>
-                        {profile?.location || 'Not set'}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color="#7D5BA6" />
-                  </TouchableOpacity>
-                </LinearGradient>
-              </Animated.View>
-            </View>
-            
-            <Text style={styles.sectionTitle}>Matching Details</Text>
-            
-            <View style={styles.editSectionGroup}>
-              {/* Interests */}
-              <Animated.View 
-                entering={FadeIn.delay(700).duration(500)}
-                style={styles.editButton}
-              >
-                <LinearGradient
-                  colors={['rgba(125, 91, 166, 0.15)', 'rgba(80, 166, 167, 0.15)']}
-                  start={{x: 0, y: 0}}
-                  end={{x: 1, y: 0}}
-                  style={styles.editButtonGradient}
-                >
-                  <TouchableOpacity
-                    style={styles.editButtonContent}
-                    onPress={() => setActiveSection('Interests')}
-                  >
-                    <View style={[styles.iconContainer, { backgroundColor: '#F1C40F' }]}>
-                      <Ionicons name="heart" size={16} color="#FFF" />
-                    </View>
-                    <View style={styles.editButtonTextContainer}>
-                      <Text style={styles.editButtonLabel}>Interests</Text>
-                      <Text style={styles.editButtonValue} numberOfLines={1}>
-                        {interests.length > 0 
-                          ? `${interests.slice(0, 2).join(', ')}${interests.length > 2 ? '...' : ''}`
-                          : 'Not set'}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color="#7D5BA6" />
-                  </TouchableOpacity>
-                </LinearGradient>
-              </Animated.View>
-              
-              {/* Prompts */}
-              <Animated.View 
-                entering={FadeIn.delay(800).duration(500)}
-                style={styles.editButton}
-              >
-                <LinearGradient
-                  colors={['rgba(125, 91, 166, 0.15)', 'rgba(80, 166, 167, 0.15)']}
-                  start={{x: 0, y: 0}}
-                  end={{x: 1, y: 0}}
-                  style={styles.editButtonGradient}
-                >
-                  <TouchableOpacity
-                    style={styles.editButtonContent}
-                    onPress={() => setActiveSection('Prompts')}
-                  >
-                    <View style={[styles.iconContainer, { backgroundColor: '#E67E22' }]}>
-                      <Ionicons name="chatbubble" size={16} color="#FFF" />
-                    </View>
-                    <View style={styles.editButtonTextContainer}>
-                      <Text style={styles.editButtonLabel}>Prompts</Text>
-                      <Text style={styles.editButtonValue} numberOfLines={1}>
-                        {prompts.length > 0 ? `${prompts.length} prompt${prompts.length > 1 ? 's' : ''}` : 'Not set'}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color="#7D5BA6" />
-                  </TouchableOpacity>
-                </LinearGradient>
-              </Animated.View>
-            </View>
-            
-            <View style={{ height: 100 }} />
-          </View>
-        </ScrollView>
-      ) : (
-        <Animated.View 
-          entering={SlideInRight.duration(300)}
-          style={styles.editFormContainer}
-        >
-          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-            {/* Username Edit */}
-            {activeSection === 'Username' && (
-              <View style={styles.formSection}>
-                <Text style={styles.formTitle}>Update Username</Text>
-                <Text style={styles.formDescription}>
-                  Choose a unique username that represents you
-                </Text>
-                
-                <View style={styles.inputContainer}>
-                  <Ionicons name="person" size={20} color="#7D5BA6" style={styles.inputIcon} />
+      {/* Tab Navigation */}
+      <View className="flex-row px-4 -mt-12 mb-4">
+        {['Basic Info', 'Details', 'Interests'].map((tab, index) => (
+          <TouchableOpacity
+            key={tab}
+            onPress={() => setActiveTab(index)}
+            className={`flex-1 py-3 ${index === 1 ? 'mx-2' : ''}`}
+          >
+            <LinearGradient
+              colors={activeTab === index ? ['#7C3AED', '#06B6D4'] : ['#F8F9FA', '#F8F9FA']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              className="px-4 py-3 rounded-2xl items-center"
+            >
+              <Text className={`font-montserratMedium ${activeTab === index ? 'text-white' : 'text-neutral-dark'}`}>
+                {tab}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <ScrollView 
+        className="flex-1 px-4"
+        showsVerticalScrollIndicator={false}
+      >
+        <AnimatePresence>
+          {activeTab === 0 && (
+            <MotiView
+              from={{ opacity: 0, translateX: -20 }}
+              animate={{ opacity: 1, translateX: 0 }}
+              exit={{ opacity: 0, translateX: 20 }}
+              className="space-y-4"
+            >
+              {/* Username Section */}
+              <View className="bg-white rounded-3xl p-6 shadow-card">
+                <Text className="text-lg font-montserratBold text-neutral-darkest mb-2">Username</Text>
+                <View className="flex-row items-center bg-neutral-light rounded-xl px-4 py-3">
+                  <Ionicons name="person" size={20} color="#7C3AED" />
                   <TextInput
                     value={username}
                     onChangeText={setUsername}
                     placeholder="Enter username"
-                    style={styles.textInput}
-                    autoCapitalize="none"
+                    className="flex-1 ml-3 font-montserrat text-neutral-darkest"
                   />
                 </View>
-                
                 <TouchableOpacity
                   onPress={handleUpdateUsername}
                   disabled={saving}
-                  style={styles.saveButton}
+                  className="mt-4 bg-primary rounded-xl py-3 items-center"
                 >
                   {saving ? (
                     <ActivityIndicator color="white" />
                   ) : (
-                    <Text style={styles.saveButtonText}>Save Username</Text>
+                    <Text className="text-white font-montserratMedium">Update Username</Text>
                   )}
                 </TouchableOpacity>
               </View>
-            )}
 
-            {/* Age Edit */}
-            {activeSection === 'Age' && (
-              <View style={styles.formSection}>
-                <Text style={styles.formTitle}>Update Age</Text>
-                <Text style={styles.formDescription}>
-                  Select your current age
-                </Text>
-                
-                <View style={styles.ageSelector}>
+              {/* Age Section */}
+              <View className="bg-white rounded-3xl p-6 shadow-card">
+                <Text className="text-lg font-montserratBold text-neutral-darkest mb-4">Age</Text>
+                <View className="items-center">
                   <LinearGradient
-                    colors={['#7D5BA6', '#50A6A7']}
-                    start={{x: 0, y: 0}}
-                    end={{x: 1, y: 1}}
-                    style={styles.ageCircle}
+                    colors={['#7C3AED', '#06B6D4']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    className="w-32 h-32 rounded-full items-center justify-center"
                   >
-                    <Text style={styles.ageValue}>{age}</Text>
+                    <Text className="text-4xl font-montserratBold text-white">{age}</Text>
                   </LinearGradient>
-                  
-                  <View style={styles.ageControls}>
+                  <View className="flex-row items-center mt-6 space-x-6">
                     <TouchableOpacity
                       onPress={() => setAge(prev => Math.max(18, prev - 1))}
-                      style={styles.ageButton}
+                      className="w-12 h-12 bg-neutral-light rounded-full items-center justify-center"
                     >
-                      <Ionicons name="remove" size={24} color="#7D5BA6" />
+                      <Ionicons name="remove" size={24} color="#7C3AED" />
                     </TouchableOpacity>
-                    
                     <TouchableOpacity
                       onPress={() => setAge(prev => Math.min(100, prev + 1))}
-                      style={styles.ageButton}
+                      className="w-12 h-12 bg-neutral-light rounded-full items-center justify-center"
                     >
-                      <Ionicons name="add" size={24} color="#7D5BA6" />
+                      <Ionicons name="add" size={24} color="#7C3AED" />
                     </TouchableOpacity>
                   </View>
                 </View>
-                
                 <TouchableOpacity
                   onPress={handleUpdateAge}
                   disabled={saving}
-                  style={styles.saveButton}
+                  className="mt-6 bg-primary rounded-xl py-3 items-center"
                 >
                   {saving ? (
                     <ActivityIndicator color="white" />
                   ) : (
-                    <Text style={styles.saveButtonText}>Save Age</Text>
+                    <Text className="text-white font-montserratMedium">Update Age</Text>
                   )}
                 </TouchableOpacity>
               </View>
-            )}
 
-            {/* Bio Edit */}
-            {activeSection === 'Bio' && (
-              <View style={styles.formSection}>
-                <Text style={styles.formTitle}>Update Bio</Text>
-                <Text style={styles.formDescription}>
-                  Let people know about you
-                </Text>
-                
-                <View style={styles.textAreaContainer}>
+              {/* Bio Section */}
+              <View className="bg-white rounded-3xl p-6 shadow-card mb-6">
+                <Text className="text-lg font-montserratBold text-neutral-darkest mb-2">Bio</Text>
+                <View className="bg-neutral-light rounded-xl p-4">
                   <TextInput
                     value={bio}
                     onChangeText={setBio}
                     placeholder="Tell us about yourself..."
                     multiline
                     numberOfLines={6}
-                    style={styles.textArea}
+                    className="font-montserrat text-neutral-darkest"
                     textAlignVertical="top"
                   />
                 </View>
-                
-                <Text style={styles.charCount}>
+                <Text className="text-right text-neutral-dark mt-2 font-montserrat">
                   {bio.length}/300 characters
                 </Text>
-                
                 <TouchableOpacity
                   onPress={handleUpdateBio}
                   disabled={saving}
-                  style={styles.saveButton}
+                  className="mt-4 bg-primary rounded-xl py-3 items-center"
                 >
                   {saving ? (
                     <ActivityIndicator color="white" />
                   ) : (
-                    <Text style={styles.saveButtonText}>Save Bio</Text>
+                    <Text className="text-white font-montserratMedium">Update Bio</Text>
                   )}
                 </TouchableOpacity>
               </View>
-            )}
+            </MotiView>
+          )}
 
-            {/* Gender Edit */}
-            {activeSection === 'Gender' && (
-              <View style={styles.formSection}>
-                <Text style={styles.formTitle}>Update Gender</Text>
-                <Text style={styles.formDescription}>
-                  Select how you identify
-                </Text>
-                
-                <View style={styles.optionsGrid}>
+          {activeTab === 1 && (
+            <MotiView
+              from={{ opacity: 0, translateX: -20 }}
+              animate={{ opacity: 1, translateX: 0 }}
+              exit={{ opacity: 0, translateX: 20 }}
+              className="space-y-4"
+            >
+              {/* Gender Section */}
+              <View className="bg-white rounded-3xl p-6 shadow-card">
+                <Text className="text-lg font-montserratBold text-neutral-darkest mb-4">Gender</Text>
+                <View className="flex-row flex-wrap justify-between">
                   {GENDERS.map((item) => (
                     <TouchableOpacity
                       key={item.id}
                       onPress={() => setGender(item.id)}
-                      style={[
-                        styles.optionCard,
-                        gender === item.id && {
-                          backgroundColor: item.color + '20', // Adding transparency
-                          borderColor: item.color
-                        }
-                      ]}
+                      className="w-[48%] mb-4"
                     >
-                      <View style={[
-                        styles.optionIconCircle,
-                        { backgroundColor: gender === item.id ? item.color : '#F0F0F0' }
-                      ]}>
-                        <Ionicons 
-                          name={item.icon as any} 
-                          size={24} 
-                          color={gender === item.id ? '#fff' : item.color} 
-                        />
-                      </View>
-                      <Text style={[
-                        styles.optionLabel,
-                        { color: gender === item.id ? item.color : '#666' }
-                      ]}>
-                        {item.label}
-                      </Text>
+                      <LinearGradient
+                        colors={gender === item.id 
+                          ? [item.color + '20', item.color + '40']
+                          : ['#F8F9FA', '#F8F9FA']}
+                        className="p-4 rounded-2xl items-center border border-neutral-medium"
+                      >
+                        <View className={`w-12 h-12 rounded-full items-center justify-center mb-2 ${
+                          gender === item.id ? `bg-[${item.color}]` : 'bg-neutral-light'
+                        }`}>
+                          <Ionicons 
+                            name={item.icon as any} 
+                            size={24} 
+                            color={gender === item.id ? '#fff' : item.color} 
+                          />
+                        </View>
+                        <Text className={`font-montserratMedium ${
+                          gender === item.id ? `text-[${item.color}]` : 'text-neutral-dark'
+                        }`}>
+                          {item.label}
+                        </Text>
+                      </LinearGradient>
                     </TouchableOpacity>
                   ))}
                 </View>
-                
                 <TouchableOpacity
                   onPress={handleUpdateGender}
                   disabled={saving}
-                  style={styles.saveButton}
+                  className="mt-4 bg-primary rounded-xl py-3 items-center"
                 >
                   {saving ? (
                     <ActivityIndicator color="white" />
                   ) : (
-                    <Text style={styles.saveButtonText}>Save Gender</Text>
+                    <Text className="text-white font-montserratMedium">Update Gender</Text>
                   )}
                 </TouchableOpacity>
               </View>
-            )}
 
-            {/* Occupation Edit */}
-            {activeSection === 'Occupation' && (
-              <View style={styles.formSection}>
-                <Text style={styles.formTitle}>Update Occupation</Text>
-                <Text style={styles.formDescription}>
-                  Select what you do
-                </Text>
-                
-                <View style={styles.optionsGrid}>
+              {/* Occupation Section */}
+              <View className="bg-white rounded-3xl p-6 shadow-card">
+                <Text className="text-lg font-montserratBold text-neutral-darkest mb-4">Occupation</Text>
+                <View className="flex-row flex-wrap justify-between">
                   {OCCUPATIONS.map((item) => (
                     <TouchableOpacity
                       key={item.id}
                       onPress={() => setOccupation(item.id)}
-                      style={[
-                        styles.optionCard,
-                        occupation === item.id && {
-                          backgroundColor: item.color + '20', // Adding transparency
-                          borderColor: item.color
-                        }
-                      ]}
+                      className="w-[48%] mb-4"
                     >
-                      <View style={[
-                        styles.optionIconCircle,
-                        { backgroundColor: occupation === item.id ? item.color : '#F0F0F0' }
-                      ]}>
-                        <Ionicons 
-                          name={item.icon as any} 
-                          size={24} 
-                          color={occupation === item.id ? '#fff' : item.color} 
-                        />
-                      </View>
-                      <Text style={[
-                        styles.optionLabel,
-                        { color: occupation === item.id ? item.color : '#666' }
-                      ]}>
-                        {item.label}
-                      </Text>
-                      <Text style={[
-                        styles.optionDescription,
-                        { color: occupation === item.id ? item.color + 'CC' : '#999' }
-                      ]}>
-                        {item.description}
-                      </Text>
+                      <LinearGradient
+                        colors={occupation === item.id 
+                          ? [item.color + '20', item.color + '40']
+                          : ['#F8F9FA', '#F8F9FA']}
+                        className="p-4 rounded-2xl items-center border border-neutral-medium"
+                      >
+                        <View className={`w-12 h-12 rounded-full items-center justify-center mb-2 ${
+                          occupation === item.id ? `bg-[${item.color}]` : 'bg-neutral-light'
+                        }`}>
+                          <Ionicons 
+                            name={item.icon as any} 
+                            size={24} 
+                            color={occupation === item.id ? '#fff' : item.color} 
+                          />
+                        </View>
+                        <Text className={`font-montserratMedium ${
+                          occupation === item.id ? `text-[${item.color}]` : 'text-neutral-dark'
+                        }`}>
+                          {item.label}
+                        </Text>
+                        <Text className="text-xs text-neutral-dark text-center mt-1">
+                          {item.description}
+                        </Text>
+                      </LinearGradient>
                     </TouchableOpacity>
                   ))}
                 </View>
-                
                 <TouchableOpacity
                   onPress={handleUpdateOccupation}
                   disabled={saving}
-                  style={styles.saveButton}
+                  className="mt-4 bg-primary rounded-xl py-3 items-center"
                 >
                   {saving ? (
                     <ActivityIndicator color="white" />
                   ) : (
-                    <Text style={styles.saveButtonText}>Save Occupation</Text>
+                    <Text className="text-white font-montserratMedium">Update Occupation</Text>
                   )}
                 </TouchableOpacity>
               </View>
-            )}
 
-            {/* Location Edit */}
-            {activeSection === 'Location' && (
-              <View style={styles.formSection}>
-                <Text style={styles.formTitle}>Update Location</Text>
-                <Text style={styles.formDescription}>
-                  Where are you located?
-                </Text>
-                
-                <View style={styles.inputContainer}>
-                  <Ionicons name="location" size={20} color="#7D5BA6" style={styles.inputIcon} />
+              {/* Location Section */}
+              <View className="bg-white rounded-3xl p-6 shadow-card mb-6">
+                <Text className="text-lg font-montserratBold text-neutral-darkest mb-2">Location</Text>
+                <View className="flex-row items-center bg-neutral-light rounded-xl px-4 py-3">
+                  <Ionicons name="location" size={20} color="#7C3AED" />
                   <TextInput
                     value={location}
                     onChangeText={setLocation}
                     placeholder="Enter your location"
-                    style={styles.textInput}
+                    className="flex-1 ml-3 font-montserrat text-neutral-darkest"
                   />
                 </View>
-                
                 <TouchableOpacity
                   onPress={handleUpdateLocation}
                   disabled={saving}
-                  style={styles.saveButton}
+                  className="mt-4 bg-primary rounded-xl py-3 items-center"
                 >
                   {saving ? (
                     <ActivityIndicator color="white" />
                   ) : (
-                    <Text style={styles.saveButtonText}>Save Location</Text>
+                    <Text className="text-white font-montserratMedium">Update Location</Text>
                   )}
                 </TouchableOpacity>
               </View>
-            )}
+            </MotiView>
+          )}
 
-            {/* Interests Edit */}
-            {activeSection === 'Interests' && (
-              <View style={styles.formSection}>
-                <Text style={styles.formTitle}>Update Interests</Text>
-                <Text style={styles.formDescription}>
-                  Select 3-8 interests to help us find your perfect match
-                </Text>
+          {activeTab === 2 && (
+            <MotiView
+              from={{ opacity: 0, translateX: -20 }}
+              animate={{ opacity: 1, translateX: 0 }}
+              exit={{ opacity: 0, translateX: 20 }}
+              className="space-y-4"
+            >
+              {/* Interests Section */}
+              <View className="bg-white rounded-3xl p-6 shadow-card">
+                <Text className="text-lg font-montserratBold text-neutral-darkest mb-2">Interests</Text>
+                <Text className="text-neutral-dark mb-4">Select 3-8 interests that define you</Text>
                 
-                <View style={styles.progressContainer}>
-                  <View style={styles.progressBar}>
-                    <View 
-                      style={[
-                        styles.progressFill,
-                        { 
-                          width: `${Math.min(100, (interests.length / 8) * 100)}%`,
-                          backgroundColor: interests.length >= 3 ? '#50A6A7' : '#7D5BA6' 
-                        }
-                      ]}
+                {/* Progress Bar */}
+                <View className="mb-6">
+                  <View className="h-2 bg-neutral-light rounded-full overflow-hidden">
+                    <MotiView
+                      animate={{
+                        width: `${Math.min(100, (interests.length / 8) * 100)}%`,
+                        backgroundColor: interests.length >= 3 ? '#06B6D4' : '#7C3AED'
+                      }}
+                      transition={{ type: 'spring' }}
+                      className="h-full rounded-full"
                     />
                   </View>
-                  <View style={styles.progressLabels}>
-                    <Text style={styles.progressCount}>
+                  <View className="flex-row justify-between mt-2">
+                    <Text className="text-neutral-dark font-montserrat">
                       {interests.length}/8 selected
                     </Text>
                     {interests.length < 3 && (
-                      <Text style={styles.progressMinimum}>
+                      <Text className="text-error font-montserrat">
                         Select at least 3
                       </Text>
                     )}
                   </View>
                 </View>
-                
-                {INTEREST_CATEGORIES.map((category) => (
-                  <View key={category.id} style={styles.interestCategory}>
-                    <View style={styles.categoryHeader}>
-                      <Ionicons name={category.icon as any} size={20} color="#7D5BA6" />
-                      <Text style={styles.categoryTitle}>
+
+                {/* Interest Categories */}
+                {INTEREST_CATEGORIES.map((category, categoryIndex) => (
+                  <MotiView
+                    key={category.id}
+                    from={{ opacity: 0, translateY: 20 }}
+                    animate={{ opacity: 1, translateY: 0 }}
+                    transition={{ delay: categoryIndex * 100 }}
+                    className="mb-6 last:mb-0"
+                  >
+                    <View className="flex-row items-center mb-3">
+                      <Ionicons name={category.icon as any} size={20} color="#7C3AED" />
+                      <Text className="text-neutral-darkest font-montserratMedium ml-2">
                         {category.name}
                       </Text>
                     </View>
-                    
-                    <View style={styles.interestTags}>
-                      {category.interests.map((interest) => (
+                    <View className="flex-row flex-wrap">
+                      {category.interests.map((interest, index) => (
                         <TouchableOpacity
                           key={interest}
                           onPress={() => toggleInterest(interest)}
-                          style={[
-                            styles.interestTag,
-                            interests.includes(interest) && styles.interestTagSelected
-                          ]}
+                          className="mr-2 mb-2"
                         >
-                          <Text style={[
-                            styles.interestTagText,
-                            interests.includes(interest) && styles.interestTagTextSelected
-                          ]}>
-                            {interest}
-                          </Text>
+                          <LinearGradient
+                            colors={interests.includes(interest)
+                              ? ['#7C3AED', '#06B6D4']
+                              : ['#F8F9FA', '#F8F9FA']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            className="px-4 py-2 rounded-xl border border-neutral-medium"
+                          >
+                            <Text className={interests.includes(interest)
+                              ? 'text-white font-montserratMedium'
+                              : 'text-neutral-dark font-montserrat'
+                            }>
+                              {interest}
+                            </Text>
+                          </LinearGradient>
                         </TouchableOpacity>
                       ))}
                     </View>
-                  </View>
+                  </MotiView>
                 ))}
-                
+
                 <TouchableOpacity
                   onPress={handleUpdateInterests}
                   disabled={saving || interests.length < 3}
-                  style={[
-                    styles.saveButton,
-                    interests.length < 3 && { opacity: 0.5 }
-                  ]}
+                  className={`mt-6 rounded-xl py-3 items-center ${
+                    interests.length >= 3 ? 'bg-primary' : 'bg-neutral-medium'
+                  }`}
                 >
                   {saving ? (
                     <ActivityIndicator color="white" />
                   ) : (
-                    <Text style={styles.saveButtonText}>Save Interests</Text>
+                    <Text className="text-white font-montserratMedium">
+                      Update Interests
+                    </Text>
                   )}
                 </TouchableOpacity>
-                
-                <View style={{ height: 20 }} />
               </View>
-            )}
 
-            {/* Prompts Edit */}
-            {activeSection === 'Prompts' && (
-              <View style={styles.formSection}>
-                <Text style={styles.formTitle}>Update Prompts</Text>
-                <Text style={styles.formDescription}>
-                  Add or edit your prompts to help others get to know you
-                </Text>
+              {/* Prompts Section */}
+              <View className="bg-white rounded-3xl p-6 shadow-card mb-6">
+                <Text className="text-lg font-montserratBold text-neutral-darkest mb-4">Prompts</Text>
                 
-                {/* Prompt form */}
-                <View style={styles.promptFormCard}>
-                  <Text style={styles.promptFormLabel}>Add a prompt:</Text>
-                  
-                  <View style={styles.selectContainer}>
-                    <Ionicons name="help-circle" size={20} color="#7D5BA6" style={styles.inputIcon} />
-                    <View style={{ flex: 1 }}>
-                      <TouchableOpacity 
-                        style={styles.selectTrigger}
-                        onPress={() => {
-                          // Add dropdown logic here
-                          // For now, we'll just use the first prompt
-                          if (activePrompt === null && promptQuestion === "") {
-                            setPromptQuestion(PROMPT_QUESTIONS[0]);
-                          }
-                        }}
-                      >
-                        <Text style={[
-                          styles.selectText,
-                          !promptQuestion && { color: '#AAA' }
-                        ]}>
-                          {promptQuestion || "Select a prompt question..."}
-                        </Text>
-                        <Ionicons name="chevron-down" size={16} color="#7D5BA6" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                  
-                  <View style={styles.textAreaContainer}>
-                    <TextInput
-                      value={promptAnswer}
-                      onChangeText={setPromptAnswer}
-                      placeholder="Your answer..."
-                      multiline
-                      numberOfLines={4}
-                      style={styles.textArea}
-                      textAlignVertical="top"
-                    />
-                  </View>
-                  
+                {/* Add New Prompt */}
+                <View className="bg-neutral-light rounded-2xl p-4 mb-6">
+                  <TouchableOpacity 
+                    className="flex-row items-center justify-between bg-white rounded-xl p-4 mb-4"
+                    onPress={() => {
+                      // Add dropdown logic here
+                      if (activePrompt === null && promptQuestion === "") {
+                        setPromptQuestion(PROMPT_QUESTIONS[0]);
+                      }
+                    }}
+                  >
+                    <Text className={promptQuestion ? 'text-neutral-darkest' : 'text-neutral-dark'}>
+                      {promptQuestion || "Select a prompt..."}
+                    </Text>
+                    <Ionicons name="chevron-down" size={20} color="#7C3AED" />
+                  </TouchableOpacity>
+
+                  <TextInput
+                    value={promptAnswer}
+                    onChangeText={setPromptAnswer}
+                    placeholder="Your answer..."
+                    multiline
+                    numberOfLines={4}
+                    className="bg-white rounded-xl p-4 font-montserrat text-neutral-darkest"
+                    textAlignVertical="top"
+                  />
+
                   <TouchableOpacity
                     onPress={addPrompt}
                     disabled={!promptQuestion || !promptAnswer.trim()}
-                    style={[
-                      styles.addButton,
-                      (!promptQuestion || !promptAnswer.trim()) && { opacity: 0.5 }
-                    ]}
+                    className={`mt-4 rounded-xl py-3 items-center ${
+                      promptQuestion && promptAnswer.trim() ? 'bg-primary' : 'bg-neutral-medium'
+                    }`}
                   >
-                    <Text style={styles.addButtonText}>
+                    <Text className="text-white font-montserratMedium">
                       {activePrompt !== null ? 'Update Prompt' : 'Add Prompt'}
                     </Text>
                   </TouchableOpacity>
                 </View>
-                
-                {/* Existing prompts */}
-                {prompts.length > 0 && (
-                  <View style={styles.promptsList}>
-                    <Text style={styles.promptsListTitle}>Your prompts:</Text>
-                    
-                    {prompts.map((prompt, index) => (
-                      <View key={index} style={styles.promptCard}>
-                        <View style={styles.promptCardContent}>
-                          <Text style={styles.promptQuestion}>
-                            {prompt.question}
-                          </Text>
-                          <Text style={styles.promptAnswer}>
-                            {prompt.answer}
-                          </Text>
-                        </View>
-                        <View style={styles.promptActions}>
-                          <TouchableOpacity 
-                            style={styles.promptActionButton}
-                            onPress={() => editPrompt(index)}
-                          >
-                            <Ionicons name="create" size={18} color="#7D5BA6" />
-                          </TouchableOpacity>
-                          <TouchableOpacity 
-                            style={styles.promptActionButton}
-                            onPress={() => deletePrompt(index)}
-                          >
-                            <Ionicons name="trash" size={18} color="#E85B81" />
-                          </TouchableOpacity>
-                        </View>
+
+                {/* Existing Prompts */}
+                {prompts.map((prompt, index) => (
+                  <MotiView
+                    key={index}
+                    from={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: index * 100 }}
+                    className="bg-neutral-light rounded-2xl p-4 mb-4 last:mb-0"
+                  >
+                    <View className="flex-row justify-between items-start">
+                      <View className="flex-1 mr-4">
+                        <Text className="text-primary font-montserratBold mb-2">
+                          {prompt.question}
+                        </Text>
+                        <Text className="text-neutral-dark font-montserrat">
+                          {prompt.answer}
+                        </Text>
                       </View>
-                    ))}
-                  </View>
-                )}
-                
+                      <View className="flex-row">
+                        <TouchableOpacity
+                          onPress={() => editPrompt(index)}
+                          className="w-8 h-8 bg-white rounded-full items-center justify-center mr-2"
+                        >
+                          <Ionicons name="create" size={16} color="#7C3AED" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => deletePrompt(index)}
+                          className="w-8 h-8 bg-white rounded-full items-center justify-center"
+                        >
+                          <Ionicons name="trash" size={16} color="#EF4444" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </MotiView>
+                ))}
+
                 <TouchableOpacity
                   onPress={handleUpdatePrompts}
                   disabled={saving || prompts.length < 1}
-                  style={[
-                    styles.saveButton,
-                    prompts.length < 1 && { opacity: 0.5 }
-                  ]}
+                  className={`mt-6 rounded-xl py-3 items-center ${
+                    prompts.length >= 1 ? 'bg-primary' : 'bg-neutral-medium'
+                  }`}
                 >
                   {saving ? (
                     <ActivityIndicator color="white" />
                   ) : (
-                    <Text style={styles.saveButtonText}>Save Prompts</Text>
+                    <Text className="text-white font-montserratMedium">
+                      Save All Prompts
+                    </Text>
                   )}
                 </TouchableOpacity>
-                
-                <View style={{ height: 20 }} />
               </View>
-            )}
-          </ScrollView>
-        </Animated.View>
-      )}
+            </MotiView>
+          )}
+        </AnimatePresence>
+      </ScrollView>
     </SafeAreaView>
   );
 }
