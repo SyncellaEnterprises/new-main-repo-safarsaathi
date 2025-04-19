@@ -317,10 +317,11 @@ export default function ChatDetailScreen() {
 
           <TouchableOpacity 
             onPress={() => router.push({
-              pathname: '/(tabs)/profile',
+              pathname: "/profile/[id]",
               params: { id: recipient.id }
             })}
             className="flex-row items-center flex-1"
+            activeOpacity={0.7}
           >
             <View className="relative">
               <Image

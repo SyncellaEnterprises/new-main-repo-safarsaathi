@@ -457,18 +457,27 @@ export default function GroupChatScreen() {
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
 
-          <View className="h-10 w-10 rounded-full bg-secondary items-center justify-center">
-            <Ionicons name="people" size={20} color="white" />
-          </View>
-          
-          <View className="flex-1 ml-3">
-            <Text className="text-white text-lg font-montserratMedium">
-              {groupInfo?.name || 'Travel Group'}
-            </Text>
-            <Text className="text-primary-light text-sm font-montserrat">
-              {groupInfo?.destination || ''} {formatDateRange()}
-            </Text>
-          </View>
+          <TouchableOpacity 
+            onPress={() => router.push({
+              pathname: "/groups/[id]",
+              params: { id: groupId }
+            })}
+            className="flex-row items-center flex-1"
+            activeOpacity={0.7}
+          >
+            <View className="h-10 w-10 rounded-full bg-secondary items-center justify-center">
+              <Ionicons name="people" size={20} color="white" />
+            </View>
+            
+            <View className="flex-1 ml-3">
+              <Text className="text-white text-lg font-montserratMedium">
+                {groupInfo?.name || 'Travel Group'}
+              </Text>
+              <Text className="text-primary-light text-sm font-montserrat">
+                {groupInfo?.destination || ''} {formatDateRange()}
+              </Text>
+            </View>
+          </TouchableOpacity>
 
           <TouchableOpacity 
             onPress={() => setShowMembers(true)}
