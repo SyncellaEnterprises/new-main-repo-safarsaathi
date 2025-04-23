@@ -813,3 +813,113 @@ Each error response includes a message explaining the error:
 - API endpoints are rate-limited to prevent abuse
 - Login attempts are limited to 5 per minute per IP
 - Other endpoints are limited to 100 requests per minute per user 
+
+### SOS Emergency Endpoints
+All SOS endpoints require JWT Token in header: `Authorization: Bearer <token>`
+
+- `POST /api/sos/alert`
+  - Create a new SOS emergency alert
+  - Body:
+    ```json
+    {
+        "latitude": 37.4220936,
+        "longitude": -122.083922,
+        "accuracy": 10.5,
+        "location_text": "Near Main Street",
+        "notes": "I need immediate help"
+    }
+    ```
+  - Response:
+    ```json
+    {
+        "success": true,
+        "message": "SOS alert created successfully",
+        "alert_id": 123,
+        "created_at": "2024-04-25T15:30:45.123Z",
+        "user_details": {
+            "username": "johndoe",
+            "gender": "male",
+            "age": 25
+        }
+    }
+    ```
+
+- `PUT /api/sos/status`
+  - Update an existing SOS alert status (cancel or resolve)
+  - Body:
+    ```json
+    {
+        "alert_id": 123,
+        "status": "cancelled" // or "resolved"
+    }
+    ```
+  - Response:
+    ```json
+    {
+        "success": true,
+        "message": "SOS alert cancelled successfully",
+        "alert_id": 123,
+        "status": "cancelled",
+        "resolved_at": "2024-04-25T15:40:22.456Z"
+    }
+    ```
+
+- `GET /api/sos/active`
+  - Get all active SOS alerts for the current user
+  - Response:
+    ```json
+    {
+        "success": true,
+        "active_alerts": [
+            {
+                "alert_id": 123,
+                "latitude": 37.4220936,
+                "longitude": -122.083922,
+                "accuracy": 10.5,
+                "location_text": "Near Main Street",
+                "status": "active",
+                "created_at": "2024-04-25T15:30:45.123Z"
+            }
+        ]
+    }
+    ```
+
+- `POST /api/sos/contacts`
+  - Add an emergency contact
+  - Body:
+    ```json
+    {
+        "name": "Jane Doe",
+        "phone_number": "+1234567890",
+        "relationship": "Friend",
+        "is_primary": true
+    }
+    ```
+  - Response:
+    ```json
+    {
+        "success": true,
+        "message": "Emergency contact added successfully",
+        "contact_id": 456,
+        "created_at": "2024-04-25T14:20:10.789Z"
+    }
+    ```
+
+- `GET /api/sos/contacts`
+  - Get all emergency contacts for the current user
+  - Response:
+    ```json
+    {
+        "success": true,
+        "contacts": [
+            {
+                "contact_id": 456,
+                "name": "Jane Doe",
+                "phone_number": "+1234567890",
+                "relationship": "Friend",
+                "is_primary": true,
+                "created_at": "2024-04-25T14:20:10.789Z"
+            }
+        ]
+    }
+    ``` 

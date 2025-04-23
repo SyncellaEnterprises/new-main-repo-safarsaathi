@@ -11,6 +11,10 @@ from controllers.travel_group_controller import (
     create_travel_group, get_user_travel_groups, get_travel_group,
     add_member_to_group, remove_member_from_group, get_group_messages, send_group_message
 )
+from controllers.sos_controller import (
+    create_sos_alert, update_sos_alert_status, get_active_sos_alerts,
+    add_emergency_contact, get_emergency_contacts
+)
 
 
 # Initialize Flask app
@@ -70,6 +74,13 @@ app.add_url_rule('/api/groups/<group_id>/members', view_func=add_member_to_group
 app.add_url_rule('/api/groups/<group_id>/members/<member_id>', view_func=remove_member_from_group, methods=['DELETE'])
 app.add_url_rule('/api/groups/<group_id>/messages', view_func=get_group_messages, methods=['GET'])
 app.add_url_rule('/api/groups/<group_id>/messages', view_func=send_group_message, methods=['POST'])
+
+# Add SOS API routes
+app.add_url_rule('/api/sos/alert', view_func=create_sos_alert, methods=['POST'])
+app.add_url_rule('/api/sos/status', view_func=update_sos_alert_status, methods=['PUT'])
+app.add_url_rule('/api/sos/active', view_func=get_active_sos_alerts, methods=['GET'])
+app.add_url_rule('/api/sos/contacts', view_func=add_emergency_contact, methods=['POST'])
+app.add_url_rule('/api/sos/contacts', view_func=get_emergency_contacts, methods=['GET'])
 
 # Define function for socket info using the shared config
 def socket_info_handler():

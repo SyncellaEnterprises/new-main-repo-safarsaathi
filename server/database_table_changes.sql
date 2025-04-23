@@ -96,4 +96,39 @@ CREATE TABLE messages (
 
 CREATE INDEX idx_messages_sender ON messages(sender_id);
 CREATE INDEX idx_messages_receiver ON messages(receiver_id);
-CREATE INDEX idx_messages_group ON messages(group_id); 
+CREATE INDEX idx_messages_group ON messages(group_id);
+
+-- Add SOS alerts table to track emergency alerts
+CREATE TABLE sos_alerts (
+    alert_id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL,
+    latitude DECIMAL(10, 8) NOT NULL,
+    longitude DECIMAL(11, 8) NOT NULL,
+    accuracy DECIMAL(10, 2),
+    location_text TEXT,
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'resolved', 'cancelled')),
+    emergency_contacts JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    resolved_at TIMESTAMP,
+    notes TEXT,
+    FOREIGN KEY (user_id) REFERENCES user_db(id) ON DELETE CASCADE
+);
+
+-- Create index for faster lookups by user_id and status
+CREATE INDEX idx_sos_alerts_user_id ON sos_alerts(user_id);
+CREATE INDEX idx_sos_alerts_status ON sos_alerts(status);
+
+-- Add emergency contacts table to store user's emergency contacts
+CREATE TABLE emergency_contacts (
+    contact_id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    phone_number VARCHAR(20) NOT NULL,
+    relationship VARCHAR(50),
+    is_primary BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES user_db(id) ON DELETE CASCADE
+);
+
+-- Create index for emergency contacts by user_id
+CREATE INDEX idx_emergency_contacts_user_id ON emergency_contacts(user_id); 
