@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import MapView, { PROVIDER_GOOGLE, Marker, Callout, Circle, MapTypes } from 'react-native-maps';
-import { StyleSheet, View, ScrollView, TouchableOpacity, Text, Image, Platform, Dimensions, ActivityIndicator, Linking, Alert } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Text, Image, Platform, Dimensions, ActivityIndicator, Linking, Modal } from 'react-native';
 import * as Location from 'expo-location';
-import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import Animated, { FadeIn, FadeInDown, SlideInUp } from 'react-native-reanimated';
 import axios from 'axios';
@@ -163,23 +163,6 @@ const PLACES_OF_INTEREST = [
   },
 ];
 
-// Emergency contacts
-interface EmergencyContact {
-  id: string;
-  name: string;
-  icon: string;
-  number?: string;
-  action?: 'share' | 'sos';
-  customContact?: boolean;
-}
-
-const EMERGENCY_CONTACTS: EmergencyContact[] = [
-  { id: '1', name: 'Police', number: '911', icon: 'shield' },
-  { id: '2', name: 'Trusted Contact', number: '', icon: 'person', customContact: true },
-  { id: '3', name: 'Share Location', action: 'share', icon: 'share-social' },
-  { id: '4', name: 'SOS Alert', action: 'sos', icon: 'alert-circle' },
-];
-
 export default function LocationScreen() {
   const router = useRouter();
   const mapRef = useRef<MapView>(null);
@@ -196,30 +179,7 @@ export default function LocationScreen() {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [showGhostMode, setShowGhostMode] = useState(false);
   const [mapType, setMapType] = useState<'standard' | 'satellite'>('standard');
-  const [showEmergencyPanel, setShowEmergencyPanel] = useState(false);
-  const [emergencyContacts, setEmergencyContacts] = useState(EMERGENCY_CONTACTS);
-  const [userGender, setUserGender] = useState<string | null>(null);
-
-  // Get user profile including gender
-  const getUserProfile = async () => {
-    try {
-      const token = await AsyncStorage.getItem('accessToken');
-      if (!token) return;
-      
-      const response = await axios.get(`${API_URL}/api/users/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.data && response.data.user) {
-        setUserGender(response.data.user.gender || null);
-      }
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-    }
-  };
+  const [showSOSModal, setShowSOSModal] = useState(false);
 
   // Initialize with user's current location
   const getUserLocation = async () => {
@@ -326,24 +286,10 @@ export default function LocationScreen() {
     }
   }, []);
 
-  // Fetch emergency contacts from storage
-  const fetchEmergencyContacts = async () => {
-    try {
-      const savedContacts = await AsyncStorage.getItem('emergencyContacts');
-      if (savedContacts) {
-        setEmergencyContacts(JSON.parse(savedContacts));
-      }
-    } catch (error) {
-      console.error('Error fetching emergency contacts:', error);
-    }
-  };
-
-  // Initialize component
+  // Initial data fetch
   useEffect(() => {
     getUserLocation();
     fetchMatches();
-    getUserProfile();
-    fetchEmergencyContacts();
   }, []);
 
   // Handle match selection
@@ -365,165 +311,48 @@ export default function LocationScreen() {
     setMapType(prev => prev === 'standard' ? 'satellite' : 'standard');
   };
 
-  // Toggle emergency panel
-  const toggleEmergencyPanel = () => {
-    setShowEmergencyPanel(!showEmergencyPanel);
-  };
-
-  // Call emergency contact
-  const callEmergencyContact = (contact: typeof EMERGENCY_CONTACTS[0]) => {
-    if (contact.action === 'share') {
-      shareCurrentLocation();
-      return;
-    }
+  // Handle emergency call
+  const handleEmergencyCall = async () => {
+    const phoneNumber = '100';
+    const currentLocationText = `Current Location: ${currentLocation.latitude}, ${currentLocation.longitude}`;
     
-    if (contact.action === 'sos') {
-      sendSOSAlert();
-      return;
-    }
-    
-    if (!contact.number || contact.number === '') {
-      Alert.alert(
-        'No Number Set',
-        'Would you like to set up this emergency contact?',
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-          {
-            text: 'Set Up',
-            onPress: () => setupEmergencyContact(contact),
-          },
-        ]
-      );
-      return;
-    }
-    
-    Linking.openURL(`tel:${contact.number}`);
-    
-    // Show confirmation toast
-    Toast.show({
-      type: 'info',
-      text1: 'Calling Emergency Contact',
-      text2: `Dialing ${contact.name} (${contact.number})`,
-      position: 'top',
-    });
-  };
-  
-  // Set up emergency contact
-  const setupEmergencyContact = async (contact: typeof EMERGENCY_CONTACTS[0]) => {
-    // In a real app, this would open contact picker
-    // For now, we'll just simulate setting a number
-    Alert.prompt(
-      'Add Emergency Contact',
-      'Enter the phone number for your trusted contact:',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Save',
-          onPress: async (number) => {
-            if (!number) return;
-            
-            // Update the contact in the array
-            const updatedContacts = emergencyContacts.map(c => 
-              c.id === contact.id ? {...c, number} : c
-            );
-            
-            // Save to state and storage
-            setEmergencyContacts(updatedContacts);
-            await AsyncStorage.setItem('emergencyContacts', JSON.stringify(updatedContacts));
-            
-            Toast.show({
-              type: 'success',
-              text1: 'Contact Saved',
-              text2: 'Your emergency contact has been updated',
-            });
-          },
-        },
-      ],
-      'plain-text'
-    );
-  };
-  
-  // Share current location with emergency contacts
-  const shareCurrentLocation = async () => {
     try {
-      const location = await Location.getCurrentPositionAsync({});
-      const message = `I'm sharing my current location with you for safety purposes. I'm at: https://maps.google.com/?q=${location.coords.latitude},${location.coords.longitude}`;
-      
-      // On a real device, this would open the share sheet
-      // For simulators, we'll just show a toast
-      Toast.show({
-        type: 'info',
-        text1: 'Location Shared',
-        text2: 'Your location has been shared with your emergency contacts',
-        position: 'top',
+      const url = Platform.select({
+        ios: `tel:${phoneNumber}`,
+        android: `tel:${phoneNumber}`
       });
       
-      // Simulate sharing (this won't work on simulators)
-      try {
-        await Linking.openURL(`sms:?body=${encodeURIComponent(message)}`);
-      } catch (error) {
-        console.log('Could not open SMS app. This is expected in simulators.');
+      if (url) {
+        await Linking.openURL(url);
+        console.log('Dialing emergency number with location:', currentLocationText);
       }
     } catch (error) {
-      console.error('Error sharing location:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to share your location',
-      });
+      console.error('Error making emergency call:', error);
     }
   };
-  
-  // Send SOS alert
-  const sendSOSAlert = () => {
-    Alert.alert(
-      'Send SOS Alert',
-      'This will notify your emergency contacts with your current location. Continue?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Send SOS',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // In a real app, this would send SMS, push notifications, etc.
-              const location = await Location.getCurrentPositionAsync({});
-              const message = `SOS ALERT: I need help! I'm at: https://maps.google.com/?q=${location.coords.latitude},${location.coords.longitude}`;
-              
-              Toast.show({
-                type: 'info',
-                text1: 'SOS Alert Sent',
-                text2: 'Your emergency contacts have been notified',
-                position: 'top',
-              });
-              
-              // Simulate calling emergency (this won't work on simulators)
-              try {
-                await Linking.openURL('tel:911');
-              } catch (error) {
-                console.log('Could not open phone app. This is expected in simulators.');
-              }
-            } catch (error) {
-              console.error('Error sending SOS:', error);
-              Toast.show({
-                type: 'error',
-                text1: 'Error',
-                text2: 'Failed to send SOS alert',
-              });
-            }
-          },
-        },
-      ]
-    );
+
+  // Handle trusted contact
+  const handleTrustedContact = () => {
+    console.log('Trusted contact button clicked');
+    setShowSOSModal(false);
+  };
+
+  // Handle medical emergency
+  const handleMedicalEmergency = async () => {
+    const phoneNumber = '108'; // Common medical emergency number in India
+    
+    try {
+      const url = Platform.select({
+        ios: `tel:${phoneNumber}`,
+        android: `tel:${phoneNumber}`
+      });
+      
+      if (url) {
+        await Linking.openURL(url);
+      }
+    } catch (error) {
+      console.error('Error making medical emergency call:', error);
+    }
   };
 
   // Render a match marker
@@ -651,6 +480,14 @@ export default function LocationScreen() {
             <BlurView intensity={20} tint="dark" style={styles.actionButton}>
               <TouchableOpacity 
                 style={styles.actionBlur}
+                onPress={() => setShowSOSModal(true)}
+              >
+                <Ionicons name="warning" size={24} color="#FF4444" />
+              </TouchableOpacity>
+            </BlurView>
+            <BlurView intensity={20} tint="dark" style={styles.actionButton}>
+              <TouchableOpacity 
+                style={styles.actionBlur}
                 onPress={getUserLocation}
               >
                 <Ionicons name="compass" size={24} color="#fff" />
@@ -672,15 +509,73 @@ export default function LocationScreen() {
                 <MaterialCommunityIcons name={mapType === 'standard' ? "satellite-variant" : "map"} size={24} color="#fff" />
               </TouchableOpacity>
             </BlurView>
-            <BlurView intensity={20} tint="dark" style={[styles.actionButton, { backgroundColor: 'rgba(232, 63, 91, 0.3)' }]}>
-              <TouchableOpacity 
-                style={styles.actionBlur}
-                onPress={toggleEmergencyPanel}
-              >
-                <Ionicons name="alert-circle" size={24} color="#FF4D6D" />
-              </TouchableOpacity>
-            </BlurView>
           </View>
+
+          {/* SOS Modal */}
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={showSOSModal}
+            onRequestClose={() => setShowSOSModal(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <BlurView intensity={30} tint="dark" style={styles.sosModal}>
+                <View style={styles.sosHeader}>
+                  <Text style={styles.sosTitle}>Emergency SOS</Text>
+                  <TouchableOpacity 
+                    style={styles.sosCloseButton}
+                    onPress={() => setShowSOSModal(false)}
+                  >
+                    <Ionicons name="close" size={24} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.sosOptions}>
+                  <TouchableOpacity 
+                    style={styles.sosOption}
+                    onPress={handleEmergencyCall}
+                  >
+                    <LinearGradient
+                      colors={['#FF4444', '#FF6666']}
+                      style={styles.sosOptionGradient}
+                    >
+                      <Ionicons name="call" size={32} color="#fff" />
+                      <Text style={styles.sosOptionText}>Police</Text>
+                      <Text style={styles.sosOptionSubtext}>Call 100</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={styles.sosOption}
+                    onPress={handleTrustedContact}
+                  >
+                    <LinearGradient
+                      colors={['#7D5BA6', '#9D7EBD']}
+                      style={styles.sosOptionGradient}
+                    >
+                      <Ionicons name="people" size={32} color="#fff" />
+                      <Text style={styles.sosOptionText}>Trusted Contacts</Text>
+                      <Text style={styles.sosOptionSubtext}>Alert your circle</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={styles.sosOption}
+                    onPress={handleMedicalEmergency}
+                  >
+                    <LinearGradient
+                      colors={['#4CAF50', '#66BB6A']}
+                      style={styles.sosOptionGradient}
+                    >
+                      <Ionicons name="medical" size={32} color="#fff" />
+                      <Text style={styles.sosOptionText}>Medical</Text>
+                      <Text style={styles.sosOptionSubtext}>Call 108</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </BlurView>
+            </View>
+          </Modal>
 
           {/* Selected Match Info */}
           {selectedMatch && (
@@ -726,53 +621,6 @@ export default function LocationScreen() {
                     <Ionicons name="chatbubble" size={18} color="#fff" style={styles.matchInfoButtonIcon} />
                   </TouchableOpacity>
                 </LinearGradient>
-              </BlurView>
-            </Animated.View>
-          )}
-
-          {/* Emergency Panel */}
-          {(showEmergencyPanel || userGender === 'female') && (
-            <Animated.View
-              entering={FadeIn.duration(300)}
-              style={styles.emergencyPanelContainer}
-            >
-              <BlurView intensity={30} tint="dark" style={styles.emergencyPanel}>
-                <View style={styles.emergencyHeader}>
-                  <View style={styles.emergencyTitleContainer}>
-                    <Ionicons name="shield" size={18} color="#FF4D6D" style={{ marginRight: 6 }} />
-                    <Text style={styles.emergencyTitle}>Safety Contacts</Text>
-                  </View>
-                  <TouchableOpacity 
-                    style={styles.emergencyClose}
-                    onPress={() => setShowEmergencyPanel(false)}
-                  >
-                    <Ionicons name="close" size={20} color="#fff" />
-                  </TouchableOpacity>
-                </View>
-                
-                <View style={styles.emergencyButtonsContainer}>
-                  {emergencyContacts.map((contact) => (
-                    <TouchableOpacity
-                      key={contact.id}
-                      style={styles.emergencyButton}
-                      onPress={() => callEmergencyContact(contact)}
-                    >
-                      <LinearGradient
-                        colors={contact.action === 'sos' 
-                          ? ['#FF4D6D', '#FF758F'] 
-                          : ['rgba(125, 91, 166, 0.8)', 'rgba(157, 126, 189, 0.8)']}
-                        style={styles.emergencyButtonGradient}
-                      >
-                        <Ionicons name={contact.icon as any} size={22} color="#fff" />
-                      </LinearGradient>
-                      <Text style={styles.emergencyButtonText}>{contact.name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                
-                <Text style={styles.emergencyFooter}>
-                  Safety is our priority. Your location data is only shared when you initiate contact.
-                </Text>
               </BlurView>
             </Animated.View>
           )}
@@ -1072,69 +920,59 @@ const styles = StyleSheet.create({
   matchInfoButtonIcon: {
     marginLeft: 8,
   },
-  emergencyPanelContainer: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: Platform.OS === 'ios' ? 160 : 140,
-    zIndex: 5,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
-  emergencyPanel: {
-    padding: 16,
+  sosModal: {
+    width: '100%',
     borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 77, 109, 0.3)',
-    backgroundColor: 'rgba(29, 27, 38, 0.7)',
+    borderColor: 'rgba(125, 91, 166, 0.3)',
+    padding: 20,
   },
-  emergencyHeader: {
+  sosHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 20,
   },
-  emergencyTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  emergencyTitle: {
+  sosTitle: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 24,
     fontWeight: 'bold',
+    fontFamily: 'YoungSerif-Regular',
+  },
+  sosCloseButton: {
+    padding: 8,
+  },
+  sosOptions: {
+    gap: 16,
+  },
+  sosOption: {
+    borderRadius: 15,
+    overflow: 'hidden',
+  },
+  sosOptionGradient: {
+    padding: 20,
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 16,
+  },
+  sosOptionText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
     fontFamily: 'Montserrat-Bold',
   },
-  emergencyClose: {
-    padding: 4,
-  },
-  emergencyButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  emergencyButton: {
-    alignItems: 'center',
-    width: '23%',
-  },
-  emergencyButtonGradient: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  emergencyButtonText: {
-    color: '#fff',
-    fontSize: 11,
-    textAlign: 'center',
-    fontFamily: 'Montserrat-Medium',
-  },
-  emergencyFooter: {
-    color: '#fff',
-    opacity: 0.6,
-    fontSize: 10,
-    textAlign: 'center',
-    fontFamily: 'Montserrat-Light',
-    marginTop: 4,
+  sosOptionSubtext: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 14,
+    fontFamily: 'Montserrat',
+    marginLeft: 'auto',
   },
 });

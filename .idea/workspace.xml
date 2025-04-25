@@ -5,10 +5,19 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d6080ac8-7173-4192-944d-77feefd4c71d" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/new-main-repo-safarsaathi.iml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/ENDPOINT.md" beforeDir="false" afterPath="$PROJECT_DIR$/client/ENDPOINT.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/app/(tabs)/location.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(tabs)/location.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/(tabs)/profile.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(tabs)/profile.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/global.css" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/global.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/types/trip.ts" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/types/trip.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/server/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/app.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/controllers/sos_controller.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/server/database_table_changes.sql" beforeDir="false" afterPath="$PROJECT_DIR$/server/database_table_changes.sql" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
