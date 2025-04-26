@@ -47,6 +47,7 @@
     "expo-system-ui": "~4.0.7",
     "expo-web-browser": "~14.0.2",
     "import": "^0.0.6",
+    "jwt-decode": "^4.0.0",
     "moti": "^0.30.0",
     "nativewind": "^4.1.23",
     "react": "18.3.1",

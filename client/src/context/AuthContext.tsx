@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { jwtDecode } from 'jwt-decode';
 
 // API URL configuration
 const API_URL = __DEV__ 
@@ -10,6 +11,9 @@ const API_URL = __DEV__
     android: 'http://10.0.2.2:5000/api/user',
   })
   : 'http://192.168.0.108:5000/api/user';
+
+// Token expiration time in hours
+const TOKEN_EXPIRATION_HOURS = 24;
 
 interface User {
   id: string;
@@ -24,6 +28,7 @@ interface AuthContextType {
   signUp: (username: string, email: string, password: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   isLoading: boolean;
+  isTokenValid: () => Promise<boolean>;
 }
 
 interface AuthResponse {
@@ -40,6 +45,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const isTokenValid = async (): Promise<boolean> => {
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      const lastLoginTime = await AsyncStorage.getItem('lastLoginTime');
+      
+      if (!token || !lastLoginTime) return false;
+
+      // Check if token has expired based on login time
+      const loginTime = parseInt(lastLoginTime, 10);
+      const currentTime = Date.now();
+      const hoursSinceLogin = (currentTime - loginTime) / (1000 * 60 * 60);
+
+      if (hoursSinceLogin >= TOKEN_EXPIRATION_HOURS) {
+        await signOut();
+        return false;
+      }
+
+      // Verify token structure
+      try {
+        const decoded = jwtDecode(token);
+        if (!decoded) return false;
+      } catch (e) {
+        console.error('Token decode error:', e);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Token validation error:', error);
+      await signOut();
+      return false;
+    }
+  };
+
   const signIn = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
@@ -48,7 +87,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password
       });
   
-      // Handle both response formats (status-based and direct token-based)
       if (response.data.status === 'success' || (response.data.access_token && response.data.user)) {
         const token = response.data.access_token;
         const userData = response.data.user;
@@ -56,9 +94,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAccessToken(token);
         setUser(userData);
   
-        // Store in AsyncStorage
+        // Store in AsyncStorage with current timestamp
         await AsyncStorage.setItem('accessToken', token);
         await AsyncStorage.setItem('user', JSON.stringify(userData));
+        await AsyncStorage.setItem('lastLoginTime', Date.now().toString());
   
         return true;
       }
@@ -74,7 +113,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     }
   };
-  
 
   const signUp = async (username: string, email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
@@ -93,9 +131,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAccessToken(token);
         setUser(userData);
   
-        // Store in AsyncStorage
+        // Store in AsyncStorage with current timestamp
         await AsyncStorage.setItem('accessToken', token);
         await AsyncStorage.setItem('user', JSON.stringify(userData));
+        await AsyncStorage.setItem('lastLoginTime', Date.now().toString());
   
         return true;
       }
@@ -107,26 +146,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     }
   };
-  
 
   const signOut = async () => {
     setIsLoading(true);
     try {
-      if (accessToken) {
-        await axios.post(`${API_URL}/logout`, {}, {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        });
-      }
+      // Clear all auth-related storage
+      await AsyncStorage.removeItem('accessToken');
+      await AsyncStorage.removeItem('user');
+      await AsyncStorage.removeItem('lastLoginTime');
+
+      setAccessToken(null);
+      setUser(null);
     } catch (error) {
       console.error('Sign out error:', error);
     } finally {
-      setAccessToken(null);
-      setUser(null);
-  
-      // Remove from AsyncStorage
-      await AsyncStorage.removeItem('accessToken');
-      await AsyncStorage.removeItem('user');
-  
       setIsLoading(false);
     }
   };
@@ -135,6 +168,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const loadStoredUser = async () => {
       setIsLoading(true);
       try {
+        const valid = await isTokenValid();
+        if (!valid) {
+          await signOut();
+          return;
+        }
+
         const token = await AsyncStorage.getItem('accessToken');
         const userData = await AsyncStorage.getItem('user');
   
@@ -144,6 +183,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error('Error loading stored user:', error);
+        await signOut();
       } finally {
         setIsLoading(false);
       }
@@ -151,7 +191,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   
     loadStoredUser();
   }, []);
-  
 
   return (
     <AuthContext.Provider value={{
@@ -160,7 +199,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signIn,
       signUp,
       signOut,
-      isLoading
+      isLoading,
+      isTokenValid
     }}>
       {children}
     </AuthContext.Provider>
