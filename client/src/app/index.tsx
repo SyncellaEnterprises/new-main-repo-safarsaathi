@@ -9,6 +9,8 @@ import Animated, {
 } from "react-native-reanimated";
 import IMAGES from "@/src/constants/images";
 import { useAuth } from "@/src/context/AuthContext";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 import React from "react";
 
 export default function SplashScreen() {
@@ -23,6 +25,32 @@ export default function SplashScreen() {
     opacity: opacity.value,
   }));
 
+  // Handle unauthorized responses globally
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        if (error.response?.status === 401) {
+          // Token expired or invalid, handle logout
+          try {
+            await signOut();
+            router.replace("/auth");
+          } catch (logoutError) {
+            console.error("Logout error:", logoutError);
+            // Force navigation to auth screen even if logout fails
+            router.replace("/auth");
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    // Cleanup interceptor on unmount
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, []);
+
   useEffect(() => {
     const checkAuthAndNavigate = async () => {
       try {
@@ -33,7 +61,7 @@ export default function SplashScreen() {
         // Wait for minimum splash duration
         await new Promise(resolve => setTimeout(resolve, 1500));
 
-        // Check token validity
+        // Check token validity using your existing method
         const valid = await isTokenValid();
         
         if (!valid) {
