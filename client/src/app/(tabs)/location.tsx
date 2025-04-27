@@ -197,6 +197,7 @@ export default function LocationScreen() {
   const mapOpacity = useSharedValue(1);
   const bottomSheetTranslateY = useSharedValue(height);
   const headerHeight = useSharedValue(Platform.OS === 'ios' ? 120 : 100);
+  const sosBottomSheet = useSharedValue(height);
 
   // Animated styles
   const mapStyle = useAnimatedStyle(() => ({
@@ -216,6 +217,10 @@ export default function LocationScreen() {
 
   const bottomSheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: bottomSheetTranslateY.value }]
+  }));
+
+  const sosBottomSheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: sosBottomSheet.value }]
   }));
 
   // Initialize with user's current location
@@ -392,6 +397,22 @@ export default function LocationScreen() {
     }
   };
 
+  // Modify the handleSOSOpen function
+  const handleSOSOpen = () => {
+    sosBottomSheet.value = withSpring(0, {
+      damping: 20,
+      stiffness: 90
+    });
+  };
+
+  // Add handleSOSClose function
+  const handleSOSClose = () => {
+    sosBottomSheet.value = withSpring(height, {
+      damping: 20,
+      stiffness: 90
+    });
+  };
+
   return (
     <View style={styles.container}>
       {/* Animated Map Container */}
@@ -521,7 +542,7 @@ export default function LocationScreen() {
       <View style={styles.quickActions}>
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => setShowSOSModal(true)}
+          onPress={handleSOSOpen}
         >
           <LinearGradient
             colors={['#FF6B6B', '#FF8E8E']}
@@ -603,6 +624,79 @@ export default function LocationScreen() {
         </Animated.View>
       )}
 
+      {/* Replace the Modal with Animated Bottom Sheet */}
+      <Animated.View style={[styles.sosBottomSheet, sosBottomSheetStyle]}>
+        <BlurView intensity={20} tint="dark" style={styles.sosContent}>
+          <View style={styles.sosHeader}>
+            <View style={styles.sosHeaderLeft}>
+              <View style={styles.sosHeaderIcon}>
+                <Feather name="alert-triangle" size={24} color="#FF6B6B" />
+              </View>
+              <Text style={styles.sosTitle}>Emergency SOS</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.sosClose}
+              onPress={handleSOSClose}
+            >
+              <Feather name="x" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.sosOptions}>
+            <TouchableOpacity
+              style={styles.sosOption}
+              onPress={handleEmergencyCall}
+            >
+              <LinearGradient
+                colors={['#FF6B6B', '#FF8E8E']}
+                style={styles.sosOptionGradient}
+              >
+                <Feather name="phone-call" size={32} color="#fff" />
+                <View style={styles.sosOptionInfo}>
+                  <Text style={styles.sosOptionTitle}>Police</Text>
+                  <Text style={styles.sosOptionSubtitle}>Call 100</Text>
+                </View>
+                <Feather name="chevron-right" size={24} color="#fff" />
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.sosOption}
+              onPress={handleTrustedContact}
+            >
+              <LinearGradient
+                colors={['#45B7D1', '#4ECDC4']}
+                style={styles.sosOptionGradient}
+              >
+                <Feather name="users" size={32} color="#fff" />
+                <View style={styles.sosOptionInfo}>
+                  <Text style={styles.sosOptionTitle}>Trusted Contacts</Text>
+                  <Text style={styles.sosOptionSubtitle}>Alert your circle</Text>
+                </View>
+                <Feather name="chevron-right" size={24} color="#fff" />
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.sosOption}
+              onPress={handleMedicalEmergency}
+            >
+              <LinearGradient
+                colors={['#4CAF50', '#66BB6A']}
+                style={styles.sosOptionGradient}
+              >
+                <Feather name="plus-circle" size={32} color="#fff" />
+                <View style={styles.sosOptionInfo}>
+                  <Text style={styles.sosOptionTitle}>Medical</Text>
+                  <Text style={styles.sosOptionSubtitle}>Call 108</Text>
+                </View>
+                <Feather name="chevron-right" size={24} color="#fff" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </BlurView>
+      </Animated.View>
+
       {/* Bottom Matches Navigation */}
       {matches.length > 0 && (
         <BlurView intensity={30} tint="dark" style={styles.bottomNav}>
@@ -638,78 +732,6 @@ export default function LocationScreen() {
           </ScrollView>
         </BlurView>
       )}
-
-      {/* SOS Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={showSOSModal}
-        onRequestClose={() => setShowSOSModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <BlurView intensity={20} tint="dark" style={styles.sosModal}>
-            <View style={styles.sosHeader}>
-              <Text style={styles.sosTitle}>Emergency SOS</Text>
-              <TouchableOpacity
-                style={styles.sosClose}
-                onPress={() => setShowSOSModal(false)}
-              >
-                <Feather name="x" size={24} color="#fff" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.sosOptions}>
-              <TouchableOpacity
-                style={styles.sosOption}
-                onPress={handleEmergencyCall}
-              >
-                <LinearGradient
-                  colors={['#FF6B6B', '#FF8E8E']}
-                  style={styles.sosOptionGradient}
-                >
-                  <Feather name="phone-call" size={32} color="#fff" />
-                  <View style={styles.sosOptionInfo}>
-                    <Text style={styles.sosOptionTitle}>Police</Text>
-                    <Text style={styles.sosOptionSubtitle}>Call 100</Text>
-                  </View>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.sosOption}
-                onPress={handleTrustedContact}
-              >
-                <LinearGradient
-                  colors={['#45B7D1', '#4ECDC4']}
-                  style={styles.sosOptionGradient}
-                >
-                  <Feather name="users" size={32} color="#fff" />
-                  <View style={styles.sosOptionInfo}>
-                    <Text style={styles.sosOptionTitle}>Trusted Contacts</Text>
-                    <Text style={styles.sosOptionSubtitle}>Alert your circle</Text>
-                  </View>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.sosOption}
-                onPress={handleMedicalEmergency}
-              >
-                <LinearGradient
-                  colors={['#4CAF50', '#66BB6A']}
-                  style={styles.sosOptionGradient}
-                >
-                  <Feather name="plus-circle" size={32} color="#fff" />
-                  <View style={styles.sosOptionInfo}>
-                    <Text style={styles.sosOptionTitle}>Medical</Text>
-                    <Text style={styles.sosOptionSubtitle}>Call 108</Text>
-                  </View>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </BlurView>
-        </View>
-      </Modal>
 
       {/* Loading Overlay */}
       {loading && (
@@ -984,17 +1006,40 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 16,
   },
-  sosModal: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    padding: 20,
+  sosBottomSheet: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'transparent',
+    zIndex: 1000,
+  },
+  sosContent: {
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: Platform.OS === 'ios' ? 44 : 20,
+    marginBottom: Platform.OS === 'ios' ? 0 : 70, // Space for bottom navigation
   },
   sosHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
+  },
+  sosHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sosHeaderIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 107, 107, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
   sosTitle: {
     fontSize: 24,
@@ -1003,23 +1048,30 @@ const styles = StyleSheet.create({
     fontFamily: 'YoungSerif-Regular',
   },
   sosClose: {
-    padding: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sosOptions: {
-    gap: 16,
+    gap: 12,
   },
   sosOption: {
     borderRadius: 16,
     overflow: 'hidden',
+    marginBottom: 8,
   },
   sosOptionGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
+    paddingHorizontal: 20,
   },
   sosOptionInfo: {
-    marginLeft: 16,
     flex: 1,
+    marginLeft: 16,
   },
   sosOptionTitle: {
     fontSize: 18,
