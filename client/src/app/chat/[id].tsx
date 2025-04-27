@@ -1,14 +1,27 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, SafeAreaView, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, ActivityIndicator, Dimensions } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSocket } from '@/src/context/SocketContext';
 import { useAuth } from '@/src/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Animated, { FadeIn, SlideInRight } from 'react-native-reanimated';
-import { Camera } from 'expo-camera';
+import Animated, { 
+  FadeIn, 
+  SlideInRight, 
+  SlideInLeft,
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+  Layout
+} from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import * as ImagePicker from 'expo-image-picker';
+import { FlashList } from '@shopify/flash-list';
+import { formatDistanceToNow } from 'date-fns';
 
 const { width, height } = Dimensions.get('window');
 
@@ -31,15 +44,15 @@ interface Recipient {
   isOnline: boolean;
 }
 
-export default function ChatDetailScreen() {
+export default function ChatScreen() {
   const { id } = useLocalSearchParams();
   const { socket, isConnected, isConnecting, joinChat, sendMessage, readMessage, sendTypingStatus } = useSocket();
   const { user } = useAuth();
+  const router = useRouter();
+  
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [showCamera, setShowCamera] = useState(false);
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [recipient, setRecipient] = useState<Recipient>({
     id: String(id),
     username: 'Loading...',
@@ -48,23 +61,41 @@ export default function ChatDetailScreen() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const cameraRef = useRef<Camera | null>(null);
-  const router = useRouter();
+  const inputRef = useRef(null);
+  const listRef = useRef(null);
 
-  // Request camera permissions
-  useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
-    })();
-  }, []);
+  // Animated values for modern UI
+  const headerHeight = useSharedValue(60);
+  const inputHeight = useSharedValue(50);
 
-  // Join the chat when connected
-  useEffect(() => {
-    if (isConnected && id) {
-      joinChat(String(id));
+  const headerStyle = useAnimatedStyle(() => ({
+    height: headerHeight.value
+  }));
+
+  const inputStyle = useAnimatedStyle(() => ({
+    height: inputHeight.value
+  }));
+
+  // Handle camera/image picker
+  const handleImagePick = async () => {
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+        allowsEditing: true,
+        aspect: [4, 3],
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        // Handle the captured image
+        console.log('Image captured:', result.assets[0].uri);
+        // Here you would typically upload the image and send it in chat
+        // sendMessage(result.assets[0].uri, String(id), 'image');
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
     }
-  }, [isConnected, id, joinChat]);
+  };
 
   // Listen for socket events
   useEffect(() => {
@@ -217,255 +248,211 @@ export default function ChatDetailScreen() {
   };
 
   // Render message items with Snapchat-style bubbles
-  const renderMessage = ({ item }: { item: Message }) => {
-    if (!item || !user) return null;
-    
-    const senderId = String(item.sender_id || '');
-    const userId = String(user.id || '');
-    const isOwnMessage = senderId === userId;
-    
+  const renderMessage = ({ item: message }) => {
+    const isOwnMessage = message.sender_id === user?.id;
+    const MessageContainer = isOwnMessage ? Animated.View : Animated.View;
+    const enteringAnimation = isOwnMessage ? SlideInRight : SlideInLeft;
+
     return (
-      <Animated.View 
-        entering={FadeIn}
-        className={`flex-row ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-3 px-2`}
+      <MessageContainer
+        entering={enteringAnimation.delay(100)}
+        layout={Layout.springify()}
+        className={`flex-row ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-4`}
       >
-        <View className={`max-w-[85%] ${isOwnMessage ? 'items-end' : 'items-start'}`}>
-          <LinearGradient
-            colors={isOwnMessage 
-              ? ['#1E9AFF', '#1E9AFF']  // Snapchat blue for own messages
-              : ['#E8E8E8', '#E8E8E8']} // Light gray for received messages
-            className={`rounded-3xl px-4 py-3 ${
-              isOwnMessage ? 'rounded-tr-sm' : 'rounded-tl-sm'
-            }`}
-          >
-            {item.type === 'text' && (
-              <Text className={`${isOwnMessage ? 'text-white' : 'text-black'} font-medium text-base`}>
-                {item.content}
-              </Text>
-            )}
-            {item.type === 'image' && (
-              <Image 
-                source={{ uri: item.content }}
-                className="w-48 h-48 rounded-2xl"
-                resizeMode="cover"
-              />
-            )}
-          </LinearGradient>
-          
-          {/* Message Status */}
-          <View className="flex-row items-center mt-1">
-            <Text className="text-xs text-neutral-500 font-medium">
-              {formatMessageTime(item.sent_at)}
+        {!isOwnMessage && (
+          <Image
+            source={{ uri: recipient.profile_photo || 'https://via.placeholder.com/400x400?text=No+Profile+Image' }}
+            className="w-8 h-8 rounded-full mr-2"
+            contentFit="cover"
+          />
+        )}
+        <View
+          className={`max-w-[80%] ${
+            isOwnMessage ? 'bg-[#45B7D1]' : 'bg-neutral-100'
+          } rounded-2xl px-4 py-3`}
+        >
+          {message.type === 'text' ? (
+            <Text
+              className={`${
+                isOwnMessage ? 'text-white' : 'text-neutral-800'
+              } text-base`}
+            >
+              {message.content}
             </Text>
-            {isOwnMessage && (
-              <View className="flex-row ml-1">
-                {item.status === 'sent' && (
-                  <Ionicons name="checkmark" size={14} color="#9CA3AF" />
-                )}
-                {item.status === 'delivered' && (
-                  <Ionicons name="checkmark-done" size={14} color="#9CA3AF" />
-                )}
-                {item.status === 'read' && (
-                  <Ionicons name="checkmark-done" size={14} color="#1E9AFF" />
-                )}
-              </View>
-            )}
-          </View>
+          ) : (
+            <Image
+              source={{ uri: message.content }}
+              className="w-48 h-48 rounded-lg"
+              contentFit="cover"
+            />
+          )}
+          <Text
+            className={`text-xs ${
+              isOwnMessage ? 'text-white/70' : 'text-neutral-500'
+            } mt-1`}
+          >
+            {formatDistanceToNow(new Date(message.sent_at), { addSuffix: true })}
+          </Text>
         </View>
-      </Animated.View>
+      </MessageContainer>
     );
   };
-
-  // Camera view component
-  const renderCameraView = () => (
-    <View className="absolute inset-0 bg-black">
-      {hasPermission && (
-        <Camera
-          ref={cameraRef}
-          className="flex-1"
-          type={Camera.Constants.Type.back}
-        >
-          <View className="flex-1 bg-transparent">
-            <BlurView intensity={100} className="absolute bottom-0 left-0 right-0 h-24">
-              <View className="flex-row items-center justify-around py-4">
-                <TouchableOpacity onPress={() => setShowCamera(false)}>
-                  <Ionicons name="close" size={30} color="white" />
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  className="w-16 h-16 rounded-full border-4 border-white items-center justify-center"
-                  onPress={() => {/* Handle capture */}}
-                >
-                  <View className="w-12 h-12 rounded-full bg-white" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => {/* Switch camera */}}>
-                  <Ionicons name="camera-reverse" size={30} color="white" />
-                </TouchableOpacity>
-              </View>
-            </BlurView>
-          </View>
-        </Camera>
-      )}
-    </View>
-  );
-
-  // Empty state for no messages
-  const renderEmptyMessages = () => (
-    <View className="flex-1 items-center justify-center p-8">
-      <LinearGradient
-        colors={['rgba(255,77,109,0.1)', 'rgba(61,144,227,0.1)']}
-        className="w-20 h-20 rounded-full items-center justify-center mb-4"
-      >
-        <Ionicons name="chatbubbles-outline" size={40} color="#FF4D6D" />
-      </LinearGradient>
-      <Text className="text-lg text-center text-neutral-darkest font-youngSerif mb-2">
-        Start the Conversation
-      </Text>
-      <Text className="text-center text-neutral-dark font-montserrat">
-        Say hello and begin your journey together!
-      </Text>
-    </View>
-  );
 
   // Show loading state
   if (isConnecting || isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-neutral-light">
-        <ActivityIndicator size="large" color="#7D5BA6" />
-        <Text className="mt-4 text-center text-neutral-dark font-montserrat">
-          Connecting to chat...
-        </Text>
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator size="large" color="#45B7D1" />
+        <Animated.Text
+          entering={FadeInDown.delay(300)}
+          className="mt-4 text-neutral-600"
+        >
+          Loading conversation...
+        </Animated.Text>
       </View>
     );
   }
 
   if (!isConnected) {
     return (
-      <View className="flex-1 items-center justify-center bg-neutral-light">
-        <Ionicons name="wifi-outline" size={64} color="#E6E4EC" />
-        <Text className="mt-4 text-center text-neutral-dark font-montserrat">
+      <View className="flex-1 items-center justify-center bg-white">
+        <Ionicons name="wifi" size={64} color="#FF6B6B" />
+        <Animated.Text
+          entering={FadeInDown.delay(300)}
+          className="mt-4 text-neutral-600"
+        >
           Connection lost. Reconnecting...
-        </Text>
+        </Animated.Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      {/* Minimal Header */}
-      <View className="px-4 py-2 flex-row items-center border-b border-gray-100">
-        <TouchableOpacity 
-          onPress={() => router.back()}
-          className="p-2"
-        >
-          <Ionicons name="chevron-back" size={24} color="#1E9AFF" />
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          onPress={() => router.push({
-            pathname: "/profile/[id]",
-            params: { id: recipient.id }
-          })}
-          className="flex-row items-center flex-1 ml-2"
-        >
-          <Image
-            source={{ 
-              uri: recipient.profile_photo || 
-                'https://via.placeholder.com/400x400?text=No+Profile+Image'
-            }}
-            className="w-8 h-8 rounded-full"
-          />
-          <View className="ml-2">
-            <Text className="text-base font-bold text-gray-900">
-              {recipient.username}
-            </Text>
-            <Text className="text-xs text-gray-500">
-              {recipient.isOnline ? (isTyping ? 'typing...' : 'Online') : 'Offline'}
-            </Text>
-          </View>
-        </TouchableOpacity>
-      </View>
-
-      {/* Messages List */}
-      <FlatList
-        data={messages}
-        renderItem={renderMessage}
-        keyExtractor={(item) => item.message_id}
-        contentContainerStyle={[
-          messages.length === 0 ? { flex: 1 } : { paddingVertical: 16 },
-          { paddingBottom: 80 }
-        ]}
-        inverted={false}
-        className="flex-1 bg-white"
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      className="flex-1 bg-white"
+    >
+      <Stack.Screen
+        options={{
+          headerShown: false
+        }}
       />
-
-      {/* Input Bar */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="border-t border-gray-100"
+      
+      {/* Custom Header */}
+      <Animated.View
+        style={headerStyle}
+        className="bg-white border-b border-neutral-100"
       >
-        <View className="flex-row items-center p-2 bg-white">
-          <TouchableOpacity 
-            onPress={() => setShowCamera(true)}
+        <View className="flex-row items-center justify-between px-4 h-full">
+          <TouchableOpacity
+            onPress={() => router.back()}
             className="p-2"
           >
-            <Ionicons name="camera" size={28} color="#1E9AFF" />
+            <Ionicons name="arrow-back" size={24} color="#45B7D1" />
           </TouchableOpacity>
 
-          <View className="flex-1 flex-row items-center bg-gray-100 rounded-full mx-2 px-4 py-2">
-            <TextInput
-              value={newMessage}
-              onChangeText={text => {
-                setNewMessage(text);
-                // Handle typing indicator
-                if (!typingTimerRef.current && text.length > 0) {
-                  sendTypingStatus(String(id), true);
-                }
-                if (typingTimerRef.current) {
-                  clearTimeout(typingTimerRef.current);
-                }
-                typingTimerRef.current = setTimeout(() => {
-                  sendTypingStatus(String(id), false);
-                  typingTimerRef.current = null;
-                }, 1000);
-              }}
-              placeholder="Send a chat"
-              className="flex-1 text-base text-gray-900"
-              multiline
-              maxLength={1000}
+          <TouchableOpacity
+            onPress={() => router.push(`/profile/${recipient.id}`)}
+            className="flex-row items-center"
+          >
+            <Image
+              source={{ uri: recipient.profile_photo || 'https://via.placeholder.com/400x400?text=No+Profile+Image' }}
+              className="w-10 h-10 rounded-full"
+              contentFit="cover"
             />
-            
-            <TouchableOpacity>
-              <Ionicons name="happy" size={24} color="#666" />
-            </TouchableOpacity>
-          </View>
+            <View className="ml-3">
+              <Text className="font-medium text-neutral-800">
+                {recipient.username}
+              </Text>
+              <Text className="text-sm text-neutral-500">
+                {recipient.isOnline ? (isTyping ? 'typing...' : 'Online') : 'Offline'}
+              </Text>
+            </View>
+          </TouchableOpacity>
 
-          {newMessage.trim() ? (
-            <TouchableOpacity
-              onPress={() => {
-                if (newMessage.trim()) {
-                  sendMessage(newMessage.trim(), String(id));
-                  setNewMessage('');
-                  if (typingTimerRef.current) {
-                    clearTimeout(typingTimerRef.current);
-                    sendTypingStatus(String(id), false);
-                    typingTimerRef.current = null;
-                  }
-                }
-              }}
-              className="w-10 h-10 rounded-full bg-blue-500 items-center justify-center"
+          <TouchableOpacity
+            onPress={() => router.push(`/chat/${id}/info`)}
+            className="p-2"
+          >
+            <Ionicons name="information-circle-outline" size={24} color="#45B7D1" />
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+
+      {/* Messages List */}
+      <FlashList
+        ref={listRef}
+        data={messages}
+        renderItem={renderMessage}
+        estimatedItemSize={100}
+        inverted
+        className="flex-1 px-4"
+        onEndReached={() => {}}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          isLoading ? (
+            <View className="py-4">
+              <ActivityIndicator size="small" color="#45B7D1" />
+            </View>
+          ) : null
+        }
+      />
+
+      {/* Input Area */}
+      <Animated.View
+        style={inputStyle}
+        className="border-t border-neutral-100 px-4 py-2"
+      >
+        <View className="flex-row items-center">
+          <TouchableOpacity
+            onPress={handleImagePick}
+            className="p-2"
+          >
+            <Ionicons name="attach" size={24} color="#45B7D1" />
+          </TouchableOpacity>
+
+          <TextInput
+            ref={inputRef}
+            value={newMessage}
+            onChangeText={handleTyping}
+            placeholder="Type a message..."
+            className="flex-1 bg-neutral-100 rounded-full px-4 py-2 mx-2"
+            multiline
+            maxLength={1000}
+          />
+
+          <TouchableOpacity
+            onPress={handleSendMessage}
+            disabled={!newMessage.trim()}
+            className={`p-2 ${
+              !newMessage.trim() ? 'opacity-50' : ''
+            }`}
+          >
+            <LinearGradient
+              colors={['#45B7D1', '#4ECDC4']}
+              className="w-10 h-10 rounded-full items-center justify-center"
             >
               <Ionicons name="send" size={20} color="white" />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity className="p-2">
-              <Ionicons name="image" size={28} color="#1E9AFF" />
-            </TouchableOpacity>
-          )}
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </Animated.View>
 
-      {/* Camera Overlay */}
-      {showCamera && renderCameraView()}
-    </SafeAreaView>
+      {/* Connection Status */}
+      {!isConnected && (
+        <BlurView
+          intensity={20}
+          tint="light"
+          className="absolute bottom-16 left-4 right-4"
+        >
+          <View className="bg-white/90 rounded-full px-4 py-2 flex-row items-center justify-center">
+            <Ionicons name="wifi" size={16} color="#FF6B6B" />
+            <Text className="ml-2 text-neutral-800">
+              Reconnecting...
+            </Text>
+          </View>
+        </BlurView>
+      )}
+    </KeyboardAvoidingView>
   );
 }

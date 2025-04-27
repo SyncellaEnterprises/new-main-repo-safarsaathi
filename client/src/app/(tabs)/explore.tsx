@@ -1,15 +1,23 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, SafeAreaView, ActivityIndicator, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { UserCard } from '@/src/components/explore/UserCard';
-import TabHeader from '@/src/components/shared/TabHeader';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { 
+  FadeIn, 
+  useAnimatedStyle, 
+  useSharedValue, 
+  withSpring,
+  withTiming, 
+  FadeInDown,
+  SlideInDown 
+} from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 
 // Set API URL to your local server
 const API_URL = 'http://10.0.2.2:5000';
@@ -93,6 +101,26 @@ export default function ExploreScreen() {
   const cardOpacity = useSharedValue(1);
   const cardScale = useSharedValue(1);
   const cardOffsetY = useSharedValue(0);
+
+  // New animated values for modern UI
+  const heroHeight = useSharedValue(200);
+  const filterSheetTranslateY = useSharedValue(1000);
+  
+  const filterSheetGesture = Gesture.Pan()
+    .onStart(() => {
+      filterSheetTranslateY.value = withSpring(0);
+    })
+    .onEnd(() => {
+      filterSheetTranslateY.value = withSpring(1000);
+    });
+
+  const filterSheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: filterSheetTranslateY.value }]
+  }));
+
+  const heroStyle = useAnimatedStyle(() => ({
+    height: heroHeight.value
+  }));
 
   // Check remaining swipes
   const checkRemainingSwipes = useCallback(async () => {
@@ -438,116 +466,137 @@ export default function ExploreScreen() {
     };
   });
 
-  if (loading && !refreshing) {
+  if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <TabHeader
-          title="Explore"
-          leftIcon="people-outline"
-          rightIcon="filter-outline"
-          onLeftPress={() => router.push("/(tabs)/connections" as any)}
-          onRightPress={() => router.push("/(tabs)/filters" as any)}
-          gradientColors={['rgba(125, 91, 166, 0.9)', 'rgba(90, 65, 128, 0.8)']}
-        />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#FFF" />
-          <Text style={styles.loadingText}>Finding your matches...</Text>
-        </View>
-      </SafeAreaView>
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator size="large" color="#45B7D1" />
+        <Animated.Text 
+          entering={FadeInDown.delay(300)}
+          className="mt-4 text-neutral-600 font-medium text-base"
+        >
+          Finding your perfect matches...
+        </Animated.Text>
+      </View>
     );
   }
 
-  if (error || recommendations.length === 0) {
+  if (error) {
     return (
-      <SafeAreaView style={styles.container}>
-        <TabHeader
-          title="Explore"
-          leftIcon="people-outline"
-          rightIcon="filter-outline"
-          onLeftPress={() => router.push("/(tabs)/connections" as any)}
-          onRightPress={() => router.push("/(tabs)/filters" as any)}
-          gradientColors={['rgba(125, 91, 166, 0.9)', 'rgba(90, 65, 128, 0.8)']}
-        />
-        <View style={styles.errorContainer}>
-          <BlurView intensity={20} style={styles.errorBlur}>
-            <Ionicons name="search" size={48} color="#fff" />
-            <Text style={styles.errorText}>
-              {error || 'No recommendations found'}
-            </Text>
-            <TouchableOpacity 
-              onPress={refreshAll}
-              style={styles.retryButton}
-            >
-              <Text style={styles.retryText}>Try Again</Text>
-            </TouchableOpacity>
-          </BlurView>
-        </View>
-      </SafeAreaView>
+      <View className="flex-1 items-center justify-center bg-white p-4">
+        <Ionicons name="alert-circle-outline" size={64} color="#FF6B6B" />
+        <Text className="mt-4 text-center text-neutral-800 font-medium text-lg">
+          {error}
+        </Text>
+        <TouchableOpacity
+          onPress={refreshAll}
+          className="mt-4 bg-[#45B7D1] px-6 py-3 rounded-full"
+        >
+          <Text className="text-white font-medium">Try Again</Text>
+        </TouchableOpacity>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <TabHeader
-        title="Explore"
-        leftIcon="people-outline"
-        rightIcon="filter-outline"
-        onLeftPress={() => router.push("/(tabs)/connections" as any)}
-        onRightPress={() => router.push("/(tabs)/filters" as any)}
-        gradientColors={['rgba(125, 91, 166, 0.9)', 'rgba(90, 65, 128, 0.8)']}
-        subtitle={isLimited ? `Swipes Reset Soon` : `${swipesRemaining}/${totalLimit} swipes left`}
-      />
-
-      <View style={styles.cardContainer}>
-        {refreshing ? (
-          <View style={styles.refreshOverlay}>
-            <ActivityIndicator size="large" color="#fff" />
-          </View>
-        ) : null}
-        
-        {/* Profile Card */}
-        {recommendations.length > currentIndex && (
-          <Animated.View style={[styles.cardWrapper, animatedCardStyle]}>
-            <UserCard user={recommendations[currentIndex]} />
-          </Animated.View>
-        )}
-
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity 
-            style={styles.dislikeButton} 
-            onPress={() => handleSwipe('left')}
-            disabled={isLimited || currentIndex >= recommendations.length}
+    <SafeAreaView className="flex-1 bg-white">
+      {/* Hero Section */}
+      <Animated.View style={heroStyle} className="relative">
+        <LinearGradient
+          colors={['rgba(69, 183, 209, 0.1)', 'rgba(69, 183, 209, 0.05)']}
+          className="absolute inset-0"
+        />
+        <View className="px-6 py-4">
+          <Animated.Text 
+            entering={FadeInDown.delay(200)}
+            className="text-2xl font-bold text-neutral-800"
           >
-            <LinearGradient
-              colors={['#FF3B30', '#FF6E67']}
-              style={styles.gradientButton}
-            >
-              <Ionicons name="close" size={32} color="#FFF" />
-            </LinearGradient>
-          </TouchableOpacity>
+            Discover
+          </Animated.Text>
+          <Animated.Text
+            entering={FadeInDown.delay(300)}
+            className="text-base text-neutral-600 mt-2"
+          >
+            Find your perfect travel companion
+          </Animated.Text>
           
-          <TouchableOpacity 
-            style={styles.likeButton}
-            onPress={() => handleSwipe('right')}
-            disabled={isLimited || currentIndex >= recommendations.length}
+          <TouchableOpacity
+            onPress={() => {
+              router.push("/filters");
+            }}
+            className="mt-4 flex-row items-center bg-white rounded-full px-4 py-3 shadow-sm"
           >
-            <LinearGradient
-              colors={['#50A6A7', '#7CD3D4']}
-              style={styles.gradientButton}
-            >
-              <Ionicons name="heart" size={32} color="#FFF" />
-            </LinearGradient>
+            <Ionicons name="options-outline" size={20} color="#45B7D1" />
+            <Text className="ml-2 text-neutral-700">Filters</Text>
           </TouchableOpacity>
         </View>
+      </Animated.View>
 
-        <TouchableOpacity 
-          onPress={refreshAll}
-          style={styles.refreshButton}
-        >
-          <Ionicons name="refresh" size={24} color="#fff" />
-        </TouchableOpacity>
+      {/* Main Content */}
+      <View className="flex-1 px-4">
+        {recommendations.length > 0 ? (
+          <UserCard
+            profile={recommendations[currentIndex]}
+            onSwipeLeft={() => handleSwipe('left')}
+            onSwipeRight={() => handleSwipe('right')}
+          />
+        ) : (
+          <View className="flex-1 items-center justify-center">
+            <Ionicons name="search" size={64} color="#E6E4EC" />
+            <Text className="mt-4 text-center text-neutral-600">
+              No more recommendations available.
+              Check back later!
+            </Text>
+          </View>
+        )}
       </View>
+
+      {/* Action Buttons */}
+      <Animated.View 
+        entering={SlideInDown.delay(400)}
+        className="flex-row justify-center items-center pb-8 pt-4"
+      >
+        <TouchableOpacity
+          onPress={() => handleSwipe('left')}
+          className="w-14 h-14 rounded-full bg-white shadow-md items-center justify-center mx-4"
+        >
+          <Ionicons name="close" size={24} color="#FF6B6B" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => handleSwipe('right')}
+          className="w-14 h-14 rounded-full bg-[#45B7D1] shadow-md items-center justify-center mx-4"
+        >
+          <Ionicons name="heart" size={24} color="white" />
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* Swipe Limit Warning */}
+      {isLimited && (
+        <BlurView
+          intensity={20}
+          tint="light"
+          className="absolute inset-0 items-center justify-center"
+        >
+          <View className="bg-white rounded-2xl p-6 m-4 shadow-lg">
+            <Ionicons name="timer-outline" size={48} color="#45B7D1" />
+            <Text className="text-xl font-bold text-center mt-4">
+              Daily Limit Reached
+            </Text>
+            <Text className="text-neutral-600 text-center mt-2">
+              You've used all {totalLimit} swipes for today.
+              Check back tomorrow for more matches!
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push("/premium")}
+              className="mt-6 bg-[#45B7D1] rounded-full py-3"
+            >
+              <Text className="text-white text-center font-medium">
+                Get Premium for Unlimited Swipes
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </BlurView>
+      )}
     </SafeAreaView>
   );
 }

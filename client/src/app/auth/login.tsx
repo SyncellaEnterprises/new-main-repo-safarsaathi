@@ -4,7 +4,8 @@ import { Link, useRouter } from "expo-router";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useToast } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
-import { Ionicons, FontAwesome } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -77,11 +78,14 @@ export default function LoginScreen() {
   return (
     <View className="flex-1">
       <ImageBackground 
-        source={{ uri: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1473&auto=format&fit=crop&ixlib=rb-4.0.3" }}
+        source={{ uri: "https://images.unsplash.com/photo-1488085061387-422e29b40080?q=80&w=1431&auto=format&fit=crop" }}
         className="flex-1"
         resizeMode="cover"
       >
-        <View className="flex-1 bg-black/25 bg-pattern">
+        <LinearGradient
+          colors={['rgba(255,143,177,0.3)', 'rgba(255,107,107,0.95)']}
+          className="flex-1"
+        >
           <Animated.ScrollView 
             entering={FadeInDown.duration(1000).springify()}
             className="flex-1 px-6 py-8"
@@ -89,26 +93,31 @@ export default function LoginScreen() {
           >
             <View className="h-16" />
   
-            <View className="bg-white/90 rounded-3xl p-8 shadow-card">
-              <Animated.Text 
+            <View className="bg-white/90 rounded-3xl p-8 shadow-card backdrop-blur-lg">
+              <Animated.View 
                 entering={FadeInUp.delay(300)}
-                className="text-3xl font-youngSerif mb-2 text-primary"
+                className="items-center mb-8"
               >
-                Welcome Back
-              </Animated.Text>
-              <Animated.Text 
-                entering={FadeInUp.delay(400)}
-                className="text-neutral-dark mb-8 font-montserratLight text-base"
-              >
-                Sign in to continue your journey
-              </Animated.Text>
+                <LinearGradient
+                  colors={['#FF8FB1', '#FF6B6B']}
+                  className="w-16 h-16 rounded-full items-center justify-center mb-4"
+                >
+                  <Ionicons name="person-outline" size={32} color="white" />
+                </LinearGradient>
+                <Text className="text-3xl font-youngSerif mb-2 text-primary">
+                  Welcome Back
+                </Text>
+                <Text className="text-neutral-dark mb-4 font-montserratLight text-base text-center">
+                  Sign in to continue your journey
+                </Text>
+              </Animated.View>
   
               <View className="space-y-5">
                 <Animated.View entering={FadeInUp.delay(500)}>
                   <Text className="text-neutral-dark mb-2 ml-1 font-montserratMedium text-sm">Email</Text>
                   <View className="relative">
                     <View className="absolute left-3.5 top-3.5 z-10">
-                      <Ionicons name="mail-outline" size={22} color="#3D90E3" />
+                      <Ionicons name="mail-outline" size={22} color="#FF8FB1" />
                     </View>
                     <TextInput
                       value={formData.email}
@@ -127,7 +136,7 @@ export default function LoginScreen() {
                   <Text className="text-neutral-dark mb-2 ml-1 font-montserratMedium text-sm">Password</Text>
                   <View className="relative">
                     <View className="absolute left-3.5 top-3.5 z-10">
-                      <Ionicons name="lock-closed-outline" size={22} color="#3D90E3" />
+                      <Ionicons name="lock-closed-outline" size={22} color="#FF8FB1" />
                     </View>
                     <TextInput
                       value={formData.password}
@@ -146,7 +155,7 @@ export default function LoginScreen() {
                       <Ionicons 
                         name={showPassword ? "eye-off" : "eye"} 
                         size={22} 
-                        color="#FF4D6D"
+                        color="#FF8FB1"
                       />
                     </TouchableOpacity>
                   </View>
@@ -157,7 +166,7 @@ export default function LoginScreen() {
                 entering={FadeInUp.delay(700)}
                 className="mt-3"
               >
-                <Link href="/auth/forgot-password" className="text-primary-dark text-right font-montserratMedium text-sm">
+                <Link href="/auth/forgot-password" className="text-primary text-right font-montserratMedium text-sm">
                   Forgot Password?
                 </Link>
               </Animated.View>
@@ -166,16 +175,23 @@ export default function LoginScreen() {
                 <TouchableOpacity
                   onPress={handleLogin}
                   disabled={isLoading}
-                  className="bg-gradient-romance py-4 rounded-xl mt-8 flex-row justify-center items-center shadow-button"
+                  className="mt-8"
                 >
-                  {isLoading ? (
-                    <ActivityIndicator color="white" />
-                  ) : (
-                    <>
-                      <FontAwesome name="sign-in" size={18} color="white" />
-                      <Text className="text-neutral-lightest text-base font-montserratBold ml-2">Sign In</Text>
-                    </>
-                  )}
+                  <LinearGradient
+                    colors={['#FF8FB1', '#FF6B6B']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    className="py-4 rounded-xl flex-row justify-center items-center shadow-button"
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator color="white" />
+                    ) : (
+                      <>
+                        <Ionicons name="log-in-outline" size={22} color="white" />
+                        <Text className="text-white text-base font-montserratBold ml-2">Sign In</Text>
+                      </>
+                    )}
+                  </LinearGradient>
                 </TouchableOpacity>
               </Animated.View>
   
@@ -200,7 +216,7 @@ export default function LoginScreen() {
               </View>
             </TouchableOpacity>
           </Animated.ScrollView>
-        </View>
+        </LinearGradient>
       </ImageBackground>
     </View>
   );

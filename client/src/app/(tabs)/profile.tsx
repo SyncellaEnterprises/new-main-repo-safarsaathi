@@ -19,6 +19,7 @@ import Animated, {
   Extrapolate
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useAuth } from "@/src/context/AuthContext";
 
 const { width, height } = Dimensions.get('window');
 
@@ -64,8 +65,36 @@ interface TrustedContactForm {
   relationship: string;
 }
 
+// Add this after the UserProfile interface
+interface MenuOption {
+  title: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  route: string;
+  action?: () => void;
+}
+
+// Add this before the ProfileScreen component
+const MENU_OPTIONS: MenuOption[] = [
+  {
+    title: "App Permissions",
+    icon: "shield-checkmark-outline",
+    route: "/(settings)/app-permissions",
+  },
+  {
+    title: "Privacy",
+    icon: "lock-closed-outline",
+    route: "/(settings)/privacy",
+  },
+  {
+    title: "Language",
+    icon: "language-outline",
+    route: "/(settings)/language",
+  }
+];
+
 export default function ProfileScreen() {
   const router = useRouter();
+  const { signOut } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +107,7 @@ export default function ProfileScreen() {
     relationship: ''
   });
   const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(false);
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
 
   // Animation values
   const translateY = useSharedValue(0);
@@ -220,6 +250,26 @@ export default function ProfileScreen() {
     }
   };
 
+  // Update the handleMenuItemPress function
+  const handleMenuItemPress = async (option: MenuOption) => {
+    setIsMenuVisible(false);
+    if (option.route) {
+      router.push(option.route as any);
+    } else if (option.action) {
+      option.action();
+    }
+  };
+
+  // Add this function to handle sign out
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      router.replace("/auth");
+    } catch (error) {
+      console.error("Sign out error:", error);
+    }
+  };
+
   if (loading && !refreshing) {
     return (
       <View className="flex-1 bg-neutral-light items-center justify-center">
@@ -277,14 +327,58 @@ export default function ProfileScreen() {
             <View className="flex-row items-center justify-between mb-6">
               <Text className="text-2xl text-white font-youngSerif">Profile</Text>
               <TouchableOpacity 
-                onPress={() => router.push("/(profile)")}
+                onPress={() => setIsMenuVisible(true)}
                 className="bg-white/20 p-2 rounded-full"
               >
-                <Ionicons name="pencil" size={20} color="white" />
+                <Ionicons name="menu" size={24} color="white" />
               </TouchableOpacity>
             </View>
           </LinearGradient>
         </Animated.View>
+
+        {/* Add the Menu Modal */}
+        {isMenuVisible && (
+          <View className="absolute inset-0 bg-black/50 z-50">
+            <Animated.View 
+              entering={SlideInDown}
+              className="absolute top-20 right-4 bg-white rounded-2xl shadow-lg w-72"
+            >
+              {MENU_OPTIONS.map((option, index) => (
+                <TouchableOpacity
+                  key={option.title}
+                  onPress={() => handleMenuItemPress(option)}
+                  className="flex-row items-center px-4 py-3 border-b border-neutral-100"
+                >
+                  <View className="w-8 h-8 bg-primary/10 rounded-full items-center justify-center">
+                    <Ionicons name={option.icon} size={18} color="#7C3AED" />
+                  </View>
+                  <Text className="ml-3 font-montserratMedium text-neutral-dark">
+                    {option.title}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              
+              {/* Sign Out Button */}
+              <TouchableOpacity
+                onPress={handleSignOut}
+                className="flex-row items-center px-4 py-3"
+              >
+                <View className="w-8 h-8 bg-red-100 rounded-full items-center justify-center">
+                  <Ionicons name="log-out-outline" size={18} color="#EF4444" />
+                </View>
+                <Text className="ml-3 font-montserratMedium text-red-500">
+                  Sign Out
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
+            
+            {/* Close Menu Overlay */}
+            <TouchableOpacity 
+              className="absolute inset-0 z-0"
+              onPress={() => setIsMenuVisible(false)}
+            />
+          </View>
+        )}
 
         <ScrollView 
           className="flex-1 -mt-16"

@@ -1,13 +1,35 @@
-import { View, Text, ScrollView, RefreshControl, Image, TouchableOpacity, FlatList } from "react-native";
-import { useState } from "react";
+import React, { useState, useRef, useCallback } from "react";
+import { View, Text, ScrollView, RefreshControl, Image, TouchableOpacity, FlatList, Dimensions, Platform, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import TabHeader from "@/src/components/shared/TabHeader";
 import { useRouter } from "expo-router";
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from "expo-blur";
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import React from "react";
+import Animated, { 
+  FadeInDown, 
+  FadeInUp,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  interpolate,
+  Extrapolate,
+  withTiming
+} from 'react-native-reanimated';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { Link, Href } from 'expo-router';
+
+const { width, height } = Dimensions.get('window');
+const SPRING_CONFIG = {
+  damping: 15,
+  stiffness: 150,
+};
+// Constants for bottom sheet
+const BOTTOM_SHEET_MAX_HEIGHT = height * 0.4; // 40% of screen height
+const BOTTOM_SHEET_MIN_HEIGHT = 0;
+const BOTTOM_SHEET_SNAP_POINTS = {
+  CLOSED: BOTTOM_SHEET_MIN_HEIGHT,
+  OPEN: -BOTTOM_SHEET_MAX_HEIGHT
+} as const;
 
 // Mock Data
 const RECOMMENDED_TRIPS = [
@@ -115,225 +137,302 @@ const UPCOMING_EVENTS = [
 export default function HomeScreen() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
+  const scrollY = useSharedValue(0);
+  const bottomSheetTranslateY = useSharedValue(0);
+  const isBottomSheetActive = useSharedValue(false);
+  const startY = useSharedValue(0);
 
-  const onRefresh = () => {
+  // Handle refresh
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
+    // Simulate refresh
     setTimeout(() => setRefreshing(false), 2000);
-  };
+  }, []);
 
-  const renderTripCard = ({ item }: { item: any }) => (
-    <Animated.View 
-      entering={FadeInDown.delay(200)}
-      className="mr-4 w-[300px]"
-    >
-      <BlurView intensity={20} className="rounded-3xl overflow-hidden">
-        <Image 
-          source={{ uri: item.image }}
-          className="w-full h-[200px]"
-        />
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.9)']}
-          className="absolute bottom-0 w-full p-5"
-        >
-          <View className="flex-row items-center mb-2">
-            <View className="bg-white/20 px-3 py-1 rounded-full flex-row items-center">
-              <Ionicons name="calendar" size={14} color="#fff" />
-              <Text className="text-white ml-2 font-montserrat">{item.startDate}</Text>
-            </View>
-            <View className="bg-white/20 px-3 py-1 rounded-full flex-row items-center ml-2">
-              <Ionicons name="time" size={14} color="#fff" />
-              <Text className="text-white ml-2 font-montserrat">{item.duration}</Text>
-            </View>
-          </View>
-          
-          <Text className="text-white text-xl font-youngSerif mb-2">{item.title}</Text>
-          
-          <View className="flex-row items-center justify-between">
-            <Text className="text-white text-lg font-montserratMedium">{item.price}</Text>
-            <View className="flex-row items-center bg-white/20 px-3 py-1 rounded-full">
-              <Ionicons name="star" size={14} color="#D6A655" />
-              <Text className="text-white ml-2 font-montserrat">{item.rating}</Text>
-            </View>
-          </View>
-        </LinearGradient>
-      </BlurView>
-    </Animated.View>
-  );
+  // Gesture handler for bottom sheet
+  const gesture = Gesture.Pan()
+    .onStart((event) => {
+      isBottomSheetActive.value = true;
+      startY.value = event.absoluteY;
+    })
+    .onUpdate((event) => {
+      const deltaY = event.absoluteY - startY.value;
+      let newTranslateY = deltaY;
 
-  const renderGroupCard = ({ item }: { item: any }) => (
-    <TouchableOpacity 
-      onPress={() => {
-        // Use try-catch to handle any navigation errors
-        try {
-          router.push({
-            pathname: "/group-chat/[id]",
-            params: { id: item.id }
-          });
-        } catch (error) {
-          console.log("Navigation error:", error);
-          // Fallback direct approach if the above fails
-          router.navigate(`/group-chat/${item.id}`);
-        }
-      }}
-      className="mr-4 w-[220px]"
-    >
-      <LinearGradient
-        colors={[item.color, `${item.color}88`]}
-        className="rounded-2xl overflow-hidden"
-      >
-        <View className="h-[120px] items-center justify-center">
-          <Ionicons name="people" size={40} color="white" />
-        </View>
-        <View className="p-3">
-          <Text className="text-white font-montserratMedium mb-1">{item.name}</Text>
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center">
-              <Ionicons name="people" size={14} color="#fff" />
-              <Text className="text-white text-sm ml-1 font-montserrat">{item.members} members</Text>
-            </View>
-            <TouchableOpacity 
-              className="bg-white/20 px-3 py-1 rounded-full"
-            >
-              <Text className="text-white text-sm font-montserrat">Join</Text>
-            </TouchableOpacity>
-          </View>
-          <View className="flex-row items-center mt-2">
-            <Ionicons name="airplane-outline" size={14} color="#fff" />
-            <Text className="text-white text-sm ml-1 font-montserrat">{item.nextTrip}</Text>
-          </View>
-          <View className="flex-row items-center mt-1">
-            <Ionicons name="calendar-outline" size={14} color="#fff" />
-            <Text className="text-white text-sm ml-1 font-montserrat">{item.date}</Text>
-          </View>
-        </View>
-      </LinearGradient>
-    </TouchableOpacity>
-  );
+      // If sheet was already open, adjust the translation
+      if (bottomSheetTranslateY.value === BOTTOM_SHEET_SNAP_POINTS.OPEN) {
+        newTranslateY += BOTTOM_SHEET_SNAP_POINTS.OPEN;
+      }
+
+      // Clamp the values
+      bottomSheetTranslateY.value = Math.max(
+        BOTTOM_SHEET_SNAP_POINTS.OPEN,
+        Math.min(BOTTOM_SHEET_SNAP_POINTS.CLOSED, newTranslateY)
+      );
+    })
+    .onEnd((event) => {
+      const velocity = event.velocityY;
+      const shouldClose = 
+        velocity > 500 || // Quick flick down
+        (bottomSheetTranslateY.value > BOTTOM_SHEET_SNAP_POINTS.OPEN / 2 && velocity > -500); // Slower drag but past halfway
+
+      if (shouldClose) {
+        bottomSheetTranslateY.value = withSpring(BOTTOM_SHEET_SNAP_POINTS.CLOSED, {
+          ...SPRING_CONFIG,
+          velocity: velocity
+        });
+      } else {
+        bottomSheetTranslateY.value = withSpring(BOTTOM_SHEET_SNAP_POINTS.OPEN, {
+          ...SPRING_CONFIG,
+          velocity: velocity
+        });
+      }
+      isBottomSheetActive.value = false;
+    });
+
+  const bottomSheetStyle = useAnimatedStyle(() => {
+    const borderRadius = interpolate(
+      bottomSheetTranslateY.value,
+      [BOTTOM_SHEET_SNAP_POINTS.OPEN, BOTTOM_SHEET_SNAP_POINTS.CLOSED],
+      [32, 0]
+    );
+
+    return {
+      transform: [{ translateY: bottomSheetTranslateY.value }],
+      borderTopLeftRadius: borderRadius,
+      borderTopRightRadius: borderRadius,
+    };
+  });
+
+  const overlayStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      bottomSheetTranslateY.value,
+      [BOTTOM_SHEET_SNAP_POINTS.CLOSED, BOTTOM_SHEET_SNAP_POINTS.OPEN],
+      [0, 0.5],
+      Extrapolate.CLAMP
+    );
+
+    return {
+      opacity,
+      display: opacity === 0 ? 'none' : 'flex',
+    };
+  });
+
+  const headerStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [0, 100],
+      [1, 0],
+      Extrapolate.CLAMP
+    );
+    const scale = interpolate(
+      scrollY.value,
+      [0, 100],
+      [1, 0.9],
+      Extrapolate.CLAMP
+    );
+    return {
+      opacity,
+      transform: [{ scale }],
+    };
+  });
 
   return (
-    <SafeAreaView className="flex-1 bg-primary">
-      <LinearGradient
-        colors={['rgba(125, 91, 166, 0.9)', 'rgba(90, 65, 128, 0.8)']}
-        className="flex-1"
+    <SafeAreaView className="flex-1 bg-[#F7F9FC]">
+      {/* Overlay for bottom sheet */}
+      <Animated.View 
+        style={[
+          {
+            ...StyleSheet.absoluteFillObject,
+            backgroundColor: 'black',
+          },
+          overlayStyle
+        ]} 
+        pointerEvents={isBottomSheetActive.value ? "auto" : "none"}
       >
-        <TabHeader
-          title="Explore"
-          leftIcon="compass-outline"
-          rightIcon="notifications-outline"
-          onLeftPress={() => router.push("/explore")}
-          onRightPress={() => router.push("/notifications")}
-          gradientColors={['rgba(125, 91, 166, 0.9)', 'rgba(90, 65, 128, 0.8)']}
+        <TouchableOpacity 
+          style={StyleSheet.absoluteFill}
+          onPress={() => {
+            bottomSheetTranslateY.value = withSpring(BOTTOM_SHEET_SNAP_POINTS.CLOSED, SPRING_CONFIG);
+          }}
         />
-      
-        <ScrollView 
-          className="flex-1"
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl 
-              refreshing={refreshing} 
-              onRefresh={onRefresh}
-              tintColor="#fff"
-            />
-          }
-          contentContainerStyle={{ padding: 16 }}
-        >   
-          {/* Custom Trip Card */}
-          <TouchableOpacity 
-            onPress={() => router.push("/(icon)/custom-trip")}
-            className="mt-6"
-          >
-            <LinearGradient
-              colors={['#50A6A7', '#398788']}
-              className="rounded-3xl p-6"
-            >
-              <View className="flex-row justify-between items-center">
-                <View className="flex-1">
-                  <Text className="text-white text-2xl font-youngSerif mb-2">
-                    Create Your Dream Trip
-                  </Text>
-                  <Text className="text-white/80 font-montserrat">
-                    Customize every detail of your journey
-                  </Text>
-                </View>
-                <View className="bg-white/20 p-3 rounded-2xl">
-                  <Ionicons name="airplane" size={24} color="#fff" />
-                </View>
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
+      </Animated.View>
 
-          {/* Recommended Trips */}
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        onScroll={(event) => {
+          scrollY.value = event.nativeEvent.contentOffset.y;
+        }}
+        scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor="#4ECDC4"
+          />
+        }
+      >
+        {/* Hero Section */}
+        <Animated.View style={headerStyle} className="px-6 pt-4">
+          <LinearGradient
+            colors={['#4ECDC4', '#45B7D1']}
+            className="rounded-3xl p-6 mb-8"
+          >
+            <View className="flex-row justify-between items-center mb-4">
+              <View>
+                <Text className="text-white/80 font-montserrat mb-2">Welcome back</Text>
+                <Text className="text-white text-2xl font-youngSerif">John Doe</Text>
+              </View>
+              <TouchableOpacity 
+                onPress={() => router.push("/notifications")}
+                className="bg-white/20 p-3 rounded-2xl"
+              >
+                <Ionicons name="notifications-outline" size={24} color="white" />
+              </TouchableOpacity>
+            </View>
+
+          </LinearGradient>
+        </Animated.View>
+
+        {/* Content Sections */}
+        <View className="px-6">
+          {/* Featured Trips */}
           <View className="mb-8">
-            <Text className="text-2xl font-youngSerif text-white mb-4 mt-8">
-              Recommended Trips
+            <Text className="text-2xl font-youngSerif text-[#2C3E50] mb-4">
+              Featured Trips
             </Text>
-            <FlatList
-              data={RECOMMENDED_TRIPS}
-              renderItem={renderTripCard}
-              horizontal
+            <ScrollView 
+              horizontal 
               showsHorizontalScrollIndicator={false}
-              keyExtractor={item => item.id}
-            />
+              className="space-x-4"
+            >
+              {RECOMMENDED_TRIPS.map((trip, index) => (
+                <Animated.View 
+                  key={trip.id}
+                  entering={FadeInDown.delay(index * 100)}
+                  className="w-[280px]"
+                >
+                  <TouchableOpacity className="relative">
+                    <Image 
+                      source={{ uri: trip.image }}
+                      className="w-full h-[200px] rounded-3xl"
+                    />
+                    <LinearGradient
+                      colors={['transparent', 'rgba(0,0,0,0.8)']}
+                      className="absolute bottom-0 w-full p-4 rounded-b-3xl"
+                    >
+                      <Text className="text-white font-youngSerif text-lg mb-2">
+                        {trip.title}
+                      </Text>
+                      <View className="flex-row justify-between items-center">
+                        <View className="flex-row items-center">
+                          <Ionicons name="calendar-outline" size={16} color="white" />
+                          <Text className="text-white ml-2 font-montserrat">
+                            {trip.startDate}
+                          </Text>
+                        </View>
+                        <Text className="text-white font-montserratBold">
+                          {trip.price}
+                        </Text>
+                      </View>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </Animated.View>
+              ))}
+            </ScrollView>
           </View>
 
           {/* Travel Groups */}
-          <View className="mt-8">
-            <Text className="text-white text-xl font-youngSerif mb-4">
+          <View className="mb-8">
+            <Text className="text-2xl font-youngSerif text-[#2C3E50] mb-4">
               Travel Groups
             </Text>
-            <FlatList
-              data={TRAVEL_GROUPS}
-              renderItem={renderGroupCard}
-              horizontal
+            <ScrollView 
+              horizontal 
               showsHorizontalScrollIndicator={false}
-              keyExtractor={item => item.id}
-            />
+              className="space-x-4"
+            >
+              {TRAVEL_GROUPS.map((group, index) => (
+                <Animated.View 
+                  key={group.id}
+                  entering={FadeInUp.delay(index * 100)}
+                  className="w-[200px]"
+                >
+                  <TouchableOpacity>
+                    <LinearGradient
+                      colors={[group.color, `${group.color}88`]}
+                      className="p-4 rounded-2xl"
+                    >
+                      <View className="flex-row items-center mb-3">
+                        <View className="bg-white/20 p-2 rounded-xl">
+                          <Ionicons name="people" size={20} color="white" />
+                        </View>
+                        <Text className="text-white font-montserratBold ml-2">
+                          {group.members} members
+                        </Text>
+                      </View>
+                      <Text className="text-white font-youngSerif text-lg mb-2">
+                        {group.name}
+                      </Text>
+                      <Text className="text-white/80 font-montserrat mb-3">
+                        {group.nextTrip}
+                      </Text>
+                      <View className="flex-row items-center">
+                        <Ionicons name="calendar-outline" size={16} color="white" />
+                        <Text className="text-white ml-2 font-montserrat">
+                          {group.date}
+                        </Text>
+                      </View>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </Animated.View>
+              ))}
+            </ScrollView>
           </View>
 
           {/* Upcoming Events */}
-          <View className="mt-8 mb-8">
-            <Text className="text-white text-xl font-youngSerif mb-4">
+          <View className="mb-8">
+            <Text className="text-2xl font-youngSerif text-[#2C3E50] mb-4">
               Upcoming Events
             </Text>
-            {UPCOMING_EVENTS.map(event => (
-              <TouchableOpacity 
+            {UPCOMING_EVENTS.map((event, index) => (
+              <Animated.View 
                 key={event.id}
-                onPress={() => {
-                  try {
-                    console.log("Navigating to event:", event.id);
-                    // We're just logging for now since we don't have actual event screens
-                  } catch (error) {
-                    console.log("Navigation error:", error);
-                  }
-                }}
+                entering={FadeInDown.delay(index * 100)}
                 className="mb-4"
               >
-                <BlurView intensity={20} className="rounded-2xl overflow-hidden">
+                <TouchableOpacity className="relative">
                   <Image 
                     source={{ uri: event.image }}
-                    className="w-full h-[120px]"
+                    className="w-full h-[150px] rounded-2xl"
                   />
-                  <View className="p-4">
-                    <Text className="text-white text-lg font-youngSerif mb-1">
+                  <BlurView intensity={20} className="absolute bottom-0 w-full p-4 rounded-b-2xl">
+                    <Text className="text-white font-youngSerif text-lg mb-2">
                       {event.title}
                     </Text>
-                    <View className="flex-row items-center justify-between">
+                    <View className="flex-row justify-between items-center">
                       <View className="flex-row items-center">
-                        <Ionicons name="location" size={14} color="#fff" />
-                        <Text className="text-white ml-1 font-montserrat">{event.location}</Text>
+                        <Ionicons name="location-outline" size={16} color="white" />
+                        <Text className="text-white ml-2 font-montserrat">
+                          {event.location}
+                        </Text>
                       </View>
                       <View className="flex-row items-center">
-                        <Ionicons name="calendar" size={14} color="#fff" />
-                        <Text className="text-white ml-1 font-montserrat">{event.date}</Text>
+                        <Ionicons name="calendar-outline" size={16} color="white" />
+                        <Text className="text-white ml-2 font-montserrat">
+                          {event.date}
+                        </Text>
                       </View>
                     </View>
-                  </View>
-                </BlurView>
-              </TouchableOpacity>
+                  </BlurView>
+                </TouchableOpacity>
+              </Animated.View>
             ))}
           </View>
-        </ScrollView>
-      </LinearGradient>
+        </View>
+      </ScrollView>   
+              
     </SafeAreaView>
   );
 }

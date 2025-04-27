@@ -1,37 +1,55 @@
 import React from "react";
-import { View, Text, Image, ImageBackground } from "react-native";
+import { View, Text, Image, ImageBackground, Dimensions } from "react-native";
 import { Link } from "expo-router";
 import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from 'expo-linear-gradient';
 import IMAGES from "@/src/constants/images";
+
+const { width } = Dimensions.get('window');
+const LOGO_SIZE = width * 0.35; // 35% of screen width
 
 export default function AuthScreen() {
   return (
     <View className="flex-1">
       <ImageBackground 
-        source={{ uri: "https://images.unsplash.com/photo-1506869640319-fe1a24fd76dc?q=80&w=1470&auto=format&fit=crop" }}
+        source={{ uri: "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=1421&auto=format&fit=crop" }}
         className="flex-1"
         resizeMode="cover"
       >
-        <View className="flex-1 bg-black/40 bg-pattern">
+        <LinearGradient
+          colors={['rgba(255,107,107,0.3)', 'rgba(255,143,177,0.9)']}
+          className="flex-1"
+        >
           <Animated.View 
             entering={FadeIn.duration(1000)}
             className="flex-1 justify-between items-center px-8 py-12"
           >
             <View />
 
-            <Animated.View entering={FadeInDown.duration(1200).springify()}>
-              <Image 
-                source={IMAGES.logo} 
-                className="w-56 h-56"
-                resizeMode="contain"
-              />
-              <Text className="text-white text-center text-3xl font-youngSerif mt-2 mb-1">
-                SafarSaathi
-              </Text>
-              <Text className="text-white/80 text-center text-base font-montserratLight mb-8">
-                Find your perfect travel companion
-              </Text>
+            <Animated.View 
+              entering={FadeInDown.duration(1200).springify()}
+              className="items-center"
+            >
+              <View className="bg-white/20 rounded-full p-5 mb-6">
+                <Image 
+                  source={IMAGES.safarsaathi}
+                  style={{ width: LOGO_SIZE, height: LOGO_SIZE }}
+                  resizeMode="contain"
+                />
+              </View>
+              
+              <LinearGradient
+                colors={['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.7)']}
+                className="rounded-3xl p-6 w-full items-center"
+              >
+                <Text className="text-primary text-3xl font-youngSerif mb-2">
+                  SafarSaathi
+                </Text>
+                <Text className="text-neutral-dark text-base font-montserratLight mb-8 text-center">
+                  Find your perfect travel companion and create unforgettable journeys together
+                </Text>
+              </LinearGradient>
             </Animated.View>
             
             <View className="w-full space-y-4">
@@ -40,12 +58,19 @@ export default function AuthScreen() {
                   entering={FadeInDown.delay(200).springify()}
                   className="w-full"
                 >
-                  <View className="bg-primary text-neutral-lightest flex-row items-center justify-center py-4 px-6 rounded-xl shadow-button">
-                    <Ionicons name="log-in-outline" size={22} color="white" />
-                    <Text className="text-neutral-lightest text-center ml-2 text-base font-montserratBold">
-                      Sign In
-                    </Text>
-                  </View>
+                  <LinearGradient
+                    colors={['#FF8FB1', '#FF6B6B']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    className="rounded-xl shadow-button overflow-hidden"
+                  >
+                    <View className="flex-row items-center justify-center py-4 px-6">
+                      <Ionicons name="log-in-outline" size={22} color="white" />
+                      <Text className="text-white text-center ml-2 text-base font-montserratBold">
+                        Sign In
+                      </Text>
+                    </View>
+                  </LinearGradient>
                 </Animated.View>
               </Link>
 
@@ -55,7 +80,7 @@ export default function AuthScreen() {
                   className="w-full"
                 >
                   <View className="bg-white/90 border-2 border-primary flex-row items-center justify-center py-4 px-6 rounded-xl shadow-button">
-                    <Ionicons name="person-add-outline" size={22} color="#FF4D6D" />
+                    <Ionicons name="person-add-outline" size={22} color="#FF6B6B" />
                     <Text className="text-primary text-center ml-2 text-base font-montserratBold">
                       Create Account
                     </Text>
@@ -75,7 +100,7 @@ export default function AuthScreen() {
               </Link>
             </View>
           </Animated.View>
-        </View>
+        </LinearGradient>
       </ImageBackground>
     </View>
   );

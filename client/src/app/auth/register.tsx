@@ -4,14 +4,15 @@ import { Link, useRouter } from "expo-router";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useToast } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
-import { Ionicons, FontAwesome } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { signUp, isLoading } = useAuth();
+  const { signUp, isLoading: authLoading } = useAuth();
   const toast = useToast();
   const [formData, setFormData] = useState({
-    username: "",
+    name: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -24,22 +25,12 @@ export default function RegisterScreen() {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
-  const validateUsername = (username: string) => {
-    return /^[a-zA-Z0-9_]{3,20}$/.test(username);
-  };
-
   const handleRegister = async () => {
     try {
       setIsSubmitting(true);
 
-      // Validation checks
-      if (!formData.username || !formData.email || !formData.password || !formData.confirmPassword) {
+      if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
         toast.show("Please fill in all fields", "error");
-        return;
-      }
-
-      if (!validateUsername(formData.username)) {
-        toast.show("Username must be 3-20 characters long and can only contain letters, numbers, and underscores", "error");
         return;
       }
 
@@ -54,92 +45,100 @@ export default function RegisterScreen() {
       }
 
       if (formData.password !== formData.confirmPassword) {
-        toast.show("Passwords don't match", "error");
+        toast.show("Passwords do not match", "error");
         return;
       }
 
-      console.log('Attempting registration with:', {
-        username: formData.username.trim(),
-        email: formData.email.trim(),
-        password: formData.password,
-        confirmPassword: formData.confirmPassword
-      });
-
-      const success = await signUp(
-        formData.username.trim(),
-        formData.email.trim(),
-        formData.password
-      );
+      const success = await signUp(formData.name.trim(), formData.email.trim(), formData.password);
 
       if (success) {
         toast.show("Registration successful!", "success");
-        router.replace("/onboarding/age");
+        router.replace("/(tabs)/home");
       } else {
         toast.show("Registration failed. Please try again.", "error");
       }
     } catch (error: any) {
       console.error('Registration error:', error);
-      toast.show(error.response?.data?.message || "Registration failed", "error");
+      let errorMessage = "Registration failed. Please try again.";
+
+      if (error.response) {
+        if (error.response.status === 409) {
+          errorMessage = "Email already exists.";
+        } else if (error.response.data?.message) {
+          errorMessage = error.response.data.message;
+        }
+      } else if (error.request) {
+        errorMessage = "Network error. Please check your internet connection.";
+      }
+
+      toast.show(errorMessage, "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const isLoading = isSubmitting || authLoading;
+
   return (
     <View className="flex-1">
       <ImageBackground 
-        source={{ uri: "https://images.unsplash.com/photo-1532274402911-5a369e4c4bb5?q=80&w=1470&auto=format&fit=crop" }}
+        source={{ uri: "https://images.unsplash.com/photo-1469474968028-56623f02e42e?q=80&w=1474&auto=format&fit=crop" }}
         className="flex-1"
         resizeMode="cover"
       >
-        <View className="flex-1 bg-black/30 bg-pattern">
+        <LinearGradient
+          colors={['rgba(78,205,196,0.3)', 'rgba(69,183,209,0.95)']}
+          className="flex-1"
+        >
           <Animated.ScrollView 
             entering={FadeInDown.duration(1000).springify()}
-            className="flex-1 px-6 py-4"
+            className="flex-1 px-6 py-8"
             showsVerticalScrollIndicator={false}
           >
-            <View className="h-12" />
-            
-            <View className="bg-white/90 rounded-3xl p-8 mb-6 shadow-card">
-              <Animated.Text 
-                entering={FadeInUp.delay(300)}
-                className="text-3xl font-youngSerif mb-2 text-primary"
-              >
-                Create Account
-              </Animated.Text>
-              <Animated.Text 
-                entering={FadeInUp.delay(400)}
-                className="text-neutral-dark mb-8 font-montserratLight text-base"
-              >
-                Start your journey to find your perfect travel companion
-              </Animated.Text>
+            <View className="h-16" />
 
-              <View className="space-y-4">
-                {/* Username Input */}
-                <Animated.View entering={FadeInUp.delay(500)}>
-                  <Text className="text-neutral-dark mb-2 ml-1 font-montserratMedium text-sm">Username</Text>
+            <View className="bg-white/90 rounded-3xl p-8 shadow-card backdrop-blur-lg">
+              <Animated.View 
+                entering={FadeInUp.delay(300)}
+                className="items-center mb-8"
+              >
+                <LinearGradient
+                  colors={['#4ECDC4', '#45B7D1']}
+                  className="w-16 h-16 rounded-full items-center justify-center mb-4"
+                >
+                  <Ionicons name="person-add-outline" size={32} color="white" />
+                </LinearGradient>
+                <Text className="text-3xl font-youngSerif mb-2 text-secondary">
+                  Join SafarSaathi
+                </Text>
+                <Text className="text-neutral-dark mb-4 font-montserratLight text-base text-center">
+                  Start your journey to find travel companions
+                </Text>
+              </Animated.View>
+
+              <View className="space-y-5">
+                <Animated.View entering={FadeInUp.delay(400)}>
+                  <Text className="text-neutral-dark mb-2 ml-1 font-montserratMedium text-sm">Full Name</Text>
                   <View className="relative">
                     <View className="absolute left-3.5 top-3.5 z-10">
-                      <Ionicons name="person-outline" size={22} color="#3D90E3" />
+                      <Ionicons name="person-outline" size={22} color="#4ECDC4" />
                     </View>
                     <TextInput
-                      value={formData.username}
-                      onChangeText={(text) => setFormData({ ...formData, username: text })}
+                      value={formData.name}
+                      onChangeText={(text) => setFormData({ ...formData, name: text })}
                       className="bg-neutral-lightest pl-11 pr-4 py-3.5 rounded-xl border border-neutral-medium font-montserrat"
-                      placeholder="johndoe123"
-                      autoCapitalize="none"
+                      placeholder="Your full name"
                       placeholderTextColor="#9CA3AF"
                       editable={!isLoading}
                     />
                   </View>
                 </Animated.View>
 
-                {/* Email Input */}
-                <Animated.View entering={FadeInUp.delay(600)}>
+                <Animated.View entering={FadeInUp.delay(500)}>
                   <Text className="text-neutral-dark mb-2 ml-1 font-montserratMedium text-sm">Email</Text>
                   <View className="relative">
                     <View className="absolute left-3.5 top-3.5 z-10">
-                      <Ionicons name="mail-outline" size={22} color="#3D90E3" />
+                      <Ionicons name="mail-outline" size={22} color="#4ECDC4" />
                     </View>
                     <TextInput
                       value={formData.email}
@@ -147,19 +146,18 @@ export default function RegisterScreen() {
                       className="bg-neutral-lightest pl-11 pr-4 py-3.5 rounded-xl border border-neutral-medium font-montserrat"
                       placeholder="your@email.com"
                       keyboardType="email-address"
-                      placeholderTextColor="#9CA3AF"
                       autoCapitalize="none"
+                      placeholderTextColor="#9CA3AF"
                       editable={!isLoading}
                     />
                   </View>
                 </Animated.View>
 
-                {/* Password Input */}
-                <Animated.View entering={FadeInUp.delay(700)}>
+                <Animated.View entering={FadeInUp.delay(600)}>
                   <Text className="text-neutral-dark mb-2 ml-1 font-montserratMedium text-sm">Password</Text>
                   <View className="relative">
                     <View className="absolute left-3.5 top-3.5 z-10">
-                      <Ionicons name="lock-closed-outline" size={22} color="#3D90E3" />
+                      <Ionicons name="lock-closed-outline" size={22} color="#4ECDC4" />
                     </View>
                     <TextInput
                       value={formData.password}
@@ -178,25 +176,24 @@ export default function RegisterScreen() {
                       <Ionicons 
                         name={showPassword ? "eye-off" : "eye"} 
                         size={22} 
-                        color="#FF4D6D"
+                        color="#4ECDC4"
                       />
                     </TouchableOpacity>
                   </View>
                 </Animated.View>
 
-                {/* Confirm Password Input */}
-                <Animated.View entering={FadeInUp.delay(800)}>
+                <Animated.View entering={FadeInUp.delay(700)}>
                   <Text className="text-neutral-dark mb-2 ml-1 font-montserratMedium text-sm">Confirm Password</Text>
                   <View className="relative">
                     <View className="absolute left-3.5 top-3.5 z-10">
-                      <Ionicons name="shield-checkmark-outline" size={22} color="#3D90E3" />
+                      <Ionicons name="lock-closed-outline" size={22} color="#4ECDC4" />
                     </View>
                     <TextInput
                       value={formData.confirmPassword}
                       onChangeText={(text) => setFormData({ ...formData, confirmPassword: text })}
                       className="bg-neutral-lightest pl-11 pr-12 py-3.5 rounded-xl border border-neutral-medium font-montserrat"
                       secureTextEntry={!showConfirmPassword}
-                      placeholder="Confirm your password"
+                      placeholder="Re-enter password"
                       placeholderTextColor="#9CA3AF"
                       editable={!isLoading}
                     />
@@ -208,36 +205,43 @@ export default function RegisterScreen() {
                       <Ionicons 
                         name={showConfirmPassword ? "eye-off" : "eye"} 
                         size={22} 
-                        color="#FF4D6D"
+                        color="#4ECDC4"
                       />
                     </TouchableOpacity>
                   </View>
                 </Animated.View>
               </View>
 
-              <Animated.View entering={FadeInUp.delay(900)}>
+              <Animated.View entering={FadeInUp.delay(800)}>
                 <TouchableOpacity
                   onPress={handleRegister}
                   disabled={isLoading}
-                  className="bg-gradient-romance py-4 rounded-xl mt-8 flex-row justify-center items-center shadow-button"
+                  className="mt-8"
                 >
-                  {isLoading ? (
-                    <ActivityIndicator color="white" />
-                  ) : (
-                    <>
-                      <FontAwesome name="user-plus" size={18} color="white" />
-                      <Text className="text-neutral-lightest text-base font-montserratBold ml-2">Create Account</Text>
-                    </>
-                  )}
+                  <LinearGradient
+                    colors={['#4ECDC4', '#45B7D1']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    className="py-4 rounded-xl flex-row justify-center items-center shadow-button"
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator color="white" />
+                    ) : (
+                      <>
+                        <Ionicons name="person-add-outline" size={22} color="white" />
+                        <Text className="text-white text-base font-montserratBold ml-2">Create Account</Text>
+                      </>
+                    )}
+                  </LinearGradient>
                 </TouchableOpacity>
               </Animated.View>
 
               <Animated.View 
-                entering={FadeInUp.delay(1000)}
+                entering={FadeInUp.delay(900)}
                 className="flex-row justify-center mt-8"
               >
                 <Text className="text-neutral-dark font-montserrat">Already have an account? </Text>
-                <Link href="/auth/login" className="text-primary font-montserratBold">
+                <Link href="/auth/login" className="text-secondary font-montserratBold">
                   Sign In
                 </Link>
               </Animated.View>
@@ -245,7 +249,7 @@ export default function RegisterScreen() {
             
             <TouchableOpacity
               onPress={() => router.back()}
-              className="mb-6 self-center"
+              className="mt-6 mb-4 self-center"
             >
               <View className="flex-row items-center">
                 <Ionicons name="arrow-back-circle" size={24} color="white" />
@@ -253,7 +257,7 @@ export default function RegisterScreen() {
               </View>
             </TouchableOpacity>
           </Animated.ScrollView>
-        </View>
+        </LinearGradient>
       </ImageBackground>
     </View>
   );

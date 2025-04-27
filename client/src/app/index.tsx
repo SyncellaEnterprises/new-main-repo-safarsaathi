@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { View, Image } from "react-native";
 import { useRouter } from "expo-router";
 import Animated, { 
@@ -13,7 +13,8 @@ import React from "react";
 
 export default function SplashScreen() {
   const router = useRouter();
-  const { isTokenValid, isLoading } = useAuth();
+  const { isTokenValid, signOut } = useAuth();
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const scale = useSharedValue(0);
   const opacity = useSharedValue(0);
 
@@ -24,29 +25,43 @@ export default function SplashScreen() {
 
   useEffect(() => {
     const checkAuthAndNavigate = async () => {
-      scale.value = withSpring(1);
-      opacity.value = withTiming(1, { duration: 1000 });
-
-      // Wait for minimum splash screen duration
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
       try {
-        // Check if token is valid
+        // Start animations
+        scale.value = withSpring(1);
+        opacity.value = withTiming(1, { duration: 1000 });
+
+        // Wait for minimum splash duration
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        // Check token validity
         const valid = await isTokenValid();
         
-        // Navigate based on auth status
-        if (valid) {
-          router.replace("/(tabs)/home");
-        } else {
+        if (!valid) {
+          // If token is invalid or doesn't exist, sign out and go to auth
+          await signOut();
           router.replace("/auth");
+        } else {
+          // If token is valid, go to home
+          router.replace("/(tabs)/home");
         }
       } catch (error) {
         console.error("Auth check error:", error);
+        // On error, safely sign out and redirect to auth
+        await signOut();
         router.replace("/auth");
+      } finally {
+        setIsCheckingAuth(false);
       }
     };
 
     checkAuthAndNavigate();
+
+    // Cleanup function
+    return () => {
+      // Reset animation values
+      scale.value = 0;
+      opacity.value = 0;
+    };
   }, []);
 
   return (

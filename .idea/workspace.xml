@@ -6,10 +6,22 @@
   <component name="ChangeListManager">
     <list default="true" id="d6080ac8-7173-4192-944d-77feefd4c71d" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/airplanePath.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/googleIcon.png" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/client/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/client/package-lock.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/client/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/(tabs)/chat.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(tabs)/chat.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/(tabs)/explore.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(tabs)/explore.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/(tabs)/home.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(tabs)/home.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/(tabs)/location.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(tabs)/location.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/(tabs)/profile.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(tabs)/profile.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/auth/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/auth/index.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/auth/login.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/auth/login.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/auth/register.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/auth/register.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/chat/[id].tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/chat/[id].tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/app/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/index.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/context/AuthContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/context/AuthContext.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/constants/images.ts" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/constants/images.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/tailwind.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/client/tailwind.config.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

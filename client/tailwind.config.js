@@ -21,78 +21,78 @@ module.exports = {
         spaceMono: ["SpaceMono-Regular", "monospace"],
       },
       colors: {
-        // Modern color palette
+        // Modern travel-dating color palette
         primary: {
-          DEFAULT: "#7C3AED", // Vibrant purple
-          50: "#F5F3FF",
-          100: "#EDE9FE",
-          200: "#DDD6FE",
-          300: "#C4B5FD",
-          400: "#A78BFA",
-          500: "#8B5CF6",
-          600: "#7C3AED",
-          700: "#6D28D9",
-          800: "#5B21B6",
-          900: "#4C1D95",
+          DEFAULT: "#FF6B6B", // Warm coral
+          50: "#FFF0F0",
+          100: "#FFE1E1",
+          200: "#FFC4C4",
+          300: "#FFA7A7",
+          400: "#FF8989",
+          500: "#FF6B6B",
+          600: "#FF4D4D",
+          700: "#FF2F2F",
+          800: "#FF1111",
+          900: "#F30000",
         },
         secondary: {
-          DEFAULT: "#06B6D4", // Cyan
-          50: "#ECFEFF",
-          100: "#CFFAFE",
-          200: "#A5F3FC",
-          300: "#67E8F9",
-          400: "#22D3EE",
-          500: "#06B6D4",
-          600: "#0891B2",
-          700: "#0E7490",
-          800: "#155E75",
-          900: "#164E63",
+          DEFAULT: "#4ECDC4", // Ocean teal
+          50: "#EFFAF9",
+          100: "#DFF5F3",
+          200: "#BFEBE7",
+          300: "#9FE1DB",
+          400: "#7FD7CF",
+          500: "#4ECDC4",
+          600: "#3DBEB5",
+          700: "#2C9F96",
+          800: "#1B8077",
+          900: "#0A6158",
         },
         accent: {
-          DEFAULT: "#F59E0B", // Amber
-          50: "#FFFBEB",
-          100: "#FEF3C7",
-          200: "#FDE68A",
-          300: "#FCD34D",
-          400: "#FBBF24",
-          500: "#F59E0B",
-          600: "#D97706",
-          700: "#B45309",
-          800: "#92400E",
-          900: "#78350F",
+          DEFAULT: "#FFB84C", // Sunset gold
+          50: "#FFF8E6",
+          100: "#FFF1CC",
+          200: "#FFE299",
+          300: "#FFD466",
+          400: "#FFC533",
+          500: "#FFB84C",
+          600: "#FFA819",
+          700: "#E68A00",
+          800: "#B36B00",
+          900: "#804C00",
         },
-        success: {
-          DEFAULT: "#10B981", // Emerald
-          50: "#ECFDF5",
-          100: "#D1FAE5",
-          200: "#A7F3D0",
-          300: "#6EE7B7",
-          400: "#34D399",
-          500: "#10B981",
-          600: "#059669",
-          700: "#047857",
-          800: "#065F46",
-          900: "#064E3B",
+        romance: {
+          DEFAULT: "#FF8FB1", // Soft pink
+          50: "#FFF0F5",
+          100: "#FFE1EB",
+          200: "#FFC3D7",
+          300: "#FFA5C3",
+          400: "#FF87AF",
+          500: "#FF8FB1",
+          600: "#FF619B",
+          700: "#FF3385",
+          800: "#FF056F",
+          900: "#D60058",
         },
-        error: {
-          DEFAULT: "#EF4444", // Red
-          50: "#FEF2F2",
-          100: "#FEE2E2",
-          200: "#FECACA",
-          300: "#FCA5A5",
-          400: "#F87171",
-          500: "#EF4444",
-          600: "#DC2626",
-          700: "#B91C1C",
-          800: "#991B1B",
-          900: "#7F1D1D",
+        travel: {
+          DEFAULT: "#45B7D1", // Sky blue
+          50: "#EFF9FC",
+          100: "#DFF3F9",
+          200: "#BFE7F3",
+          300: "#9FDBEC",
+          400: "#7FCFE6",
+          500: "#45B7D1",
+          600: "#35A8C2",
+          700: "#2589A3",
+          800: "#156A84",
+          900: "#054B65",
         },
         neutral: {
           lightest: "#FFFFFF",
-          light: "#F9FAFB",
-          medium: "#E5E7EB",
-          dark: "#1F2937",
-          darkest: "#111827",
+          light: "#F8FAFC",
+          medium: "#E2E8F0",
+          dark: "#334155",
+          darkest: "#0F172A",
         }
       },
       spacing: {
@@ -113,6 +113,9 @@ module.exports = {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
         'gradient-primary': 'linear-gradient(135deg, var(--tw-gradient-stops))',
+        'gradient-romance': 'linear-gradient(135deg, #FF8FB1 0%, #FF6B6B 100%)',
+        'gradient-travel': 'linear-gradient(135deg, #45B7D1 0%, #4ECDC4 100%)',
+        'gradient-sunset': 'linear-gradient(135deg, #FFB84C 0%, #FF8FB1 100%)',
         'gradient-shine': 'linear-gradient(45deg, transparent 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%)',
       },
       boxShadow: {
@@ -131,11 +134,16 @@ module.exports = {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'bounce-slow': 'bounce 2s infinite',
         'shine': 'shine 1.5s infinite',
+        'float': 'float 6s ease-in-out infinite',
       },
       keyframes: {
         shine: {
           '0%': { transform: 'translateX(-100%)' },
           '100%': { transform: 'translateX(100%)' }
+        },
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10px)' }
         }
       }
     },
