@@ -533,6 +533,7 @@ export default function ExploreScreen() {
       </View>
     );
   }
+  
 
   if (error) {
     return (
