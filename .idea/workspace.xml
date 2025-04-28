@@ -6,8 +6,54 @@
   <component name="ChangeListManager">
     <list default="true" id="d6080ac8-7173-4192-944d-77feefd4c71d" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/app.json" beforeDir="false" afterPath="$PROJECT_DIR$/client/app.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/adaptive-icon.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/avatar.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/beachRelax.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/bikeCouple.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/cameraIcon.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/coupleFlight.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/decoration.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/emailIcon.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/facebookIcon.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/favicon.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/globeImg.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/handHeart.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/heartDrawing.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/heartIconmatch.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/icon.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/indianFlag.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/locationAirplane.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/locationEarth.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/logo.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/mobileIcon.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/no-message.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/palmTree.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/partial-react-logo.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/react-logo.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/react-logo@2x.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/react-logo@3x.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/assets/images/splash-icon.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/(profile)/(settings)/_layout.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/(profile)/(settings)/app-permissions.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/(profile)/(settings)/language.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/(profile)/(settings)/privacy.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/(profile)/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(profile)/index.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/(tabs)/_layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(tabs)/_layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/(tabs)/chat.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(tabs)/chat.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/(tabs)/explore.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(tabs)/explore.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/(tabs)/location.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(tabs)/location.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/app/(tabs)/profile.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(tabs)/profile.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/auth/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/auth/index.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/auth/login.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/auth/login.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/auth/register.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/auth/register.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/app/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/index.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/onboarding/age.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/onboarding/age.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/onboarding/bio.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/onboarding/bio.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/onboarding/gender.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/onboarding/gender.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/constants/images.ts" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/constants/images.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/context/AuthContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/context/AuthContext.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/context/ToastContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/context/ToastContext.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

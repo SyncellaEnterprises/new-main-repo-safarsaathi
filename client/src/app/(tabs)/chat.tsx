@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, SafeAreaView, FlatList, TouchableOpacity, Image, RefreshControl, ActivityIndicator, TextInput, Modal, ScrollView, Platform } from 'react-native';
+import { View, Text, SafeAreaView, FlatList, TouchableOpacity, Image, RefreshControl, ActivityIndicator, TextInput, Modal, ScrollView, Platform, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { format, parseISO } from 'date-fns';

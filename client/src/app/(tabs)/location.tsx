@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import MapView, { PROVIDER_GOOGLE, Marker, Callout, Circle, MapTypes } from 'react-native-maps';
-import { StyleSheet, View, ScrollView, TouchableOpacity, Text, Image, Platform, Dimensions, ActivityIndicator, Linking, Modal } from 'react-native';
+import { StyleSheet, View, ScrollView, TouchableOpacity, Text, Image, Platform, Dimensions, ActivityIndicator, Linking, Modal, SafeAreaView } from 'react-native';
 import * as Location from 'expo-location';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -13,7 +13,8 @@ import Animated, {
   withSpring,
   withTiming,
   interpolate,
-  Extrapolate
+  Extrapolate,
+  ZoomIn
 } from 'react-native-reanimated';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -21,6 +22,7 @@ import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView } from 'moti';
+import IMAGES from '@/src/constants/images';
 
 const { width, height } = Dimensions.get('window');
 
@@ -328,10 +330,33 @@ export default function LocationScreen() {
     }
   }, []);
 
-  // Initial data fetch
+  // Initial data fetch with error handling
   useEffect(() => {
-    getUserLocation();
-    fetchMatches();
+    console.log("LocationScreen mounted");
+    let isMounted = true;
+
+    const initializeLocation = async () => {
+      try {
+        await getUserLocation();
+        if (isMounted) {
+          await fetchMatches();
+        }
+      } catch (error) {
+        console.error("Failed to initialize location screen:", error);
+        if (isMounted) {
+          setError("Failed to initialize map");
+          setLoading(false);
+        }
+      }
+    };
+
+    initializeLocation();
+
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      console.log("LocationScreen unmounted");
+      isMounted = false;
+    };
   }, []);
 
   // Handle match selection
@@ -414,337 +439,398 @@ export default function LocationScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Animated Map Container */}
-      <Animated.View style={[styles.mapContainer, mapStyle]}>
-        <MapView
-          ref={mapRef}
-          provider={PROVIDER_GOOGLE}
-          style={styles.map}
-          initialRegion={currentLocation}
-          customMapStyle={CUSTOM_MAP_STYLE}
-          showsUserLocation
-          showsCompass={false}
-          mapType={mapType}
-          showsScale={false}
-          rotateEnabled={false}
-          showsTraffic={false}
-          showsIndoors={false}
-          showsBuildings={false}
-          showsPointsOfInterest={false}
-        >
-          {/* Location Pulse Effect */}
-          <MotiView
-            from={{ opacity: 0.4, scale: 1 }}
-            animate={{ opacity: 0, scale: 4 }}
-            transition={{
-              type: 'timing',
-              duration: 2000,
-              loop: true,
-            }}
-            style={styles.pulseCircle}
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        {/* Animated Map Container */}
+        <Animated.View style={[styles.mapContainer, mapStyle]}>
+          <MapView
+            ref={mapRef}
+            provider={PROVIDER_GOOGLE}
+            style={styles.map}
+            initialRegion={currentLocation}
+            customMapStyle={CUSTOM_MAP_STYLE}
+            showsUserLocation
+            showsCompass={false}
+            mapType={mapType}
+            showsScale={false}
+            rotateEnabled={false}
+            showsTraffic={false}
+            showsIndoors={false}
+            showsBuildings={false}
+            showsPointsOfInterest={false}
           >
-            <Circle
-              center={currentLocation}
-              radius={500}
-              fillColor="rgba(69, 183, 209, 0.2)"
-              strokeColor="rgba(69, 183, 209, 0.5)"
-              strokeWidth={1}
-            />
-          </MotiView>
-
-          {/* Match Markers */}
-          {!showGhostMode && matches.map((match) => (
-            <Marker
-              key={match.userId.toString()}
-              coordinate={{
-                latitude: match.parsedLocation?.latitude || currentLocation.latitude,
-                longitude: match.parsedLocation?.longitude || currentLocation.longitude
+            {/* Location Pulse Effect */}
+            <MotiView
+              from={{ opacity: 0.4, scale: 1 }}
+              animate={{ opacity: 0, scale: 4 }}
+              transition={{
+                type: 'timing',
+                duration: 2000,
+                loop: true,
               }}
-              onPress={() => handleSelectMatch(match)}
+              style={styles.pulseCircle}
             >
-              <Animated.View
-                entering={FadeInDown.delay(200).springify()}
-                style={styles.markerContainer}
+              <Circle
+                center={currentLocation}
+                radius={500}
+                fillColor="rgba(69, 183, 209, 0.2)"
+                strokeColor="rgba(69, 183, 209, 0.5)"
+                strokeWidth={1}
+              />
+            </MotiView>
+
+            {/* Match Markers */}
+            {!showGhostMode && matches.map((match) => (
+              <Marker
+                key={match.userId.toString()}
+                coordinate={{
+                  latitude: match.parsedLocation?.latitude || currentLocation.latitude,
+                  longitude: match.parsedLocation?.longitude || currentLocation.longitude
+                }}
+                onPress={() => handleSelectMatch(match)}
+              >
+                <Animated.View
+                  entering={FadeInDown.delay(200).springify()}
+                  style={styles.markerContainer}
+                >
+                  <LinearGradient
+                    colors={['#45B7D1', '#4ECDC4']}
+                    style={styles.markerGradient}
+                  >
+                    <Image
+                      source={{ uri: match.profile_photo || DEFAULT_PROFILE_IMAGE }}
+                      style={styles.markerImage}
+                    />
+                  </LinearGradient>
+                  <BlurView intensity={20} tint="dark" style={styles.markerLabel}>
+                    <Text style={styles.markerName}>{match.username}</Text>
+                  </BlurView>
+                </Animated.View>
+              </Marker>
+            ))}
+
+            {/* Places Markers */}
+            {PLACES_OF_INTEREST.map((place) => (
+              <Marker
+                key={place.id}
+                coordinate={place.coordinates}
+              >
+                <Animated.View
+                  entering={FadeInDown.delay(300).springify()}
+                  style={styles.placeMarkerContainer}
+                >
+                  <LinearGradient
+                    colors={['#FF6B6B', '#FF8E8E']}
+                    style={styles.placeMarkerGradient}
+                  >
+                    <Text style={styles.placeMarkerIcon}>{place.icon}</Text>
+                  </LinearGradient>
+                  <BlurView intensity={20} tint="dark" style={styles.placeMarkerLabel}>
+                    <Text style={styles.placeMarkerText}>{place.name}</Text>
+                    <Text style={styles.placeMarkerType}>{place.type}</Text>
+                  </BlurView>
+                </Animated.View>
+              </Marker>
+            ))}
+          </MapView>
+        </Animated.View>
+
+        {/* Modern Header */}
+        <Animated.View style={[styles.header, headerStyle]}>
+          <BlurView intensity={20} tint="dark" style={styles.headerContent}>
+            <View style={styles.headerTop}>
+              <View style={styles.locationInfo}>
+                <Text style={styles.locationTitle}>Your Location</Text>
+                <Text style={styles.locationSubtitle}>
+                  {matches.length > 0 ? `${matches.length} Matches Nearby` : 'No Matches Nearby'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.ghostButton}
+                onPress={() => setShowGhostMode(!showGhostMode)}
+              >
+                <LinearGradient
+                  colors={showGhostMode ? ['#FF6B6B', '#FF8E8E'] : ['#45B7D1', '#4ECDC4']}
+                  style={styles.ghostButtonGradient}
+                >
+                  <Ionicons
+                    name={showGhostMode ? "eye-off" : "eye"}
+                    size={24}
+                    color="#fff"
+                  />
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </BlurView>
+        </Animated.View>
+
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleSOSOpen}
+          >
+            <LinearGradient
+              colors={['#FF6B6B', '#FF8E8E']}
+              style={styles.actionButtonGradient}
+            >
+              <Feather name="alert-circle" size={24} color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={getUserLocation}
+          >
+            <LinearGradient
+              colors={['#45B7D1', '#4ECDC4']}
+              style={styles.actionButtonGradient}
+            >
+              <Feather name="navigation" size={24} color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={toggleMapType}
+          >
+            <LinearGradient
+              colors={['#45B7D1', '#4ECDC4']}
+              style={styles.actionButtonGradient}
+            >
+              <Feather name={mapType === 'standard' ? "map" : "map-pin"} size={24} color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+
+        {/* Selected Match Card */}
+        {selectedMatch && (
+          <Animated.View
+            entering={SlideInUp.springify()}
+            style={styles.matchCard}
+          >
+            <BlurView intensity={20} tint="dark" style={styles.matchCardContent}>
+              <View style={styles.matchCardHeader}>
+                <Image
+                  source={{ uri: selectedMatch.profile_photo || DEFAULT_PROFILE_IMAGE }}
+                  style={styles.matchCardImage}
+                />
+                <View style={styles.matchCardInfo}>
+                  <Text style={styles.matchCardName}>{selectedMatch.username}</Text>
+                  <Text style={styles.matchCardBio}>{selectedMatch.bio || 'No bio provided'}</Text>
+                  {selectedMatch.parsedLocation && (
+                    <View style={styles.matchCardLocation}>
+                      <Feather name="map-pin" size={14} color="#45B7D1" />
+                      <Text style={styles.matchCardLocationText}>
+                        {selectedMatch.parsedLocation.city || selectedMatch.parsedLocation.state || 'Location not specified'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <TouchableOpacity
+                  style={styles.matchCardClose}
+                  onPress={() => setSelectedMatch(null)}
+                >
+                  <Feather name="x" size={24} color="#fff" />
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity
+                style={styles.matchCardButton}
+                onPress={() => router.push(`/chat/${selectedMatch.userId}`)}
               >
                 <LinearGradient
                   colors={['#45B7D1', '#4ECDC4']}
-                  style={styles.markerGradient}
+                  style={styles.matchCardButtonGradient}
                 >
-                  <Image
-                    source={{ uri: match.profile_photo || DEFAULT_PROFILE_IMAGE }}
-                    style={styles.markerImage}
-                  />
+                  <Text style={styles.matchCardButtonText}>Start Chat</Text>
+                  <Feather name="message-circle" size={20} color="#fff" />
                 </LinearGradient>
-                <BlurView intensity={20} tint="dark" style={styles.markerLabel}>
-                  <Text style={styles.markerName}>{match.username}</Text>
-                </BlurView>
-              </Animated.View>
-            </Marker>
-          ))}
+              </TouchableOpacity>
+            </BlurView>
+          </Animated.View>
+        )}
 
-          {/* Places Markers */}
-          {PLACES_OF_INTEREST.map((place) => (
-            <Marker
-              key={place.id}
-              coordinate={place.coordinates}
-            >
-              <Animated.View
-                entering={FadeInDown.delay(300).springify()}
-                style={styles.placeMarkerContainer}
-              >
-                <LinearGradient
-                  colors={['#FF6B6B', '#FF8E8E']}
-                  style={styles.placeMarkerGradient}
-                >
-                  <Text style={styles.placeMarkerIcon}>{place.icon}</Text>
-                </LinearGradient>
-                <BlurView intensity={20} tint="dark" style={styles.placeMarkerLabel}>
-                  <Text style={styles.placeMarkerText}>{place.name}</Text>
-                  <Text style={styles.placeMarkerType}>{place.type}</Text>
-                </BlurView>
-              </Animated.View>
-            </Marker>
-          ))}
-        </MapView>
-      </Animated.View>
-
-      {/* Modern Header */}
-      <Animated.View style={[styles.header, headerStyle]}>
-        <BlurView intensity={20} tint="dark" style={styles.headerContent}>
-          <View style={styles.headerTop}>
-            <View style={styles.locationInfo}>
-              <Text style={styles.locationTitle}>Your Location</Text>
-              <Text style={styles.locationSubtitle}>
-                {matches.length > 0 ? `${matches.length} Matches Nearby` : 'No Matches Nearby'}
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={styles.ghostButton}
-              onPress={() => setShowGhostMode(!showGhostMode)}
-            >
-              <LinearGradient
-                colors={showGhostMode ? ['#FF6B6B', '#FF8E8E'] : ['#45B7D1', '#4ECDC4']}
-                style={styles.ghostButtonGradient}
-              >
-                <Ionicons
-                  name={showGhostMode ? "eye-off" : "eye"}
-                  size={24}
-                  color="#fff"
-                />
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </BlurView>
-      </Animated.View>
-
-      {/* Quick Actions */}
-      <View style={styles.quickActions}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={handleSOSOpen}
-        >
-          <LinearGradient
-            colors={['#FF6B6B', '#FF8E8E']}
-            style={styles.actionButtonGradient}
-          >
-            <Feather name="alert-circle" size={24} color="#fff" />
-          </LinearGradient>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={getUserLocation}
-        >
-          <LinearGradient
-            colors={['#45B7D1', '#4ECDC4']}
-            style={styles.actionButtonGradient}
-          >
-            <Feather name="navigation" size={24} color="#fff" />
-          </LinearGradient>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={toggleMapType}
-        >
-          <LinearGradient
-            colors={['#45B7D1', '#4ECDC4']}
-            style={styles.actionButtonGradient}
-          >
-            <Feather name={mapType === 'standard' ? "map" : "map-pin"} size={24} color="#fff" />
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
-
-      {/* Selected Match Card */}
-      {selectedMatch && (
-        <Animated.View
-          entering={SlideInUp.springify()}
-          style={styles.matchCard}
-        >
-          <BlurView intensity={20} tint="dark" style={styles.matchCardContent}>
-            <View style={styles.matchCardHeader}>
-              <Image
-                source={{ uri: selectedMatch.profile_photo || DEFAULT_PROFILE_IMAGE }}
-                style={styles.matchCardImage}
-              />
-              <View style={styles.matchCardInfo}>
-                <Text style={styles.matchCardName}>{selectedMatch.username}</Text>
-                <Text style={styles.matchCardBio}>{selectedMatch.bio || 'No bio provided'}</Text>
-                {selectedMatch.parsedLocation && (
-                  <View style={styles.matchCardLocation}>
-                    <Feather name="map-pin" size={14} color="#45B7D1" />
-                    <Text style={styles.matchCardLocationText}>
-                      {selectedMatch.parsedLocation.city || selectedMatch.parsedLocation.state || 'Location not specified'}
-                    </Text>
-                  </View>
-                )}
+        {/* Replace the Modal with Animated Bottom Sheet */}
+        <Animated.View style={[styles.sosBottomSheet, sosBottomSheetStyle]}>
+          <BlurView intensity={20} tint="dark" style={styles.sosContent}>
+            <View style={styles.sosHeader}>
+              <View style={styles.sosHeaderLeft}>
+                <View style={styles.sosHeaderIcon}>
+                  <Feather name="alert-triangle" size={24} color="#FF6B6B" />
+                </View>
+                <Text style={styles.sosTitle}>Emergency SOS</Text>
               </View>
               <TouchableOpacity
-                style={styles.matchCardClose}
-                onPress={() => setSelectedMatch(null)}
+                style={styles.sosClose}
+                onPress={handleSOSClose}
               >
                 <Feather name="x" size={24} color="#fff" />
               </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              style={styles.matchCardButton}
-              onPress={() => router.push(`/chat/${selectedMatch.userId}`)}
-            >
-              <LinearGradient
-                colors={['#45B7D1', '#4ECDC4']}
-                style={styles.matchCardButtonGradient}
+
+            <View style={styles.sosOptions}>
+              <TouchableOpacity
+                style={styles.sosOption}
+                onPress={handleEmergencyCall}
               >
-                <Text style={styles.matchCardButtonText}>Start Chat</Text>
-                <Feather name="message-circle" size={20} color="#fff" />
-              </LinearGradient>
-            </TouchableOpacity>
-          </BlurView>
-        </Animated.View>
-      )}
+                <LinearGradient
+                  colors={['#FF6B6B', '#FF8E8E']}
+                  style={styles.sosOptionGradient}
+                >
+                  <Feather name="phone-call" size={32} color="#fff" />
+                  <View style={styles.sosOptionInfo}>
+                    <Text style={styles.sosOptionTitle}>Police</Text>
+                    <Text style={styles.sosOptionSubtitle}>Call 100</Text>
+                  </View>
+                  <Feather name="chevron-right" size={24} color="#fff" />
+                </LinearGradient>
+              </TouchableOpacity>
 
-      {/* Replace the Modal with Animated Bottom Sheet */}
-      <Animated.View style={[styles.sosBottomSheet, sosBottomSheetStyle]}>
-        <BlurView intensity={20} tint="dark" style={styles.sosContent}>
-          <View style={styles.sosHeader}>
-            <View style={styles.sosHeaderLeft}>
-              <View style={styles.sosHeaderIcon}>
-                <Feather name="alert-triangle" size={24} color="#FF6B6B" />
-              </View>
-              <Text style={styles.sosTitle}>Emergency SOS</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.sosClose}
-              onPress={handleSOSClose}
-            >
-              <Feather name="x" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.sosOptions}>
-            <TouchableOpacity
-              style={styles.sosOption}
-              onPress={handleEmergencyCall}
-            >
-              <LinearGradient
-                colors={['#FF6B6B', '#FF8E8E']}
-                style={styles.sosOptionGradient}
-              >
-                <Feather name="phone-call" size={32} color="#fff" />
-                <View style={styles.sosOptionInfo}>
-                  <Text style={styles.sosOptionTitle}>Police</Text>
-                  <Text style={styles.sosOptionSubtitle}>Call 100</Text>
-                </View>
-                <Feather name="chevron-right" size={24} color="#fff" />
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.sosOption}
-              onPress={handleTrustedContact}
-            >
-              <LinearGradient
-                colors={['#45B7D1', '#4ECDC4']}
-                style={styles.sosOptionGradient}
-              >
-                <Feather name="users" size={32} color="#fff" />
-                <View style={styles.sosOptionInfo}>
-                  <Text style={styles.sosOptionTitle}>Trusted Contacts</Text>
-                  <Text style={styles.sosOptionSubtitle}>Alert your circle</Text>
-                </View>
-                <Feather name="chevron-right" size={24} color="#fff" />
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.sosOption}
-              onPress={handleMedicalEmergency}
-            >
-              <LinearGradient
-                colors={['#4CAF50', '#66BB6A']}
-                style={styles.sosOptionGradient}
-              >
-                <Feather name="plus-circle" size={32} color="#fff" />
-                <View style={styles.sosOptionInfo}>
-                  <Text style={styles.sosOptionTitle}>Medical</Text>
-                  <Text style={styles.sosOptionSubtitle}>Call 108</Text>
-                </View>
-                <Feather name="chevron-right" size={24} color="#fff" />
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </BlurView>
-      </Animated.View>
-
-      {/* Bottom Matches Navigation */}
-      {matches.length > 0 && (
-        <BlurView intensity={30} tint="dark" style={styles.bottomNav}>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.bottomNavContent}
-          >
-            {matches.map((match) => (
-              <TouchableOpacity 
-                key={match.userId.toString()}
-                style={[
-                  styles.userButton,
-                  selectedMatch?.userId === match.userId && styles.selectedUserButton
-                ]}
-                onPress={() => handleSelectMatch(match)}
+              <TouchableOpacity
+                style={styles.sosOption}
+                onPress={handleTrustedContact}
               >
                 <LinearGradient
                   colors={['#45B7D1', '#4ECDC4']}
-                  style={[
-                    styles.userButtonBorder,
-                    selectedMatch?.userId === match.userId && styles.selectedUserButtonBorder
-                  ]}
+                  style={styles.sosOptionGradient}
                 >
-                  <Image 
-                    source={{ uri: match.profile_photo || DEFAULT_PROFILE_IMAGE }}
-                    style={styles.userButtonImage}
-                  />
+                  <Feather name="users" size={32} color="#fff" />
+                  <View style={styles.sosOptionInfo}>
+                    <Text style={styles.sosOptionTitle}>Trusted Contacts</Text>
+                    <Text style={styles.sosOptionSubtitle}>Alert your circle</Text>
+                  </View>
+                  <Feather name="chevron-right" size={24} color="#fff" />
                 </LinearGradient>
-                <Text style={styles.userButtonName}>{match.username}</Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </BlurView>
-      )}
 
-      {/* Loading Overlay */}
-      {loading && (
-        <BlurView intensity={20} tint="dark" style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#45B7D1" />
-          <Text style={styles.loadingText}>Loading matches...</Text>
-        </BlurView>
-      )}
-    </View>
+              <TouchableOpacity
+                style={styles.sosOption}
+                onPress={handleMedicalEmergency}
+              >
+                <LinearGradient
+                  colors={['#4CAF50', '#66BB6A']}
+                  style={styles.sosOptionGradient}
+                >
+                  <Feather name="plus-circle" size={32} color="#fff" />
+                  <View style={styles.sosOptionInfo}>
+                    <Text style={styles.sosOptionTitle}>Medical</Text>
+                    <Text style={styles.sosOptionSubtitle}>Call 108</Text>
+                  </View>
+                  <Feather name="chevron-right" size={24} color="#fff" />
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </BlurView>
+        </Animated.View>
+
+        {/* Bottom Matches Navigation */}
+        {matches.length > 0 && (
+          <BlurView intensity={30} tint="dark" style={styles.bottomNav}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.bottomNavContent}
+            >
+              {matches.map((match) => (
+                <TouchableOpacity 
+                  key={match.userId.toString()}
+                  style={[
+                    styles.userButton,
+                    selectedMatch?.userId === match.userId && styles.selectedUserButton
+                  ]}
+                  onPress={() => handleSelectMatch(match)}
+                >
+                  <LinearGradient
+                    colors={['#45B7D1', '#4ECDC4']}
+                    style={[
+                      styles.userButtonBorder,
+                      selectedMatch?.userId === match.userId && styles.selectedUserButtonBorder
+                    ]}
+                  >
+                    <Image 
+                      source={{ uri: match.profile_photo || DEFAULT_PROFILE_IMAGE }}
+                      style={styles.userButtonImage}
+                    />
+                  </LinearGradient>
+                  <Text style={styles.userButtonName}>{match.username}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </BlurView>
+        )}
+
+        {/* Loading Overlay */}
+        {loading && (
+          <View style={[StyleSheet.absoluteFillObject, { zIndex: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(20,20,30,0.85)' }]}>  
+            {/* Wrapped in Animated.View to fix warnings */}
+            <Animated.View style={{ position: 'absolute', top: -height * 0.5, left: -width * 0.5 }}>
+              <Animated.Image
+                source={IMAGES.patternBg}
+                style={{
+                  width: width * 2,
+                  height: height * 2,
+                  opacity: 0.18,
+                  transform: [{ scale: 1.5 }],
+                }}
+                resizeMode="repeat"
+              />
+            </Animated.View>
+            
+            {/* Wrapped in Animated.View to fix warnings */}
+            <Animated.View style={{ position: 'absolute', bottom: 80, right: 40 }}>
+              <Animated.Image
+                source={IMAGES.patternBag}
+                entering={FadeInDown.springify()}
+                style={{
+                  width: 120,
+                  height: 120,
+                  opacity: 0.22,
+                  transform: [{ rotate: '-12deg' }],
+                }}
+                resizeMode="contain"
+              />
+            </Animated.View>
+            
+            {/* Blur and Gradient Overlay */}
+            <BlurView intensity={40} tint="dark" style={{ ...StyleSheet.absoluteFillObject, zIndex: 1 }}>
+              <LinearGradient
+                colors={["rgba(125,91,166,0.25)", "rgba(80,166,167,0.18)", "rgba(20,20,30,0.7)"]}
+                style={{ ...StyleSheet.absoluteFillObject }}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              />
+            </BlurView>
+            
+            {/* Centered Logo with Pulse */}
+            <Animated.View
+              entering={ZoomIn.springify()}
+              style={{ alignItems: 'center', zIndex: 2 }}
+            >
+              <Animated.Image
+                source={IMAGES.safarsaathi}
+                style={{ width: 90, height: 90, marginBottom: 24, opacity: 0.95 }}
+                resizeMode="contain"
+              />
+              <Animated.Text
+                entering={FadeInDown.delay(200).springify()}
+                style={{ color: '#fff', fontSize: 22, fontWeight: 'bold', textAlign: 'center', letterSpacing: 0.5 }}
+              >
+                Finding matches near you…
+              </Animated.Text>
+              <ActivityIndicator size="large" color="#7D5BA6" style={{ marginTop: 24 }} />
+            </Animated.View>
+          </View>
+        )}
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
   container: {
     flex: 1,
     backgroundColor: '#000',
@@ -1083,17 +1169,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#fff',
     opacity: 0.8,
-    fontFamily: 'Montserrat',
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    color: '#fff',
-    fontSize: 16,
-    marginTop: 12,
     fontFamily: 'Montserrat',
   },
   pulseCircle: {

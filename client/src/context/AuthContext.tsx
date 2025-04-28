@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
+import { useRouter } from 'expo-router';
 
 // API URL configuration
 const API_URL = __DEV__ 
@@ -41,9 +42,56 @@ interface AuthResponse {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Setup axios interceptor for 401 responses
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        if (error.response?.status === 401) {
+          await handleLogout();
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, []);
+
+  // Monitor token validity
+  useEffect(() => {
+    let tokenCheckInterval: NodeJS.Timeout;
+
+    const checkTokenValidity = async () => {
+      const isValid = await isTokenValid();
+      if (!isValid) {
+        await handleLogout();
+      }
+    };
+
+    // Check token validity every minute
+    tokenCheckInterval = setInterval(checkTokenValidity, 60 * 1000);
+
+    // Initial check
+    checkTokenValidity();
+
+    return () => {
+      if (tokenCheckInterval) {
+        clearInterval(tokenCheckInterval);
+      }
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    await signOut();
+    router.replace("/auth");
+  };
 
   const isTokenValid = async (): Promise<boolean> => {
     try {
@@ -58,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const hoursSinceLogin = (currentTime - loginTime) / (1000 * 60 * 60);
 
       if (hoursSinceLogin >= TOKEN_EXPIRATION_HOURS) {
-        await signOut();
+        await handleLogout();
         return false;
       }
 
@@ -74,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return true;
     } catch (error) {
       console.error('Token validation error:', error);
-      await signOut();
+      await handleLogout();
       return false;
     }
   };
@@ -170,7 +218,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const valid = await isTokenValid();
         if (!valid) {
-          await signOut();
+          await handleLogout();
           return;
         }
 
@@ -183,7 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error('Error loading stored user:', error);
-        await signOut();
+        await handleLogout();
       } finally {
         setIsLoading(false);
       }

@@ -13,7 +13,7 @@ export default function AuthScreen() {
   return (
     <View className="flex-1">
       <ImageBackground 
-        source={{ uri: "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=1421&auto=format&fit=crop" }}
+        source={IMAGES.patternBg}
         className="flex-1"
         resizeMode="cover"
       >
@@ -38,18 +38,7 @@ export default function AuthScreen() {
                   resizeMode="contain"
                 />
               </View>
-              
-              <LinearGradient
-                colors={['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.7)']}
-                className="rounded-3xl p-6 w-full items-center"
-              >
-                <Text className="text-primary text-3xl font-youngSerif mb-2">
-                  SafarSaathi
-                </Text>
-                <Text className="text-neutral-dark text-base font-montserratLight mb-8 text-center">
-                  Find your perfect travel companion and create unforgettable journeys together
-                </Text>
-              </LinearGradient>
+            
             </Animated.View>
             
             <View className="w-full space-y-4">

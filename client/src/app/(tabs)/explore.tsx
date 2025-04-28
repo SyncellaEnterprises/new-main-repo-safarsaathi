@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, SafeAreaView, ActivityIndicator, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, SafeAreaView, ActivityIndicator, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { UserCard } from '@/src/components/explore/UserCard';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -18,6 +18,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import IMAGES from '@/src/constants/images';
 
 // Set API URL to your local server
 const API_URL = 'http://10.0.2.2:5000';
@@ -469,13 +470,66 @@ export default function ExploreScreen() {
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#45B7D1" />
-        <Animated.Text 
-          entering={FadeInDown.delay(300)}
-          className="mt-4 text-neutral-600 font-medium text-base"
-        >
-          Finding your perfect matches...
-        </Animated.Text>
+        {/* Pattern background */}
+        <Animated.Image
+          source={IMAGES.patternBg}
+          style={{
+            position: 'absolute',
+            width: '120%',
+            height: '120%',
+            opacity: 0.13,
+            top: '-10%',
+            left: '-10%',
+          }}
+          resizeMode="cover"
+        />
+        {/* Pattern bag floating */}
+        <Animated.Image
+          source={IMAGES.patternBag}
+          entering={FadeInDown.springify()}
+          style={{
+            position: 'absolute',
+            width: 120,
+            height: 120,
+            bottom: 80,
+            right: 40,
+            opacity: 0.18,
+            transform: [{ rotate: '-12deg' }],
+          }}
+          resizeMode="contain"
+        />
+        {/* Unsplash travel image */}
+        <Animated.Image
+          source={{ uri: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80' }}
+          style={{
+            position: 'absolute',
+            width: 220,
+            height: 220,
+            borderRadius: 32,
+            opacity: 0.18,
+            top: 60,
+            left: 40,
+          }}
+          resizeMode="cover"
+        />
+        <BlurView intensity={40} tint="light" style={{ ...StyleSheet.absoluteFillObject, zIndex: 1 }}>
+          <LinearGradient
+            colors={["rgba(125,91,166,0.12)", "rgba(80,166,167,0.10)", "rgba(255,255,255,0.7)"]}
+            style={{ ...StyleSheet.absoluteFillObject }}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          />
+        </BlurView>
+        <Animated.View entering={FadeInDown.springify()} style={{ alignItems: 'center', zIndex: 2 }}>
+          <Ionicons name="search" size={48} color="#7D5BA6" style={{ marginBottom: 24, opacity: 0.8 }} />
+          <Animated.Text
+            entering={FadeInDown.delay(200).springify()}
+            style={{ color: '#7D5BA6', fontSize: 22, fontWeight: 'bold', textAlign: 'center', letterSpacing: 0.5 }}
+          >
+            Finding your perfect matches…
+          </Animated.Text>
+          <ActivityIndicator size="large" color="#7D5BA6" style={{ marginTop: 24 }} />
+        </Animated.View>
       </View>
     );
   }
@@ -521,7 +575,7 @@ export default function ExploreScreen() {
           
           <TouchableOpacity
             onPress={() => {
-              router.push("/filters");
+              router.push("/location");
             }}
             className="mt-4 flex-row items-center bg-white rounded-full px-4 py-3 shadow-sm"
           >
@@ -576,19 +630,26 @@ export default function ExploreScreen() {
           intensity={20}
           tint="light"
           className="absolute inset-0 items-center justify-center"
+          style={{ zIndex: 10 }}
         >
-          <View className="bg-white rounded-2xl p-6 m-4 shadow-lg">
-            <Ionicons name="timer-outline" size={48} color="#45B7D1" />
-            <Text className="text-xl font-bold text-center mt-4">
+          <View className="bg-white rounded-2xl p-6 m-4 shadow-lg items-center">
+            {/* Unsplash or custom image for reset */}
+            <Image
+              source={{ uri: 'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=800&q=80' }}
+              style={{ width: 180, height: 120, borderRadius: 18, marginBottom: 18, opacity: 0.95 }}
+              resizeMode="cover"
+            />
+            <Ionicons name="timer-outline" size={48} color="#45B7D1" style={{ marginBottom: 8 }} />
+            <Text className="text-xl font-bold text-center mt-2 text-neutral-darkest">
               Daily Limit Reached
             </Text>
-            <Text className="text-neutral-600 text-center mt-2">
-              You've used all {totalLimit} swipes for today.
-              Check back tomorrow for more matches!
+            <Text className="text-neutral-600 text-center mt-2 mb-2">
+              You've used all {totalLimit} swipes for today. Check back tomorrow for more matches!
             </Text>
             <TouchableOpacity
-              onPress={() => router.push("/premium")}
-              className="mt-6 bg-[#45B7D1] rounded-full py-3"
+              onPress={() => router.push('/premium')}
+              className="mt-4 bg-[#45B7D1] rounded-full py-3 px-8"
+              style={{ minWidth: 180 }}
             >
               <Text className="text-white text-center font-medium">
                 Get Premium for Unlimited Swipes

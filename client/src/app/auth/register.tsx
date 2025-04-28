@@ -6,6 +6,7 @@ import { useToast } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from 'expo-linear-gradient';
+import IMAGES from "@/src/constants/images";
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -53,7 +54,7 @@ export default function RegisterScreen() {
 
       if (success) {
         toast.show("Registration successful!", "success");
-        router.replace("/(tabs)/home");
+        router.replace("/onboarding/age");
       } else {
         toast.show("Registration failed. Please try again.", "error");
       }
@@ -82,7 +83,7 @@ export default function RegisterScreen() {
   return (
     <View className="flex-1">
       <ImageBackground 
-        source={{ uri: "https://images.unsplash.com/photo-1469474968028-56623f02e42e?q=80&w=1474&auto=format&fit=crop" }}
+        source={IMAGES.patternBg}
         className="flex-1"
         resizeMode="cover"
       >

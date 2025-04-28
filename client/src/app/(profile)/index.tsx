@@ -1,18 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Image, SafeAreaView, StyleSheet, Dimensions } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Image, SafeAreaView, StyleSheet, Dimensions, Platform, StatusBarStyle } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons, FontAwesome5, Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import { Platform } from 'react-native';
-import Toast from 'react-native-toast-message';
-import { INTEREST_CATEGORIES } from '@/src/constants/interests';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import Animated, { FadeIn, SlideInRight } from 'react-native-reanimated';
+import Animated, { 
+  FadeIn, 
+  FadeInDown, 
+  SlideInDown,
+  withSpring,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  interpolate,
+  Extrapolate,
+  FadeInRight,
+  ZoomIn,
+  BounceIn
+} from 'react-native-reanimated';
 import { MotiView, MotiText, AnimatePresence } from 'moti';
 import { Skeleton } from 'moti/skeleton';
 import { useHeaderHeight } from '@react-navigation/elements';
+import { useAuth } from "@/src/context/AuthContext";
+import { useToast } from "@/src/context/ToastContext";
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { INTEREST_CATEGORIES } from '@/src/constants/interests';
+import IMAGES from "@/src/constants/images";
 import { StatusBar } from 'expo-status-bar';
 
 const { width } = Dimensions.get('window');
@@ -25,7 +40,12 @@ const API_URL = __DEV__
   })
   : 'https://your-production-api.com/api';
 
-// User profile interface
+// Types
+interface Prompt {
+  question: string;
+  answer: string;
+}
+
 interface UserProfile {
   username: string;
   user_id: number;
@@ -39,22 +59,18 @@ interface UserProfile {
   occupation?: string;
   profile_photo?: string | null;
   prompts?: {
-    prompts: Array<{
-      question: string;
-      answer: string;
-    }>;
+    prompts: Prompt[];
   };
 }
 
-// Gender options
+// Constants
 const GENDERS = [
   { id: 'male', label: 'Male', icon: 'male', color: '#4A90E2' },
   { id: 'female', label: 'Female', icon: 'female', color: '#E85B81' },
   { id: 'non-binary', label: 'Non-binary', icon: 'transgender', color: '#9B59B6' },
   { id: 'other', label: 'Other', icon: 'person', color: '#50A6A7' },
-];
+] as const;
 
-// Occupation options
 const OCCUPATIONS = [
   { id: 'student', label: 'Student', icon: 'school', color: '#4A90E2', description: 'Currently studying' },
   { id: 'professional', label: 'Professional', icon: 'briefcase', color: '#50A6A7', description: 'Working in a company' },
@@ -62,9 +78,8 @@ const OCCUPATIONS = [
   { id: 'creative', label: 'Creative', icon: 'color-palette', color: '#9B59B6', description: 'Artist or designer' },
   { id: 'healthcare', label: 'Healthcare', icon: 'medical', color: '#27AE60', description: 'Medical professional' },
   { id: 'other', label: 'Other', icon: 'person', color: '#7D5BA6', description: 'Other occupation' },
-];
+] as const;
 
-// Prompts questions
 const PROMPT_QUESTIONS = [
   "The one thing I want to know about you is...",
   "My most controversial opinion is...",
@@ -74,31 +89,52 @@ const PROMPT_QUESTIONS = [
   "My life goal is to...",
   "My perfect date would be...",
   "I get way too excited about..."
-];
+] as const;
 
 export default function ProfileEditScreen() {
   const router = useRouter();
+  const { signOut } = useAuth();
+  const toast = useToast();
+  const headerHeight = useHeaderHeight();
+  
+  // Animation values
+  const scrollY = useSharedValue(0);
+  const headerScale = useSharedValue(1);
+  const headerTranslateY = useSharedValue(0);
+
+  // State
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<string | null>(null);
-  
-  // Form values
-  const [username, setUsername] = useState("");
-  const [age, setAge] = useState<number>(25);
-  const [bio, setBio] = useState("");
-  const [gender, setGender] = useState<string | null>(null);
-  const [occupation, setOccupation] = useState<string | null>(null);
-  const [interests, setInterests] = useState<string[]>([]);
-  const [location, setLocation] = useState("");
-  const [prompts, setPrompts] = useState<Array<{question: string; answer: string}>>([]);
-  const [activePrompt, setActivePrompt] = useState<number | null>(null);
-  const [promptQuestion, setPromptQuestion] = useState("");
-  const [promptAnswer, setPromptAnswer] = useState("");
-  const headerHeight = useHeaderHeight();
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedSection, setSelectedSection] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(false);
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [showSkeleton, setShowSkeleton] = useState(true);
+
+  // Form states
+  const [username, setUsername] = useState('');
+  const [age, setAge] = useState(25);
+  const [bio, setBio] = useState('');
+  const [gender, setGender] = useState<string | null>(null);
+  const [occupation, setOccupation] = useState<string | null>(null);
+  const [location, setLocation] = useState('');
+  const [interests, setInterests] = useState<string[]>([]);
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [promptQuestion, setPromptQuestion] = useState('');
+  const [promptAnswer, setPromptAnswer] = useState('');
+  const [activePrompt, setActivePrompt] = useState<number | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    number: '',
+    relationship: ''
+  });
+
+  const statusBarStyle: StatusBarStyle = 'light';
 
   useEffect(() => {
     fetchUserProfile();
@@ -189,11 +225,16 @@ export default function ProfileEditScreen() {
         } else {
           setPrompts([]);
         }
+
+        if (!refreshing) {
+          toast.show('Profile loaded successfully', 'info');
+        }
       } else {
         throw new Error('Failed to fetch profile data');
       }
     } catch (err: any) {
       setError(err.message || 'An unknown error occurred');
+      toast.show('Failed to load profile', 'error');
       console.error('Error fetching profile:', err);
     } finally {
       setLoading(false);
@@ -218,21 +259,13 @@ export default function ProfileEditScreen() {
       });
 
       if (response.data.status === 'success') {
-        Toast.show({
-          type: 'success',
-          text1: 'Success',
-          text2: `Your ${endpoint} has been updated`
-        });
+        toast.show(`Your ${endpoint} has been updated`, 'success');
         return true;
       } else {
         throw new Error(`Failed to update ${endpoint}`);
       }
     } catch (err: any) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: err.message || `Failed to update ${endpoint}`
-      });
+      toast.show(err.message || `Failed to update ${endpoint}`, 'error');
       console.error(`Error updating ${endpoint}:`, err);
       return false;
     } finally {
@@ -243,11 +276,7 @@ export default function ProfileEditScreen() {
   // Update handlers for each field
   const handleUpdateUsername = async () => {
     if (username.trim().length < 3) {
-      Toast.show({
-        type: 'error',
-        text1: 'Invalid Username',
-        text2: 'Username must be at least 3 characters'
-      });
+      toast.show('Username must be at least 3 characters', 'error');
       return;
     }
     
@@ -260,11 +289,7 @@ export default function ProfileEditScreen() {
 
   const handleUpdateAge = async () => {
     if (age < 18 || age > 100) {
-      Toast.show({
-        type: 'error',
-        text1: 'Invalid Age',
-        text2: 'Age must be between 18 and 100'
-      });
+      toast.show('Age must be between 18 and 100', 'error');
       return;
     }
     
@@ -277,11 +302,7 @@ export default function ProfileEditScreen() {
 
   const handleUpdateBio = async () => {
     if (bio.trim().length < 10) {
-      Toast.show({
-        type: 'error',
-        text1: 'Invalid Bio',
-        text2: 'Bio must be at least 10 characters'
-      });
+      toast.show('Bio must be at least 10 characters', 'error');
       return;
     }
     
@@ -294,11 +315,7 @@ export default function ProfileEditScreen() {
 
   const handleUpdateGender = async () => {
     if (!gender) {
-      Toast.show({
-        type: 'error',
-        text1: 'Invalid Gender',
-        text2: 'Please select a gender'
-      });
+      toast.show('Please select a gender', 'error');
       return;
     }
     
@@ -311,11 +328,7 @@ export default function ProfileEditScreen() {
 
   const handleUpdateOccupation = async () => {
     if (!occupation) {
-      Toast.show({
-        type: 'error',
-        text1: 'Invalid Occupation',
-        text2: 'Please select an occupation'
-      });
+      toast.show('Please select an occupation', 'error');
       return;
     }
     
@@ -328,11 +341,7 @@ export default function ProfileEditScreen() {
 
   const handleUpdateLocation = async () => {
     if (location.trim().length < 2) {
-      Toast.show({
-        type: 'error',
-        text1: 'Invalid Location',
-        text2: 'Please enter a valid location'
-      });
+      toast.show('Please enter a valid location', 'error');
       return;
     }
     
@@ -345,18 +354,11 @@ export default function ProfileEditScreen() {
 
   const handleUpdateInterests = async () => {
     if (interests.length < 3 || interests.length > 8) {
-      Toast.show({
-        type: 'error',
-        text1: 'Invalid Interests',
-        text2: 'Please select between 3 and 8 interests'
-      });
+      toast.show('Please select between 3 and 8 interests', 'error');
       return;
     }
     
-    // Simply join the interests with commas without adding the curly braces
     const interestsString = interests.join(', ');
-    
-    // Send the interests as a simple string
     const success = await updateField('interests', { interests: interestsString });
     if (success) {
       setActiveSection(null);
@@ -366,15 +368,10 @@ export default function ProfileEditScreen() {
 
   const handleUpdatePrompts = async () => {
     if (prompts.length < 1) {
-      Toast.show({
-        type: 'error',
-        text1: 'Invalid Prompts',
-        text2: 'Please add at least one prompt'
-      });
+      toast.show('Please add at least one prompt', 'error');
       return;
     }
 
-    // Format prompts for the API
     const promptsData = {
       prompts: prompts
     };
@@ -388,25 +385,18 @@ export default function ProfileEditScreen() {
 
   const addPrompt = () => {
     if (!promptQuestion || !promptAnswer.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: 'Invalid Prompt',
-        text2: 'Please provide both a question and answer'
-      });
+      toast.show('Please provide both a question and answer', 'error');
       return;
     }
 
     if (activePrompt !== null) {
-      // Edit existing prompt
       const updatedPrompts = [...prompts];
       updatedPrompts[activePrompt] = { question: promptQuestion, answer: promptAnswer };
       setPrompts(updatedPrompts);
     } else {
-      // Add new prompt
       setPrompts([...prompts, { question: promptQuestion, answer: promptAnswer }]);
     }
 
-    // Reset fields
     setPromptQuestion("");
     setPromptAnswer("");
     setActivePrompt(null);
@@ -434,11 +424,7 @@ export default function ProfileEditScreen() {
         return prev.filter(i => i !== interest);
       } else {
         if (prev.length >= 8) {
-          Toast.show({
-            type: 'error',
-            text1: 'Maximum 8 interests allowed',
-            text2: 'Please remove some interests before adding more'
-          });
+          toast.show('Maximum 8 interests allowed', 'error');
           return prev;
         }
         return [...prev, interest];
@@ -446,11 +432,85 @@ export default function ProfileEditScreen() {
     });
   };
 
+  const handleAddContact = async () => {
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) {
+        toast.show('Authentication required', 'error');
+        return;
+      }
+
+      if (currentStep === 1 && !formData.name) {
+        toast.show('Please enter contact name', 'error');
+        return;
+      }
+      if (currentStep === 2 && !formData.number) {
+        toast.show('Please enter phone number', 'error');
+        return;
+      }
+      if (currentStep === 3) {
+        if (!formData.relationship) {
+          toast.show('Please enter relationship', 'error');
+          return;
+        }
+
+        const response = await axios.post(`${API_URL}/users/trusted-contacts`, formData, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.data.status === 'success') {
+          toast.show('Contact added successfully', 'success');
+          resetForm();
+          closeForm();
+          await fetchUserProfile();
+        }
+      } else {
+        handleNextStep();
+      }
+    } catch (err: any) {
+      console.error('API Error:', err.response || err);
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to add contact';
+      toast.show(errorMessage, 'error');
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast.show('Signed out successfully', 'info');
+      router.replace("/auth");
+    } catch (error) {
+      console.error("Sign out error:", error);
+      toast.show('Failed to sign out', 'error');
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      number: '',
+      relationship: ''
+    });
+    setCurrentStep(1);
+  };
+
+  const closeForm = () => {
+    setIsBottomSheetVisible(false);
+    resetForm();
+  };
+
+  const handleNextStep = () => {
+    setCurrentStep(prev => prev + 1);
+  };
+
   // Loading state with skeleton
   if (loading && !showSkeleton) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
-        <StatusBar style="light" />
+        <StatusBar style='light' />
         <LinearGradient
           colors={['#7C3AED', '#06B6D4']}
           start={{ x: 0, y: 0 }}
@@ -499,7 +559,7 @@ export default function ProfileEditScreen() {
   if (error) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
-        <StatusBar style="light" />
+        <StatusBar style='light' />
         <LinearGradient
           colors={['#7C3AED', '#06B6D4']}
           start={{ x: 0, y: 0 }}
@@ -537,515 +597,517 @@ export default function ProfileEditScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
-      <StatusBar style="light" />
-      {/* Header */}
-      <LinearGradient
-        colors={['#7C3AED', '#06B6D4']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        className="px-4 pt-12 pb-20"
-      >
-        <View className="flex-row items-center justify-between mb-6">
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
-          </TouchableOpacity>
-          <Text className="text-xl text-white font-youngSerif">Edit Profile</Text>
-          <View style={{ width: 24 }} />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView className="flex-1 bg-neutral-light">
+        <StatusBar style='light' />
+        {/* Header */}
+        <LinearGradient
+          colors={['#7C3AED', '#06B6D4']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="px-4 pt-12 pb-20"
+        >
+          <View className="flex-row items-center justify-between mb-6">
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={24} color="#FFF" />
+            </TouchableOpacity>
+            <Text className="text-xl text-white font-youngSerif">Edit Profile</Text>
+            <View style={{ width: 24 }} />
+          </View>
+
+          {/* Profile Image Section */}
+          <MotiView 
+            from={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring' }}
+            className="items-center"
+          >
+            <View className="relative">
+              <LinearGradient
+                colors={['#7C3AED', '#06B6D4']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                className="w-32 h-32 rounded-full p-2"
+              >
+                {profile?.profile_photo ? (
+                  <Image
+                    source={{ uri: profile.profile_photo }}
+                    className="w-full h-full rounded-full border-4 border-white"
+                    defaultSource={require('@/assets/images/safarsaathi.png')}
+                  />
+                ) : (
+                  <View className="w-full h-full rounded-full bg-white items-center justify-center">
+                    <Ionicons name="person" size={50} color="#7C3AED" />
+                  </View>
+                )}
+              </LinearGradient>
+              <TouchableOpacity className="absolute bottom-0 right-0 bg-secondary w-10 h-10 rounded-full items-center justify-center border-4 border-white">
+                <Ionicons name="camera" size={16} color="white" />
+              </TouchableOpacity>
+            </View>
+          </MotiView>
+        </LinearGradient>
+
+        {/* Tab Navigation */}
+        <View className="flex-row px-4 -mt-12 mb-4">
+          {['Basic Info', 'Details', 'Interests'].map((tab, index) => (
+            <TouchableOpacity
+              key={tab}
+              onPress={() => setActiveTab(index)}
+              className={`flex-1 py-3 ${index === 1 ? 'mx-2' : ''}`}
+            >
+              <LinearGradient
+                colors={activeTab === index ? ['#7C3AED', '#06B6D4'] : ['#F8F9FA', '#F8F9FA']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                className="px-4 py-3 rounded-2xl items-center"
+              >
+                <Text className={`font-montserratMedium ${activeTab === index ? 'text-white' : 'text-neutral-dark'}`}>
+                  {tab}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {/* Profile Image Section */}
-        <MotiView 
-          from={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'spring' }}
-          className="items-center"
+        <ScrollView 
+          className="flex-1 px-4"
+          showsVerticalScrollIndicator={false}
         >
-          <View className="relative">
-            <LinearGradient
-              colors={['#7C3AED', '#06B6D4']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              className="w-32 h-32 rounded-full p-2"
-            >
-              {profile?.profile_photo ? (
-                <Image
-                  source={{ uri: profile.profile_photo }}
-                  className="w-full h-full rounded-full border-4 border-white"
-                  defaultSource={require('@/assets/images/avatar.png')}
-                />
-              ) : (
-                <View className="w-full h-full rounded-full bg-white items-center justify-center">
-                  <Ionicons name="person" size={50} color="#7C3AED" />
-                </View>
-              )}
-            </LinearGradient>
-            <TouchableOpacity className="absolute bottom-0 right-0 bg-secondary w-10 h-10 rounded-full items-center justify-center border-4 border-white">
-              <Ionicons name="camera" size={16} color="white" />
-            </TouchableOpacity>
-          </View>
-        </MotiView>
-      </LinearGradient>
-
-      {/* Tab Navigation */}
-      <View className="flex-row px-4 -mt-12 mb-4">
-        {['Basic Info', 'Details', 'Interests'].map((tab, index) => (
-          <TouchableOpacity
-            key={tab}
-            onPress={() => setActiveTab(index)}
-            className={`flex-1 py-3 ${index === 1 ? 'mx-2' : ''}`}
-          >
-            <LinearGradient
-              colors={activeTab === index ? ['#7C3AED', '#06B6D4'] : ['#F8F9FA', '#F8F9FA']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              className="px-4 py-3 rounded-2xl items-center"
-            >
-              <Text className={`font-montserratMedium ${activeTab === index ? 'text-white' : 'text-neutral-dark'}`}>
-                {tab}
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <ScrollView 
-        className="flex-1 px-4"
-        showsVerticalScrollIndicator={false}
-      >
-        <AnimatePresence>
-          {activeTab === 0 && (
-            <MotiView
-              from={{ opacity: 0, translateX: -20 }}
-              animate={{ opacity: 1, translateX: 0 }}
-              exit={{ opacity: 0, translateX: 20 }}
-              className="space-y-4"
-            >
-              {/* Username Section */}
-              <View className="bg-white rounded-3xl p-6 shadow-card">
-                <Text className="text-lg font-montserratBold text-neutral-darkest mb-2">Username</Text>
-                <View className="flex-row items-center bg-neutral-light rounded-xl px-4 py-3">
-                  <Ionicons name="person" size={20} color="#7C3AED" />
-                  <TextInput
-                    value={username}
-                    onChangeText={setUsername}
-                    placeholder="Enter username"
-                    className="flex-1 ml-3 font-montserrat text-neutral-darkest"
-                  />
-                </View>
-                <TouchableOpacity
-                  onPress={handleUpdateUsername}
-                  disabled={saving}
-                  className="mt-4 bg-primary rounded-xl py-3 items-center"
-                >
-                  {saving ? (
-                    <ActivityIndicator color="white" />
-                  ) : (
-                    <Text className="text-white font-montserratMedium">Update Username</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              {/* Age Section */}
-              <View className="bg-white rounded-3xl p-6 shadow-card">
-                <Text className="text-lg font-montserratBold text-neutral-darkest mb-4">Age</Text>
-                <View className="items-center">
-                  <LinearGradient
-                    colors={['#7C3AED', '#06B6D4']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    className="w-32 h-32 rounded-full items-center justify-center"
-                  >
-                    <Text className="text-4xl font-montserratBold text-white">{age}</Text>
-                  </LinearGradient>
-                  <View className="flex-row items-center mt-6 space-x-6">
-                    <TouchableOpacity
-                      onPress={() => setAge(prev => Math.max(18, prev - 1))}
-                      className="w-12 h-12 bg-neutral-light rounded-full items-center justify-center"
-                    >
-                      <Ionicons name="remove" size={24} color="#7C3AED" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => setAge(prev => Math.min(100, prev + 1))}
-                      className="w-12 h-12 bg-neutral-light rounded-full items-center justify-center"
-                    >
-                      <Ionicons name="add" size={24} color="#7C3AED" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-                <TouchableOpacity
-                  onPress={handleUpdateAge}
-                  disabled={saving}
-                  className="mt-6 bg-primary rounded-xl py-3 items-center"
-                >
-                  {saving ? (
-                    <ActivityIndicator color="white" />
-                  ) : (
-                    <Text className="text-white font-montserratMedium">Update Age</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              {/* Bio Section */}
-              <View className="bg-white rounded-3xl p-6 shadow-card mb-6">
-                <Text className="text-lg font-montserratBold text-neutral-darkest mb-2">Bio</Text>
-                <View className="bg-neutral-light rounded-xl p-4">
-                  <TextInput
-                    value={bio}
-                    onChangeText={setBio}
-                    placeholder="Tell us about yourself..."
-                    multiline
-                    numberOfLines={6}
-                    className="font-montserrat text-neutral-darkest"
-                    textAlignVertical="top"
-                  />
-                </View>
-                <Text className="text-right text-neutral-dark mt-2 font-montserrat">
-                  {bio.length}/300 characters
-                </Text>
-                <TouchableOpacity
-                  onPress={handleUpdateBio}
-                  disabled={saving}
-                  className="mt-4 bg-primary rounded-xl py-3 items-center"
-                >
-                  {saving ? (
-                    <ActivityIndicator color="white" />
-                  ) : (
-                    <Text className="text-white font-montserratMedium">Update Bio</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </MotiView>
-          )}
-
-          {activeTab === 1 && (
-            <MotiView
-              from={{ opacity: 0, translateX: -20 }}
-              animate={{ opacity: 1, translateX: 0 }}
-              exit={{ opacity: 0, translateX: 20 }}
-              className="space-y-4"
-            >
-              {/* Gender Section */}
-              <View className="bg-white rounded-3xl p-6 shadow-card">
-                <Text className="text-lg font-montserratBold text-neutral-darkest mb-4">Gender</Text>
-                <View className="flex-row flex-wrap justify-between">
-                  {GENDERS.map((item) => (
-                    <TouchableOpacity
-                      key={item.id}
-                      onPress={() => setGender(item.id)}
-                      className="w-[48%] mb-4"
-                    >
-                      <LinearGradient
-                        colors={gender === item.id 
-                          ? [item.color + '20', item.color + '40']
-                          : ['#F8F9FA', '#F8F9FA']}
-                        className="p-4 rounded-2xl items-center border border-neutral-medium"
-                      >
-                        <View className={`w-12 h-12 rounded-full items-center justify-center mb-2 ${
-                          gender === item.id ? `bg-[${item.color}]` : 'bg-neutral-light'
-                        }`}>
-                          <Ionicons 
-                            name={item.icon as any} 
-                            size={24} 
-                            color={gender === item.id ? '#fff' : item.color} 
-                          />
-                        </View>
-                        <Text className={`font-montserratMedium ${
-                          gender === item.id ? `text-[${item.color}]` : 'text-neutral-dark'
-                        }`}>
-                          {item.label}
-                        </Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <TouchableOpacity
-                  onPress={handleUpdateGender}
-                  disabled={saving}
-                  className="mt-4 bg-primary rounded-xl py-3 items-center"
-                >
-                  {saving ? (
-                    <ActivityIndicator color="white" />
-                  ) : (
-                    <Text className="text-white font-montserratMedium">Update Gender</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              {/* Occupation Section */}
-              <View className="bg-white rounded-3xl p-6 shadow-card">
-                <Text className="text-lg font-montserratBold text-neutral-darkest mb-4">Occupation</Text>
-                <View className="flex-row flex-wrap justify-between">
-                  {OCCUPATIONS.map((item) => (
-                    <TouchableOpacity
-                      key={item.id}
-                      onPress={() => setOccupation(item.id)}
-                      className="w-[48%] mb-4"
-                    >
-                      <LinearGradient
-                        colors={occupation === item.id 
-                          ? [item.color + '20', item.color + '40']
-                          : ['#F8F9FA', '#F8F9FA']}
-                        className="p-4 rounded-2xl items-center border border-neutral-medium"
-                      >
-                        <View className={`w-12 h-12 rounded-full items-center justify-center mb-2 ${
-                          occupation === item.id ? `bg-[${item.color}]` : 'bg-neutral-light'
-                        }`}>
-                          <Ionicons 
-                            name={item.icon as any} 
-                            size={24} 
-                            color={occupation === item.id ? '#fff' : item.color} 
-                          />
-                        </View>
-                        <Text className={`font-montserratMedium ${
-                          occupation === item.id ? `text-[${item.color}]` : 'text-neutral-dark'
-                        }`}>
-                          {item.label}
-                        </Text>
-                        <Text className="text-xs text-neutral-dark text-center mt-1">
-                          {item.description}
-                        </Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <TouchableOpacity
-                  onPress={handleUpdateOccupation}
-                  disabled={saving}
-                  className="mt-4 bg-primary rounded-xl py-3 items-center"
-                >
-                  {saving ? (
-                    <ActivityIndicator color="white" />
-                  ) : (
-                    <Text className="text-white font-montserratMedium">Update Occupation</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              {/* Location Section */}
-              <View className="bg-white rounded-3xl p-6 shadow-card mb-6">
-                <Text className="text-lg font-montserratBold text-neutral-darkest mb-2">Location</Text>
-                <View className="flex-row items-center bg-neutral-light rounded-xl px-4 py-3">
-                  <Ionicons name="location" size={20} color="#7C3AED" />
-                  <TextInput
-                    value={location}
-                    onChangeText={setLocation}
-                    placeholder="Enter your location"
-                    className="flex-1 ml-3 font-montserrat text-neutral-darkest"
-                  />
-                </View>
-                <TouchableOpacity
-                  onPress={handleUpdateLocation}
-                  disabled={saving}
-                  className="mt-4 bg-primary rounded-xl py-3 items-center"
-                >
-                  {saving ? (
-                    <ActivityIndicator color="white" />
-                  ) : (
-                    <Text className="text-white font-montserratMedium">Update Location</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </MotiView>
-          )}
-
-          {activeTab === 2 && (
-            <MotiView
-              from={{ opacity: 0, translateX: -20 }}
-              animate={{ opacity: 1, translateX: 0 }}
-              exit={{ opacity: 0, translateX: 20 }}
-              className="space-y-4"
-            >
-              {/* Interests Section */}
-              <View className="bg-white rounded-3xl p-6 shadow-card">
-                <Text className="text-lg font-montserratBold text-neutral-darkest mb-2">Interests</Text>
-                <Text className="text-neutral-dark mb-4">Select 3-8 interests that define you</Text>
-                
-                {/* Progress Bar */}
-                <View className="mb-6">
-                  <View className="h-2 bg-neutral-light rounded-full overflow-hidden">
-                    <MotiView
-                      animate={{
-                        width: `${Math.min(100, (interests.length / 8) * 100)}%`,
-                        backgroundColor: interests.length >= 3 ? '#06B6D4' : '#7C3AED'
-                      }}
-                      transition={{ type: 'spring' }}
-                      className="h-full rounded-full"
+          <AnimatePresence>
+            {activeTab === 0 && (
+              <MotiView
+                from={{ opacity: 0, translateX: -20 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: 20 }}
+                className="space-y-4"
+              >
+                {/* Username Section */}
+                <View className="bg-white rounded-3xl p-6 shadow-card">
+                  <Text className="text-lg font-montserratBold text-neutral-darkest mb-2">Username</Text>
+                  <View className="flex-row items-center bg-neutral-light rounded-xl px-4 py-3">
+                    <Ionicons name="person" size={20} color="#7C3AED" />
+                    <TextInput
+                      value={username}
+                      onChangeText={setUsername}
+                      placeholder="Enter username"
+                      className="flex-1 ml-3 font-montserrat text-neutral-darkest"
                     />
                   </View>
-                  <View className="flex-row justify-between mt-2">
-                    <Text className="text-neutral-dark font-montserrat">
-                      {interests.length}/8 selected
-                    </Text>
-                    {interests.length < 3 && (
-                      <Text className="text-error font-montserrat">
-                        Select at least 3
-                      </Text>
+                  <TouchableOpacity
+                    onPress={handleUpdateUsername}
+                    disabled={saving}
+                    className="mt-4 bg-primary rounded-xl py-3 items-center"
+                  >
+                    {saving ? (
+                      <ActivityIndicator color="white" />
+                    ) : (
+                      <Text className="text-white font-montserratMedium">Update Username</Text>
                     )}
-                  </View>
+                  </TouchableOpacity>
                 </View>
 
-                {/* Interest Categories */}
-                {INTEREST_CATEGORIES.map((category, categoryIndex) => (
-                  <MotiView
-                    key={category.id}
-                    from={{ opacity: 0, translateY: 20 }}
-                    animate={{ opacity: 1, translateY: 0 }}
-                    transition={{ delay: categoryIndex * 100 }}
-                    className="mb-6 last:mb-0"
-                  >
-                    <View className="flex-row items-center mb-3">
-                      <Ionicons name={category.icon as any} size={20} color="#7C3AED" />
-                      <Text className="text-neutral-darkest font-montserratMedium ml-2">
-                        {category.name}
-                      </Text>
+                {/* Age Section */}
+                <View className="bg-white rounded-3xl p-6 shadow-card">
+                  <Text className="text-lg font-montserratBold text-neutral-darkest mb-4">Age</Text>
+                  <View className="items-center">
+                    <LinearGradient
+                      colors={['#7C3AED', '#06B6D4']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      className="w-32 h-32 rounded-full items-center justify-center"
+                    >
+                      <Text className="text-4xl font-montserratBold text-white">{age}</Text>
+                    </LinearGradient>
+                    <View className="flex-row items-center mt-6 space-x-6">
+                      <TouchableOpacity
+                        onPress={() => setAge(prev => Math.max(18, prev - 1))}
+                        className="w-12 h-12 bg-neutral-light rounded-full items-center justify-center"
+                      >
+                        <Ionicons name="remove" size={24} color="#7C3AED" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => setAge(prev => Math.min(100, prev + 1))}
+                        className="w-12 h-12 bg-neutral-light rounded-full items-center justify-center"
+                      >
+                        <Ionicons name="add" size={24} color="#7C3AED" />
+                      </TouchableOpacity>
                     </View>
-                    <View className="flex-row flex-wrap">
-                      {category.interests.map((interest, index) => (
-                        <TouchableOpacity
-                          key={interest}
-                          onPress={() => toggleInterest(interest)}
-                          className="mr-2 mb-2"
-                        >
-                          <LinearGradient
-                            colors={interests.includes(interest)
-                              ? ['#7C3AED', '#06B6D4']
-                              : ['#F8F9FA', '#F8F9FA']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            className="px-4 py-2 rounded-xl border border-neutral-medium"
-                          >
-                            <Text className={interests.includes(interest)
-                              ? 'text-white font-montserratMedium'
-                              : 'text-neutral-dark font-montserrat'
-                            }>
-                              {interest}
-                            </Text>
-                          </LinearGradient>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </MotiView>
-                ))}
-
-                <TouchableOpacity
-                  onPress={handleUpdateInterests}
-                  disabled={saving || interests.length < 3}
-                  className={`mt-6 rounded-xl py-3 items-center ${
-                    interests.length >= 3 ? 'bg-primary' : 'bg-neutral-medium'
-                  }`}
-                >
-                  {saving ? (
-                    <ActivityIndicator color="white" />
-                  ) : (
-                    <Text className="text-white font-montserratMedium">
-                      Update Interests
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              {/* Prompts Section */}
-              <View className="bg-white rounded-3xl p-6 shadow-card mb-6">
-                <Text className="text-lg font-montserratBold text-neutral-darkest mb-4">Prompts</Text>
-                
-                {/* Add New Prompt */}
-                <View className="bg-neutral-light rounded-2xl p-4 mb-6">
-                  <TouchableOpacity 
-                    className="flex-row items-center justify-between bg-white rounded-xl p-4 mb-4"
-                    onPress={() => {
-                      // Add dropdown logic here
-                      if (activePrompt === null && promptQuestion === "") {
-                        setPromptQuestion(PROMPT_QUESTIONS[0]);
-                      }
-                    }}
+                  </View>
+                  <TouchableOpacity
+                    onPress={handleUpdateAge}
+                    disabled={saving}
+                    className="mt-6 bg-primary rounded-xl py-3 items-center"
                   >
-                    <Text className={promptQuestion ? 'text-neutral-darkest' : 'text-neutral-dark'}>
-                      {promptQuestion || "Select a prompt..."}
-                    </Text>
-                    <Ionicons name="chevron-down" size={20} color="#7C3AED" />
+                    {saving ? (
+                      <ActivityIndicator color="white" />
+                    ) : (
+                      <Text className="text-white font-montserratMedium">Update Age</Text>
+                    )}
                   </TouchableOpacity>
+                </View>
 
-                  <TextInput
-                    value={promptAnswer}
-                    onChangeText={setPromptAnswer}
-                    placeholder="Your answer..."
-                    multiline
-                    numberOfLines={4}
-                    className="bg-white rounded-xl p-4 font-montserrat text-neutral-darkest"
-                    textAlignVertical="top"
-                  />
+                {/* Bio Section */}
+                <View className="bg-white rounded-3xl p-6 shadow-card mb-6">
+                  <Text className="text-lg font-montserratBold text-neutral-darkest mb-2">Bio</Text>
+                  <View className="bg-neutral-light rounded-xl p-4">
+                    <TextInput
+                      value={bio}
+                      onChangeText={setBio}
+                      placeholder="Tell us about yourself..."
+                      multiline
+                      numberOfLines={6}
+                      className="font-montserrat text-neutral-darkest"
+                      textAlignVertical="top"
+                    />
+                  </View>
+                  <Text className="text-right text-neutral-dark mt-2 font-montserrat">
+                    {bio.length}/300 characters
+                  </Text>
+                  <TouchableOpacity
+                    onPress={handleUpdateBio}
+                    disabled={saving}
+                    className="mt-4 bg-primary rounded-xl py-3 items-center"
+                  >
+                    {saving ? (
+                      <ActivityIndicator color="white" />
+                    ) : (
+                      <Text className="text-white font-montserratMedium">Update Bio</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </MotiView>
+            )}
+
+            {activeTab === 1 && (
+              <MotiView
+                from={{ opacity: 0, translateX: -20 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: 20 }}
+                className="space-y-4"
+              >
+                {/* Gender Section */}
+                <View className="bg-white rounded-3xl p-6 shadow-card">
+                  <Text className="text-lg font-montserratBold text-neutral-darkest mb-4">Gender</Text>
+                  <View className="flex-row flex-wrap justify-between">
+                    {GENDERS.map((item) => (
+                      <TouchableOpacity
+                        key={item.id}
+                        onPress={() => setGender(item.id)}
+                        className="w-[48%] mb-4"
+                      >
+                        <LinearGradient
+                          colors={gender === item.id 
+                            ? [item.color + '20', item.color + '40']
+                            : ['#F8F9FA', '#F8F9FA']}
+                          className="p-4 rounded-2xl items-center border border-neutral-medium"
+                        >
+                          <View className={`w-12 h-12 rounded-full items-center justify-center mb-2 ${
+                            gender === item.id ? `bg-[${item.color}]` : 'bg-neutral-light'
+                          }`}>
+                            <Ionicons 
+                              name={item.icon as any} 
+                              size={24} 
+                              color={gender === item.id ? '#fff' : item.color} 
+                            />
+                          </View>
+                          <Text className={`font-montserratMedium ${
+                            gender === item.id ? `text-[${item.color}]` : 'text-neutral-dark'
+                          }`}>
+                            {item.label}
+                          </Text>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <TouchableOpacity
+                    onPress={handleUpdateGender}
+                    disabled={saving}
+                    className="mt-4 bg-primary rounded-xl py-3 items-center"
+                  >
+                    {saving ? (
+                      <ActivityIndicator color="white" />
+                    ) : (
+                      <Text className="text-white font-montserratMedium">Update Gender</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                {/* Occupation Section */}
+                <View className="bg-white rounded-3xl p-6 shadow-card">
+                  <Text className="text-lg font-montserratBold text-neutral-darkest mb-4">Occupation</Text>
+                  <View className="flex-row flex-wrap justify-between">
+                    {OCCUPATIONS.map((item) => (
+                      <TouchableOpacity
+                        key={item.id}
+                        onPress={() => setOccupation(item.id)}
+                        className="w-[48%] mb-4"
+                      >
+                        <LinearGradient
+                          colors={occupation === item.id 
+                            ? [item.color + '20', item.color + '40']
+                            : ['#F8F9FA', '#F8F9FA']}
+                          className="p-4 rounded-2xl items-center border border-neutral-medium"
+                        >
+                          <View className={`w-12 h-12 rounded-full items-center justify-center mb-2 ${
+                            occupation === item.id ? `bg-[${item.color}]` : 'bg-neutral-light'
+                          }`}>
+                            <Ionicons 
+                              name={item.icon as any} 
+                              size={24} 
+                              color={occupation === item.id ? '#fff' : item.color} 
+                            />
+                          </View>
+                          <Text className={`font-montserratMedium ${
+                            occupation === item.id ? `text-[${item.color}]` : 'text-neutral-dark'
+                          }`}>
+                            {item.label}
+                          </Text>
+                          <Text className="text-xs text-neutral-dark text-center mt-1">
+                            {item.description}
+                          </Text>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <TouchableOpacity
+                    onPress={handleUpdateOccupation}
+                    disabled={saving}
+                    className="mt-4 bg-primary rounded-xl py-3 items-center"
+                  >
+                    {saving ? (
+                      <ActivityIndicator color="white" />
+                    ) : (
+                      <Text className="text-white font-montserratMedium">Update Occupation</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                {/* Location Section */}
+                <View className="bg-white rounded-3xl p-6 shadow-card mb-6">
+                  <Text className="text-lg font-montserratBold text-neutral-darkest mb-2">Location</Text>
+                  <View className="flex-row items-center bg-neutral-light rounded-xl px-4 py-3">
+                    <Ionicons name="location" size={20} color="#7C3AED" />
+                    <TextInput
+                      value={location}
+                      onChangeText={setLocation}
+                      placeholder="Enter your location"
+                      className="flex-1 ml-3 font-montserrat text-neutral-darkest"
+                    />
+                  </View>
+                  <TouchableOpacity
+                    onPress={handleUpdateLocation}
+                    disabled={saving}
+                    className="mt-4 bg-primary rounded-xl py-3 items-center"
+                  >
+                    {saving ? (
+                      <ActivityIndicator color="white" />
+                    ) : (
+                      <Text className="text-white font-montserratMedium">Update Location</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </MotiView>
+            )}
+
+            {activeTab === 2 && (
+              <MotiView
+                from={{ opacity: 0, translateX: -20 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: 20 }}
+                className="space-y-4"
+              >
+                {/* Interests Section */}
+                <View className="bg-white rounded-3xl p-6 shadow-card">
+                  <Text className="text-lg font-montserratBold text-neutral-darkest mb-2">Interests</Text>
+                  <Text className="text-neutral-dark mb-4">Select 3-8 interests that define you</Text>
+                  
+                  {/* Progress Bar */}
+                  <View className="mb-6">
+                    <View className="h-2 bg-neutral-light rounded-full overflow-hidden">
+                      <MotiView
+                        animate={{
+                          width: `${Math.min(100, (interests.length / 8) * 100)}%`,
+                          backgroundColor: interests.length >= 3 ? '#06B6D4' : '#7C3AED'
+                        }}
+                        transition={{ type: 'spring' }}
+                        className="h-full rounded-full"
+                      />
+                    </View>
+                    <View className="flex-row justify-between mt-2">
+                      <Text className="text-neutral-dark font-montserrat">
+                        {interests.length}/8 selected
+                      </Text>
+                      {interests.length < 3 && (
+                        <Text className="text-error font-montserrat">
+                          Select at least 3
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+
+                  {/* Interest Categories */}
+                  {INTEREST_CATEGORIES.map((category, categoryIndex) => (
+                    <MotiView
+                      key={category.id}
+                      from={{ opacity: 0, translateY: 20 }}
+                      animate={{ opacity: 1, translateY: 0 }}
+                      transition={{ delay: categoryIndex * 100 }}
+                      className="mb-6 last:mb-0"
+                    >
+                      <View className="flex-row items-center mb-3">
+                        <Ionicons name={category.icon as any} size={20} color="#7C3AED" />
+                        <Text className="text-neutral-darkest font-montserratMedium ml-2">
+                          {category.name}
+                        </Text>
+                      </View>
+                      <View className="flex-row flex-wrap">
+                        {category.interests.map((interest, index) => (
+                          <TouchableOpacity
+                            key={interest}
+                            onPress={() => toggleInterest(interest)}
+                            className="mr-2 mb-2"
+                          >
+                            <LinearGradient
+                              colors={interests.includes(interest)
+                                ? ['#7C3AED', '#06B6D4']
+                                : ['#F8F9FA', '#F8F9FA']}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 1 }}
+                              className="px-4 py-2 rounded-xl border border-neutral-medium"
+                            >
+                              <Text className={interests.includes(interest)
+                                ? 'text-white font-montserratMedium'
+                                : 'text-neutral-dark font-montserrat'
+                              }>
+                                {interest}
+                              </Text>
+                            </LinearGradient>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </MotiView>
+                  ))}
 
                   <TouchableOpacity
-                    onPress={addPrompt}
-                    disabled={!promptQuestion || !promptAnswer.trim()}
-                    className={`mt-4 rounded-xl py-3 items-center ${
-                      promptQuestion && promptAnswer.trim() ? 'bg-primary' : 'bg-neutral-medium'
+                    onPress={handleUpdateInterests}
+                    disabled={saving || interests.length < 3}
+                    className={`mt-6 rounded-xl py-3 items-center ${
+                      interests.length >= 3 ? 'bg-primary' : 'bg-neutral-medium'
                     }`}
                   >
-                    <Text className="text-white font-montserratMedium">
-                      {activePrompt !== null ? 'Update Prompt' : 'Add Prompt'}
-                    </Text>
+                    {saving ? (
+                      <ActivityIndicator color="white" />
+                    ) : (
+                      <Text className="text-white font-montserratMedium">
+                        Update Interests
+                      </Text>
+                    )}
                   </TouchableOpacity>
                 </View>
 
-                {/* Existing Prompts */}
-                {prompts.map((prompt, index) => (
-                  <MotiView
-                    key={index}
-                    from={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: index * 100 }}
-                    className="bg-neutral-light rounded-2xl p-4 mb-4 last:mb-0"
-                  >
-                    <View className="flex-row justify-between items-start">
-                      <View className="flex-1 mr-4">
-                        <Text className="text-primary font-montserratBold mb-2">
-                          {prompt.question}
-                        </Text>
-                        <Text className="text-neutral-dark font-montserrat">
-                          {prompt.answer}
-                        </Text>
-                      </View>
-                      <View className="flex-row">
-                        <TouchableOpacity
-                          onPress={() => editPrompt(index)}
-                          className="w-8 h-8 bg-white rounded-full items-center justify-center mr-2"
-                        >
-                          <Ionicons name="create" size={16} color="#7C3AED" />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => deletePrompt(index)}
-                          className="w-8 h-8 bg-white rounded-full items-center justify-center"
-                        >
-                          <Ionicons name="trash" size={16} color="#EF4444" />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </MotiView>
-                ))}
+                {/* Prompts Section */}
+                <View className="bg-white rounded-3xl p-6 shadow-card mb-6">
+                  <Text className="text-lg font-montserratBold text-neutral-darkest mb-4">Prompts</Text>
+                  
+                  {/* Add New Prompt */}
+                  <View className="bg-neutral-light rounded-2xl p-4 mb-6">
+                    <TouchableOpacity 
+                      className="flex-row items-center justify-between bg-white rounded-xl p-4 mb-4"
+                      onPress={() => {
+                        // Add dropdown logic here
+                        if (activePrompt === null && promptQuestion === "") {
+                          setPromptQuestion(PROMPT_QUESTIONS[0]);
+                        }
+                      }}
+                    >
+                      <Text className={promptQuestion ? 'text-neutral-darkest' : 'text-neutral-dark'}>
+                        {promptQuestion || "Select a prompt..."}
+                      </Text>
+                      <Ionicons name="chevron-down" size={20} color="#7C3AED" />
+                    </TouchableOpacity>
 
-                <TouchableOpacity
-                  onPress={handleUpdatePrompts}
-                  disabled={saving || prompts.length < 1}
-                  className={`mt-6 rounded-xl py-3 items-center ${
-                    prompts.length >= 1 ? 'bg-primary' : 'bg-neutral-medium'
-                  }`}
-                >
-                  {saving ? (
-                    <ActivityIndicator color="white" />
-                  ) : (
-                    <Text className="text-white font-montserratMedium">
-                      Save All Prompts
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </MotiView>
-          )}
-        </AnimatePresence>
-      </ScrollView>
-    </SafeAreaView>
+                    <TextInput
+                      value={promptAnswer}
+                      onChangeText={setPromptAnswer}
+                      placeholder="Your answer..."
+                      multiline
+                      numberOfLines={4}
+                      className="bg-white rounded-xl p-4 font-montserrat text-neutral-darkest"
+                      textAlignVertical="top"
+                    />
+
+                    <TouchableOpacity
+                      onPress={addPrompt}
+                      disabled={!promptQuestion || !promptAnswer.trim()}
+                      className={`mt-4 rounded-xl py-3 items-center ${
+                        promptQuestion && promptAnswer.trim() ? 'bg-primary' : 'bg-neutral-medium'
+                      }`}
+                    >
+                      <Text className="text-white font-montserratMedium">
+                        {activePrompt !== null ? 'Update Prompt' : 'Add Prompt'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Existing Prompts */}
+                  {prompts.map((prompt, index) => (
+                    <MotiView
+                      key={index}
+                      from={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: index * 100 }}
+                      className="bg-neutral-light rounded-2xl p-4 mb-4 last:mb-0"
+                    >
+                      <View className="flex-row justify-between items-start">
+                        <View className="flex-1 mr-4">
+                          <Text className="text-primary font-montserratBold mb-2">
+                            {prompt.question}
+                          </Text>
+                          <Text className="text-neutral-dark font-montserrat">
+                            {prompt.answer}
+                          </Text>
+                        </View>
+                        <View className="flex-row">
+                          <TouchableOpacity
+                            onPress={() => editPrompt(index)}
+                            className="w-8 h-8 bg-white rounded-full items-center justify-center mr-2"
+                          >
+                            <Ionicons name="create" size={16} color="#7C3AED" />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => deletePrompt(index)}
+                            className="w-8 h-8 bg-white rounded-full items-center justify-center"
+                          >
+                            <Ionicons name="trash" size={16} color="#EF4444" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </MotiView>
+                  ))}
+
+                  <TouchableOpacity
+                    onPress={handleUpdatePrompts}
+                    disabled={saving || prompts.length < 1}
+                    className={`mt-6 rounded-xl py-3 items-center ${
+                      prompts.length >= 1 ? 'bg-primary' : 'bg-neutral-medium'
+                    }`}
+                  >
+                    {saving ? (
+                      <ActivityIndicator color="white" />
+                    ) : (
+                      <Text className="text-white font-montserratMedium">
+                        Save All Prompts
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </MotiView>
+            )}
+          </AnimatePresence>
+        </ScrollView>
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }
 

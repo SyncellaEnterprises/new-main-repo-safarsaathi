@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, ActivityIndicator, Dimensions } from "react-native";
+import { View, Text, TouchableOpacity, ActivityIndicator, Dimensions, Image } from "react-native";
 import { useRouter } from "expo-router";
 import Animated, { 
   FadeInDown,
@@ -22,6 +22,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import IMAGES from "@/src/constants/images";
 
 const { width, height } = Dimensions.get('window');
 
@@ -165,6 +166,13 @@ export default function AgeScreen() {
 
   return (
     <View className="flex-1 bg-neutral-darkest">
+      {/* Background Pattern */}
+      <Image
+        source={IMAGES.patternBg}
+        className="absolute inset-0 w-full h-full opacity-10"
+        resizeMode="cover"
+      />
+
       {/* Floating Orbs */}
       <Animated.View style={[{
         position: 'absolute',

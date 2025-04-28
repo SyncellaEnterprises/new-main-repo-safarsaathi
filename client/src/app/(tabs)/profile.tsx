@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, TouchableOpacity, Image, ActivityIndicator, SafeAreaView, ScrollView, RefreshControl, Dimensions, Platform, TextInput, StatusBar } from "react-native";
+import { View, Text, TouchableOpacity, Image, ActivityIndicator, SafeAreaView, ScrollView, RefreshControl, Dimensions, Platform, TextInput, StatusBar, StyleSheet } from "react-native";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { router, useRouter } from "expo-router";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,6 +23,8 @@ import Animated, {
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuth } from "@/src/context/AuthContext";
 import { MotiView } from 'moti';
+import IMAGES from "@/src/constants/images";
+import { useToast } from "@/src/context/ToastContext";
 
 const { width, height } = Dimensions.get('window');
 
@@ -102,14 +104,15 @@ const BADGES = [
 ];
 
 const QUICK_ACTIONS = [
-  { id: 1, name: 'Edit Profile', icon: 'edit-2', color: '#7C3AED' },
-  { id: 2, name: 'Settings', icon: 'settings', color: '#06B6D4' },
-  { id: 3, name: 'Share', icon: 'share-2', color: '#F59E0B' },
+  { id: 1, name: 'Edit Profile', icon: 'edit-2', color: '#7C3AED', route: '/(profile)' },
+  { id: 2, name: 'Settings', icon: 'settings', color: '#06B6D4', route: '/(settings)/app-permissions' },
+  { id: 3, name: 'Share', icon: 'share-2', color: '#F59E0B', action: () => {} },
 ];
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { signOut } = useAuth();
+  const toast = useToast();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -294,37 +297,78 @@ export default function ProfileScreen() {
   // Add this function to handle sign out
   const handleSignOut = async () => {
     try {
+      setIsMenuVisible(false); // Close the menu first
       await signOut();
+      toast.show('Signed out successfully', 'info');
       router.replace("/auth");
+      console.log('Signed out successfully');
     } catch (error) {
       console.error("Sign out error:", error);
+      toast.show('Failed to sign out', 'error');
+    }
+  };
+
+  // Add this function to handle quick action press
+  const handleQuickActionPress = (action: typeof QUICK_ACTIONS[0]) => {
+    if (action.route) {
+      router.push(action.route as any);
+    } else if (action.action) {
+      action.action();
     }
   };
 
   if (loading && !refreshing) {
     return (
-      <View className="flex-1 bg-neutral-light items-center justify-center">
-        <StatusBar barStyle="light-content" />
-        <MotiView
-          from={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'timing', duration: 1000, loop: true }}
-        >
+      <View className="flex-1 bg-[#181825] items-center justify-center">
+        {/* Premium Gradient Background */}
+        <Animated.Image
+          source={IMAGES.patternBg}
+          style={{
+            position: 'absolute',
+            width: '120%',
+            height: '120%',
+            opacity: 0.10,
+            top: '-10%',
+            left: '-10%',
+          }}
+          resizeMode="cover"
+        />
+        <BlurView intensity={40} tint="dark" style={{ ...StyleSheet.absoluteFillObject, zIndex: 1 }}>
           <LinearGradient
-            colors={['#7C3AED', '#06B6D4']}
+            colors={["#7D5BA6", "#50A6A7", "#181825"]}
+            style={{ ...StyleSheet.absoluteFillObject }}
+            start={{ x: 0.1, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          />
+        </BlurView>
+        {/* Skeleton Profile Image */}
+        <Animated.View entering={ZoomIn.springify()} style={{ alignItems: 'center', zIndex: 2 }}>
+          <LinearGradient
+            colors={["#7D5BA6", "#50A6A7"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            className="w-32 h-32 rounded-full items-center justify-center"
+            style={{ width: 110, height: 110, borderRadius: 55, alignItems: 'center', justifyContent: 'center', marginBottom: 24, opacity: 0.7 }}
           >
-            <ActivityIndicator size="large" color="#fff" />
+            <View style={{ width: 90, height: 90, borderRadius: 45, backgroundColor: '#2e2e3a' }} />
           </LinearGradient>
-        </MotiView>
-        <Animated.Text 
-          entering={FadeInDown.delay(300).springify()} 
-          className="mt-6 text-xl font-youngSerif text-neutral-darkest"
-        >
-          Loading your profile...
-        </Animated.Text>
+          {/* Skeleton Name */}
+          <View style={{ width: 120, height: 22, borderRadius: 8, backgroundColor: '#2e2e3a', marginBottom: 12, opacity: 0.7 }} />
+          {/* Skeleton Badges */}
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 18 }}>
+            {[1,2,3].map(i => (
+              <View key={i} style={{ width: 60, height: 20, borderRadius: 10, backgroundColor: '#2e2e3a', opacity: 0.6 }} />
+            ))}
+          </View>
+          {/* Skeleton Stats */}
+          <View style={{ flexDirection: 'row', gap: 16, marginBottom: 24 }}>
+            {[1,2,3].map(i => (
+              <View key={i} style={{ width: 60, height: 32, borderRadius: 12, backgroundColor: '#2e2e3a', opacity: 0.5 }} />
+            ))}
+          </View>
+          {/* Skeleton Card */}
+          <View style={{ width: 320, height: 120, borderRadius: 24, backgroundColor: '#232336', opacity: 0.5, marginBottom: 18 }} />
+          <View style={{ width: 320, height: 80, borderRadius: 24, backgroundColor: '#232336', opacity: 0.4 }} />
+        </Animated.View>
       </View>
     );
   }
@@ -359,8 +403,8 @@ export default function ProfileScreen() {
         {/* Animated Header */}
         <Animated.View style={headerStyle}>
           <LinearGradient
-            colors={['#7C3AED', '#06B6D4']}
-            start={{ x: 0, y: 0 }}
+            colors={["#7D5BA6", "#50A6A7", "#181825"]}
+            start={{ x: 0.1, y: 0 }}
             end={{ x: 1, y: 1 }}
             className="px-4 pt-4 pb-20 rounded-b-[40px]"
           >
@@ -425,7 +469,7 @@ export default function ProfileScreen() {
                           <Image
                             source={{ uri: profile.profile_photo }}
                             className="w-full h-full"
-                            defaultSource={require('@/assets/images/avatar.png')}
+                            defaultSource={require('@/assets/images/safarsaathi.png')}
                           />
                         ) : (
                           <View className="w-full h-full bg-neutral-lightest items-center justify-center">
@@ -445,7 +489,7 @@ export default function ProfileScreen() {
                       >
                         <BlurView intensity={30} tint="light" className="rounded-full overflow-hidden">
                           <View className="flex-row items-center px-3 py-2 space-x-1">
-                            <MaterialCommunityIcons name={badge.icon} size={16} color={badge.color} />
+                            <MaterialCommunityIcons name={badge.icon as any} size={16} color={badge.color} />
                             <Text className="text-xs font-montserratMedium text-neutral-darkest">
                               {badge.name}
                             </Text>
@@ -492,12 +536,16 @@ export default function ProfileScreen() {
                       key={action.id}
                       entering={ZoomIn.delay(800 + index * 100).springify()}
                     >
-                      <TouchableOpacity className="items-center">
+                      <TouchableOpacity 
+                        className="items-center" 
+                        onPress={() => handleQuickActionPress(action)}
+                        activeOpacity={0.7}
+                      >
                         <LinearGradient
                           colors={['rgba(124, 58, 237, 0.1)', 'rgba(6, 182, 212, 0.1)']}
                           className="w-12 h-12 rounded-full items-center justify-center"
                         >
-                          <Feather name={action.icon} size={20} color={action.color} />
+                          <Feather name={action.icon as any} size={20} color={action.color} />
                         </LinearGradient>
                         <Text className="text-xs font-montserrat text-neutral-dark mt-2">
                           {action.name}
@@ -698,15 +746,22 @@ export default function ProfileScreen() {
 
         {/* Add the Menu Modal */}
         {isMenuVisible && (
-          <View className="absolute inset-0 bg-black/50 z-50">
+          <View className="absolute inset-0 bg-black/50" style={{ zIndex: 50 }}>
+            <TouchableOpacity 
+              className="absolute inset-0"
+              activeOpacity={0.5}
+              onPress={() => setIsMenuVisible(false)}
+            />
             <Animated.View 
               entering={SlideInDown}
               className="absolute top-20 right-4 bg-white rounded-2xl shadow-lg w-72"
+              style={{ zIndex: 51 }}
             >
               {MENU_OPTIONS.map((option, index) => (
                 <TouchableOpacity
                   key={option.title}
                   onPress={() => handleMenuItemPress(option)}
+                  activeOpacity={0.7}
                   className="flex-row items-center px-4 py-3 border-b border-neutral-100"
                 >
                   <View className="w-8 h-8 bg-primary/10 rounded-full items-center justify-center">
@@ -718,9 +773,10 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
               ))}
               
-              {/* Sign Out Button */}
+              {/* Update Sign Out Button */}
               <TouchableOpacity
                 onPress={handleSignOut}
+                activeOpacity={0.7}
                 className="flex-row items-center px-4 py-3"
               >
                 <View className="w-8 h-8 bg-red-100 rounded-full items-center justify-center">
@@ -731,12 +787,6 @@ export default function ProfileScreen() {
                 </Text>
               </TouchableOpacity>
             </Animated.View>
-            
-            {/* Close Menu Overlay */}
-            <TouchableOpacity 
-              className="absolute inset-0 z-0"
-              onPress={() => setIsMenuVisible(false)}
-            />
           </View>
         )}
 

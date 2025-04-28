@@ -1,11 +1,20 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ImageBackground } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ImageBackground, StyleSheet } from "react-native";
 import { Link, useRouter } from "expo-router";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useToast } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from 'expo-linear-gradient';
+import IMAGES from "../../constants/images";
+
+const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  }
+});
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -78,9 +87,9 @@ export default function LoginScreen() {
   return (
     <View className="flex-1">
       <ImageBackground 
-        source={{ uri: "https://images.unsplash.com/photo-1488085061387-422e29b40080?q=80&w=1431&auto=format&fit=crop" }}
+        source={IMAGES.patternBg}
         className="flex-1"
-        resizeMode="cover"
+        resizeMode="repeat"
       >
         <LinearGradient
           colors={['rgba(255,143,177,0.3)', 'rgba(255,107,107,0.95)']}
