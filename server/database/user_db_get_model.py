@@ -24,6 +24,7 @@ class GetUserData:
                 SELECT 
                     u.id AS user_id,
                     u.username,
+                    u.created_at,
                     u.email,
                     p.age,
                     p.bio,
