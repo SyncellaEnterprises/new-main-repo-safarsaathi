@@ -24,6 +24,7 @@ class RecommendationModel:
 
             self.cursor.execute("""SELECT 
                                 ud.username AS recommended_user_username,
+                                ud.created_at AS recommended_user_created_at,
                                 up_recommended.user_id AS recommended_user_profile_user_id,
                                 up_recommended.age AS recommended_user_age,
                                 up_recommended.bio AS recommended_user_bio,
