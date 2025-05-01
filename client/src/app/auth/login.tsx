@@ -89,7 +89,7 @@ export default function LoginScreen() {
       <ImageBackground 
         source={IMAGES.patternBg}
         className="flex-1"
-        resizeMode="repeat"
+        resizeMode="cover"
       >
         <LinearGradient
           colors={['rgba(255,143,177,0.3)', 'rgba(255,107,107,0.95)']}
