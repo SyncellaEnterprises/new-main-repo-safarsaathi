@@ -61,7 +61,6 @@ class UserOnboardingmodel:
             logging.error(f"Error in update_age: {e}")
             raise CustomException(e,sys)
 
-
     def add_gender(self, gender):
         try:
             logging.info("adding gender")
@@ -86,7 +85,6 @@ class UserOnboardingmodel:
         except Exception as e:
             logging.error(f"Error in update_gender: {e}")
             raise CustomException(e,sys)
-
 
     def add_location(self, location):
         try:
@@ -188,31 +186,6 @@ class UserOnboardingmodel:
             logging.error(f"Error in update_bio: {e}")
             raise CustomException(e,sys)
 
-    def add_videos(self, filename):
-        try:
-            logging.info("Video for Verification")
-            user_id = self.get_user_id()
-            if not user_id:
-                return {"status": "error", "message": "User not found"}
-        except Exception as e:
-            logging.error(f"Error in update_videos: {e}")
-            raise CustomException(e,sys)
-        
-        try:
-            # Save the video filename to the database
-            self.cursor.execute('''
-                INSERT INTO user_profile (user_id, videos) 
-                VALUES (%s, %s)
-                ON CONFLICT (user_id) 
-                DO UPDATE SET videos = EXCLUDED.videos
-            ''', (user_id, json.dumps([filename])))
-            self.connection.commit()
-            logging.info("Videos updated successfully")
-            return {"status": "success"}
-        except Exception as e:
-            logging.error(f"Error in update_videos: {e}")
-            raise CustomException(e,sys)
-
     def add_prompt(self, prompts):
         try:
             logging.info("Adding prompts")
@@ -240,3 +213,52 @@ class UserOnboardingmodel:
         except Exception as e:
             logging.error(f"Error in add_prompt: {e}")
             raise CustomException(e, sys)
+    
+    def add_videos(self, filename):
+        try:
+            user_id = self.get_user_id()
+            if not user_id:
+                return {"status": "error", "message": "User not found"}
+        except Exception as e:
+            logging.error(f"Error in update_videos: {e}")
+            raise CustomException(e,sys)
+        
+        try:
+            # Save the video filename to the database
+            self.cursor.execute('''
+                INSERT INTO user_profile (user_id, videos) 
+                VALUES (%s, %s)
+                ON CONFLICT (user_id) 
+                DO UPDATE SET videos = EXCLUDED.videos
+            ''', (user_id, json.dumps([filename])))
+            self.connection.commit()
+            logging.info("Videos updated successfully")
+            return {"status": "success"}
+        except Exception as e:
+            logging.error(f"Error in update_videos: {e}")
+            raise CustomException(e,sys)
+        
+    def add_images(self, filename):
+        try:
+            logging.info("image for Verification")
+            user_id = self.get_user_id()
+            if not user_id:
+                return {"status": "error", "message": "User not found"}
+        except Exception as e:
+            logging.error(f"Error in update_images: {e}")
+            raise CustomException(e,sys)
+        
+        try:
+            # Save the image filename to the database
+            self.cursor.execute('''
+                INSERT INTO user_profile (user_id, images) 
+                VALUES (%s, %s)
+                ON CONFLICT (user_id) 
+                DO UPDATE SET images = EXCLUDED.images
+            ''', (user_id, json.dumps([filename])))
+            self.connection.commit()
+            logging.info("images updated successfully")
+            return {"status": "success"}
+        except Exception as e:
+            logging.error(f"Error in update_images: {e}")
+            raise CustomException(e,sys)

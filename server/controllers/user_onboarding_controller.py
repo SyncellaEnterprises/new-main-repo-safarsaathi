@@ -1,12 +1,37 @@
-from app import app #, supabase_client, get_db_connection
+from app import app 
 from flask import jsonify, request
 from utils.logger import logging
-from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
+from flask_jwt_extended import jwt_required
 from utils.jwt_utils import jwt_blacklist
+from utils.exception import CustomException
+from utils.logger import logging
 from model.user_onboarding_model import UserOnboardingmodel
 import os
+from utils.cloudinary import upload_video
+import time
+from werkzeug.utils import secure_filename
+import sys
 
-@app.route('/api/onboarding/age', methods=['POST'])
+TEMP_IMAGE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'files', 'images')
+if not os.path.exists(TEMP_IMAGE_DIR):
+    os.makedirs(TEMP_IMAGE_DIR)
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Configure upload folder
+UPLOAD_FOLDER = 'temp_uploads'
+ALLOWED_EXTENSIONS = {'mp4', 'mov', 'avi', 'wmv'}
+
+# Create upload folder if it doesn't exist
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route('/api/onboarding/age', methods=['POST']) 
 @jwt_required()
 def onboarding_age():
     try:
@@ -74,6 +99,7 @@ def onboarding_gender():
 @jwt_required()
 def onboarding_location():
     try:
+        logging.info("onboarding_location called")
         data = request.get_json()
         location = data.get('location')
         
@@ -140,7 +166,7 @@ def onboarding_interests():
     try:
         data = request.get_json()
         interests = data.get('interests')
-        
+        logging.info(f"Interests received: {interests}")
         if not interests:
             return jsonify({
                 "status": "error",
@@ -198,58 +224,6 @@ def onboarding_bio():
             "message": "An error occurred while updating bio"
         }), 500
 
-@app.route('/api/onboarding/videos', methods=['POST'])
-@jwt_required()
-def onboarding_videos():
-    try:
-        if 'video' not in request.files:
-            return jsonify({
-                "status": "error",
-                "message": "No video file provided"
-            }), 400
-            
-        video = request.files['video']
-        if not video or video.filename == '':
-            return jsonify({
-                "status": "error",
-                "message": "No video selected"
-            }), 400
-            
-        # Get current user's username
-        username = get_jwt_identity()
-        
-        # Save the video with a unique filename
-        extension = video.filename.split('.')[-1]
-        filename = f"{username}_video.{extension}"
-        video_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        video.save(video_path)
-
-        # Save the video filename to the database
-        user_onboarding_model = UserOnboardingmodel()
-        result = user_onboarding_model.add_videos(video)
-        
-        if result["status"] == "success":
-            return jsonify({
-                "status": "success",
-                "message": "Video uploaded successfully",
-                "video_url": f"/static/uploads/{filename}"
-            }), 200
-        else:
-            # Clean up the uploaded file if database operation failed
-            if os.path.exists(video_path):
-                os.remove(video_path)
-            return jsonify({
-                "status": "error",
-                "message": result["message"]
-            }), 400
-            
-    except Exception as e:
-        logging.error(f"Error in onboarding_videos: {e}")
-        return jsonify({
-            "status": "error",
-            "message": "An error occurred while uploading video"
-        }), 500
-
 @app.route('/api/onboarding/prompts', methods=['POST'])
 @jwt_required()
 def onboarding_prompts():
@@ -283,3 +257,75 @@ def onboarding_prompts():
             "status": "error",
             "message": "An error occurred while updating prompts"
         }), 500
+    
+@app.route('/api/onboarding/videos', methods=['POST'])
+@jwt_required()
+def onboarding_videos():
+    """
+    Handles video upload for user onboarding:
+    1. Saves video temporarily
+    2. Uploads to Cloudinary
+    3. Stores Cloudinary URL in database
+    4. Cleans up temporary file
+    """
+    try:
+        if 'video' not in request.files:
+            return {"status": "error", "message": "No video file provided"}, 400
+
+        video_file = request.files['video']
+        
+        if video_file.filename == '':
+            return {"status": "error", "message": "No selected file"}, 400
+
+        if not allowed_file(video_file.filename):
+            return {"status": "error", "message": "File type not allowed"}, 400
+
+        # Secure the filename and create temporary path
+        filename = secure_filename(video_file.filename)
+        temp_path = os.path.join(UPLOAD_FOLDER, filename)
+
+        try:
+            # Save file temporarily
+            video_file.save(temp_path)
+            logger.info(f"Video saved temporarily at: {temp_path}")
+
+            # Upload to Cloudinary
+            cloudinary_response = upload_video(temp_path)
+            
+            if not cloudinary_response:
+                return {"status": "error", "message": "Failed to upload video to Cloudinary"}, 500
+
+            # Get the video URL from Cloudinary response
+            video_url = cloudinary_response.get('url')
+            
+            if not video_url:
+                return {"status": "error", "message": "No URL received from Cloudinary"}, 500
+
+            # Save to database
+            user_model = UserOnboardingmodel()
+            db_response = user_model.add_videos(video_url)
+
+            if db_response.get("status") != "success":
+                return {"status": "error", "message": "Failed to save video URL to database"}, 500
+
+            return {
+                "status": "success",
+                "message": "Video uploaded successfully",
+                "data": {
+                    "video_url": video_url
+                }
+            }, 200
+
+        except Exception as e:
+            logger.error(f"Error processing video: {str(e)}")
+            return {"status": "error", "message": str(e)}, 500
+
+        finally:
+            # Clean up temporary file if it exists
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+                logger.info(f"Temporary file removed: {temp_path}")
+
+    except Exception as e:
+        logger.error(f"Error in onboarding_videos: {str(e)}")
+        raise CustomException(e, sys)
