@@ -11,6 +11,7 @@ from controllers.travel_group_controller import (
     create_travel_group, get_user_travel_groups, get_travel_group,
     add_member_to_group, remove_member_from_group, get_group_messages, send_group_message
 )
+from datetime import timedelta
 
 
 # Initialize Flask app
@@ -18,6 +19,7 @@ app = Flask(__name__)
 logging.info("Flask app initialized")
 
 app.config["JWT_SECRET_KEY"] = JWT_SECRET_KEY
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=100)  # Set JWT token to expire after 100 days
 jwt = JWTManager(app)
 
 # Connect to PostgreSQL database

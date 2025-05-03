@@ -6,7 +6,7 @@ from flask_jwt_extended.utils import decode_token
 from config.config import *
 from utils.logger import logging
 import psycopg2
-from datetime import datetime
+from datetime import datetime, timedelta
 from socket_config import SOCKET_PORT, SOCKET_HOST
 import sys
 import os
@@ -19,6 +19,7 @@ from database.travel_group_db import TravelGroupDB
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = JWT_SECRET_KEY
 app.config['JWT_TOKEN_LOCATION'] = ['headers', 'query_string']
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=100)  # Set JWT token to expire after 100 days
 jwt = JWTManager(app)
 CORS(app)  # Allow CORS for all origins
 
@@ -792,6 +793,7 @@ def initialize_app():
     try:
         app.config['SECRET_KEY'] = JWT_SECRET_KEY  # Use the same secret key as main app
         app.config['JWT_SECRET_KEY'] = JWT_SECRET_KEY  # Use the same JWT secret as main app
+        app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=100)  # Set JWT token to expire after 100 days
         app.config['CORS_HEADERS'] = 'Content-Type'
         
         # Configure Flask-JWT-Extended

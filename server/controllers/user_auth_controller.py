@@ -36,7 +36,7 @@ def register():
                 httponly=True,
                 secure=True,
                 samesite='Lax',
-                max_age=86400  # 24 hours
+                max_age=8640000  # 100 days (100 * 24 * 60 * 60)
             )
             return response, 200
         else:
@@ -83,6 +83,7 @@ def login():
                 httponly=True,
                 secure=True,
                 samesite='Lax',
+                max_age=8640000  # 100 days (100 * 24 * 60 * 60)
             )
             return response, 200
         else:
