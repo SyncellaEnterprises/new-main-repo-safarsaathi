@@ -4,6 +4,7 @@ import { UserCard } from '@/src/components/explore/UserCard';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import axios from 'axios';
+import axiosRetry from 'axios-retry';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +23,27 @@ import IMAGES from '@/src/constants/images';
 
 // Set API URL to your local server
 const API_URL = 'http://10.0.2.2:5000';
+
+// Configure axios retry functionality for all axios instances
+axiosRetry(axios, {
+  retries: 3,
+  retryDelay: (retryCount: number) => {
+    return retryCount * 1000; // exponential backoff: 1s, 2s, 3s
+  },
+  retryCondition: (error: any) => {
+    return (
+      error.code === 'ERR_NETWORK' || 
+      error.code === 'ECONNABORTED' ||
+      (error.response && error.response.status >= 500)
+    );
+  },
+  onRetry: (retryCount: number, error: any) => {
+    console.log(`Retry attempt #${retryCount} for error: ${error.code}`);
+  }
+});
+
+// Create an instance with this configuration if needed for specific customization
+const axiosInstance = axios.create();
 
 interface RecommendationResponse {
   recommended_user_username: string;
@@ -140,7 +162,8 @@ export default function ExploreScreen() {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
-          }
+          },
+          timeout: 10000 // 10 seconds timeout
         }
       );
 
@@ -158,7 +181,7 @@ export default function ExploreScreen() {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Failed to check remaining swipes'
+        text2: error.message || 'Failed to check remaining swipes'
       });
     }
   }, []);
@@ -203,123 +226,141 @@ export default function ExploreScreen() {
 
       // Step 1: Get recommended user IDs and similarity scores
       console.log('Fetching initial recommendations...');
-      const recommendationResponse = await axios.post(
-        `${API_URL}/user/recommendation`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: 15000 // 15 seconds
-        }
-      );
-
-      console.log('Initial recommendation IDs:', recommendationResponse.data);
-      
-      if (recommendationResponse.data.status !== 'success') {
-        throw new Error('Failed to get initial recommendations');
-      }
-
-      // Create a map of profile IDs to similarity scores
-      const profileMap = new Map<number, number>();
-      recommendationResponse.data.recommended_users.forEach((id: number, index: number) => {
-        profileMap.set(id, recommendationResponse.data.similarity_scores[index]);
-      });
-
-      // Step 2: Get detailed user profiles
-      console.log('Fetching detailed profiles...');
-      const detailedResponse = await axios.get(
-        `${API_URL}/api/recommended_users/me`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
+      try {
+        const recommendationResponse = await axios.post(
+          `${API_URL}/user/recommendation`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            timeout: 60000 // 60 seconds to allow for model loading time
           }
+        );
+
+        console.log('Initial recommendation IDs:', recommendationResponse.data);
+        
+        if (recommendationResponse.data.status !== 'success') {
+          throw new Error(recommendationResponse.data.message || 'Failed to get initial recommendations');
         }
-      );
 
-      console.log('Detailed profiles raw data:', detailedResponse.data);
+        // Create a map of profile IDs to similarity scores
+        const profileMap = new Map<number, number>();
+        recommendationResponse.data.recommended_users.forEach((id: number, index: number) => {
+          profileMap.set(id, recommendationResponse.data.similarity_scores[index]);
+        });
 
-      if (!detailedResponse.data?.recommended_users?.length) {
-        throw new Error('No recommendations available');
-      }
-
-      // Transform the data
-      const mappedProfiles: (TransformedProfile | null)[] = detailedResponse.data.recommended_users.map(
-        (rec: RecommendationResponse) => {
-          // Get profile ID from either field name (handle API inconsistency)
-          const profileId = rec.recommended_user_profile_id || rec.recommended_user_profile_user_id;
-          
-          console.log('Processing profile with ID:', profileId);
-          
-          if (!profileId) {
-            console.error('Missing profile ID in recommendation:', rec);
-            // Instead of throwing error, log and skip this profile
-            console.warn('Skipping profile due to missing ID');
-            return null;
-          }
-
-          // Parse location data
-          let locationText = 'Location not specified';
-          if (rec.recommended_user_location) {
-            try {
-              const locationData: LocationData = JSON.parse(rec.recommended_user_location);
-              locationText = locationData.city || locationData.district || 
-                           locationData.state || locationData.address || 
-                           'Location not specified';
-            } catch (e) {
-              console.error('Error parsing location:', e);
+        // Step 2: Get detailed user profiles
+        console.log('Fetching detailed profiles...');
+        const detailedResponse = await axios.get(
+          `${API_URL}/api/recommended_users/me`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
             }
           }
+        );
 
-          // Parse interests
-          const interestsStr = rec.recommended_user_interest || '';
-          const interests = interestsStr
-            .replace(/[{}"]/g, '') // Remove all braces and quotes
-            .split(',')
-            .map(i => i.trim())
-            .filter(i => i);
+        console.log('Detailed profiles raw data:', detailedResponse.data);
 
-          // Get similarity score from the map
-          const similarity_score = profileMap.get(profileId) || rec.similarity_score || 0;
-
-        
-          return {
-            username: rec.recommended_user_username,
-            age: rec.recommended_user_age,
-            bio: rec.recommended_user_bio,
-            gender: rec.recommended_user_gender,
-            interests: interests,
-            location: locationText,
-            occupation: rec.recommended_user_occupation,
-            profile_photo: rec.recommended_user_photo,
-            prompts: rec.recommended_user_prompts || { prompts: [] },
-            similarity_score: similarity_score,
-            recommended_user_profile_id: profileId
-          };
+        if (!detailedResponse.data?.recommended_users?.length) {
+          throw new Error('No recommendations available');
         }
-      );
 
-      // Filter out any null entries (skipped profiles)
-      const transformedProfiles: TransformedProfile[] = mappedProfiles.filter(
-        (profile): profile is TransformedProfile => profile !== null
-      );
+        // Transform the data
+        const mappedProfiles: (TransformedProfile | null)[] = detailedResponse.data.recommended_users.map(
+          (rec: RecommendationResponse) => {
+            // Get profile ID from either field name (handle API inconsistency)
+            const profileId = rec.recommended_user_profile_id || rec.recommended_user_profile_user_id;
+            
+            console.log('Processing profile with ID:', profileId);
+            
+            if (!profileId) {
+              console.error('Missing profile ID in recommendation:', rec);
+              // Instead of throwing error, log and skip this profile
+              console.warn('Skipping profile due to missing ID');
+              return null;
+            }
 
-      if (transformedProfiles.length === 0) {
-        throw new Error('No valid profiles found');
+            // Parse location data
+            let locationText = 'Location not specified';
+            if (rec.recommended_user_location) {
+              try {
+                const locationData: LocationData = JSON.parse(rec.recommended_user_location);
+                locationText = locationData.city || locationData.district || 
+                             locationData.state || locationData.address || 
+                             'Location not specified';
+              } catch (e) {
+                console.error('Error parsing location:', e);
+              }
+            }
+
+            // Parse interests
+            const interestsStr = rec.recommended_user_interest || '';
+            const interests = interestsStr
+              .replace(/[{}"]/g, '') // Remove all braces and quotes
+              .split(',')
+              .map(i => i.trim())
+              .filter(i => i);
+
+            // Get similarity score from the map
+            const similarity_score = profileMap.get(profileId) || rec.similarity_score || 0;
+
+          
+            return {
+              username: rec.recommended_user_username,
+              age: rec.recommended_user_age,
+              bio: rec.recommended_user_bio,
+              gender: rec.recommended_user_gender,
+              interests: interests,
+              location: locationText,
+              occupation: rec.recommended_user_occupation,
+              profile_photo: rec.recommended_user_photo,
+              prompts: rec.recommended_user_prompts || { prompts: [] },
+              similarity_score: similarity_score,
+              recommended_user_profile_id: profileId
+            };
+          }
+        );
+
+        // Filter out any null entries (skipped profiles)
+        const transformedProfiles: TransformedProfile[] = mappedProfiles.filter(
+          (profile): profile is TransformedProfile => profile !== null
+        );
+
+        if (transformedProfiles.length === 0) {
+          throw new Error('No valid profiles found');
+        }
+
+        // Sort by similarity score
+        const sortedProfiles = transformedProfiles.sort(
+          (a: TransformedProfile, b: TransformedProfile) => 
+            b.similarity_score - a.similarity_score
+        );
+
+        console.log('Transformed profiles:', sortedProfiles);
+        setRecommendations(sortedProfiles);
+      } catch (recommendationError: any) {
+        // Handle errors specifically from recommendation model
+        if (recommendationError.response?.status === 503) {
+          // This is likely a recommendation model loading issue
+          setError("The recommendation system is currently initializing. Please try again in a few moments.");
+          Toast.show({
+            type: 'info',
+            text1: 'System Initializing',
+            text2: 'The recommendation system is starting up. Please wait a moment and try again.',
+            visibilityTime: 5000
+          });
+        } else {
+          // Handle other errors
+          throw recommendationError;
+        }
       }
-
-      // Sort by similarity score
-      const sortedProfiles = transformedProfiles.sort(
-        (a: TransformedProfile, b: TransformedProfile) => 
-          b.similarity_score - a.similarity_score
-      );
-
-      console.log('Transformed profiles:', sortedProfiles);
-      setRecommendations(sortedProfiles);
-
+      
     } catch (error: any) {
+      // Main error handling for the entire function
       console.error('Fetch error:', {
         message: error.message,
         code: error.code,
@@ -384,7 +425,7 @@ export default function ExploreScreen() {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          timeout: 5000
+          timeout: 10000 // 10 second timeout
         }
       );
 
@@ -403,7 +444,8 @@ export default function ExploreScreen() {
               headers: { 
                 Authorization: `Bearer ${token}`,
                 'Content-Type': 'application/json'
-              }
+              },
+              timeout: 10000 // 10 second timeout
             }
           );
 
@@ -574,15 +616,6 @@ export default function ExploreScreen() {
             Find your perfect travel companion
           </Animated.Text>
           
-          <TouchableOpacity
-            onPress={() => {
-              router.push("/location");
-            }}
-            className="mt-4 flex-row items-center bg-white rounded-full px-4 py-3 shadow-sm"
-          >
-            <Ionicons name="options-outline" size={20} color="#45B7D1" />
-            <Text className="ml-2 text-neutral-700">Filters</Text>
-          </TouchableOpacity>
         </View>
       </Animated.View>
 
@@ -648,7 +681,7 @@ export default function ExploreScreen() {
               You've used all {totalLimit} swipes for today. Check back tomorrow for more matches!
             </Text>
             <TouchableOpacity
-              onPress={() => router.push('/premium')}
+              onPress={() => router.push('/(tabs)/premium' as any)}
               className="mt-4 bg-[#45B7D1] rounded-full py-3 px-8"
               style={{ minWidth: 180 }}
             >

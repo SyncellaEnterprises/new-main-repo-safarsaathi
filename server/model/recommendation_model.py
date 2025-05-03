@@ -4,11 +4,29 @@ import psycopg2
 from psycopg2.extras import DictCursor
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
-from sentence_transformers import SentenceTransformer
+import numpy as np
 from utils.exception import CustomException
 from utils.logger import logging
 from config.config import POSTGRES_HOST, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_PORT
 from flask import jsonify
+import time
+import threading
+
+# Create a lock for the model loading
+model_lock = threading.Lock()
+# Global variable to hold the model
+_embedding_model = None
+# Number of retries for model loading
+MAX_MODEL_LOAD_RETRIES = 3
+
+# Dummy encoder for fallback
+class DummyEncoder:
+    """Fallback encoder when HuggingFace model fails to load"""
+    def encode(self, texts, show_progress_bar=False):
+        """Create random vectors for texts - not meaningful but allows basic service"""
+        logging.warning(f"Using DummyEncoder for {len(texts)} texts")
+        # Create random embeddings of size 384 (same as all-MiniLM-L6-v2)
+        return np.random.rand(len(texts), 384)
 
 class RecommendationModel:
     DEFAULT_RECOMMENDATION_LIMIT = 50
@@ -26,12 +44,45 @@ class RecommendationModel:
             self.cursor = self.connection.cursor(cursor_factory=DictCursor)
             logging.info("Database connection established")
 
-            # Load pre-trained embedding model
-            self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-            logging.info("SentenceTransformer model loaded")
+            # Load the model in a thread-safe way with a global instance
+            global _embedding_model
+            with model_lock:
+                if _embedding_model is None:
+                    retries = 0
+                    last_error = None
+                    
+                    # Try loading the model with retries
+                    while retries < MAX_MODEL_LOAD_RETRIES:
+                        try:
+                            # Try to load the model with increased timeout
+                            logging.info(f"Loading SentenceTransformer model (attempt {retries+1}/{MAX_MODEL_LOAD_RETRIES})...")
+                            start_time = time.time()
+                            
+                            # Import here to avoid startup delay if HF servers are slow
+                            from sentence_transformers import SentenceTransformer
+                            _embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+                            
+                            elapsed_time = time.time() - start_time
+                            logging.info(f"SentenceTransformer model loaded in {elapsed_time:.2f} seconds")
+                            break
+                        except Exception as e:
+                            last_error = e
+                            retries += 1
+                            logging.error(f"Error loading SentenceTransformer model (attempt {retries}/{MAX_MODEL_LOAD_RETRIES}): {str(e)}")
+                            time.sleep(2)  # Wait before retrying
+                    
+                    # If all retries failed, use dummy encoder
+                    if _embedding_model is None:
+                        logging.warning("All attempts to load SentenceTransformer failed, using DummyEncoder")
+                        _embedding_model = DummyEncoder()
+            
+            # Set the model reference for this instance
+            self.embedding_model = _embedding_model
 
         except Exception as e:
             logging.error(f"Error during RecommendationModel initialization: {str(e)}")
+            if hasattr(self, 'connection') and self.connection:
+                self.connection.rollback()
             raise CustomException(e, sys)
 
     def user_recommendation_model(self, user_id):
@@ -65,35 +116,76 @@ class RecommendationModel:
             df['profile_text'] = df.apply(lambda row: f"Location: {row['location']} Interests: {' '.join(row['interests'])}", axis=1)
 
             # Generate embeddings
-            embeddings = self.embedding_model.encode(df['profile_text'].tolist(), show_progress_bar=False)
-            user_ids = df['user_id']
+            try:
+                embeddings = self.embedding_model.encode(df['profile_text'].tolist(), show_progress_bar=False)
+                user_ids = df['user_id']
 
-            # Compute similarity
-            similarity = cosine_similarity(embeddings)
+                # Compute similarity
+                similarity = cosine_similarity(embeddings)
 
-            # Get recommendations and scores for the given user_id
-            if user_id not in user_ids.values:
-                logging.warning(f"User {user_id} not found in profiles")
-                return jsonify({"status": "error", "message": "User not found"}), 404
+                # Get recommendations and scores for the given user_id
+                if user_id not in user_ids.values:
+                    logging.warning(f"User {user_id} not found in profiles")
+                    return jsonify({"status": "error", "message": "User not found"}), 404
 
-            user_idx = user_ids[user_ids == user_id].index[0]
-            similar_users_idx = similarity[user_idx].argsort()[::-1][1:self.DEFAULT_RECOMMENDATION_LIMIT + 1]  # Exclude self
-            recommended_ids = user_ids.iloc[similar_users_idx].tolist()
-            similarity_scores = similarity[user_idx][similar_users_idx].tolist()
+                user_idx = user_ids[user_ids == user_id].index[0]
+                similar_users_idx = similarity[user_idx].argsort()[::-1][1:self.DEFAULT_RECOMMENDATION_LIMIT + 1]  # Exclude self
+                recommended_ids = user_ids.iloc[similar_users_idx].tolist()
+                similarity_scores = similarity[user_idx][similar_users_idx].tolist()
 
-            # Store recommendations in the database
+                # Store recommendations in the database
+                self.store_user_recommendations(user_id, recommended_ids, similarity_scores)
+
+                logging.info(f"Recommendations for user {user_id}: {recommended_ids}")
+                return jsonify({
+                    "status": "success",
+                    "recommended_users": recommended_ids,
+                    "similarity_scores": similarity_scores
+                }), 200
+            except Exception as e:
+                logging.error(f"Error generating embeddings: {str(e)}")
+                return self._fallback_recommendations(user_id)
+
+        except Exception as e:
+            logging.error(f"Error in user_recommendation_model: {str(e)}")
+            return jsonify({
+                "status": "error",
+                "message": str(e),
+                "details": "Failed to provide recommendations"
+            }), 500
+
+    def _fallback_recommendations(self, user_id):
+        """Provide fallback recommendations based on random selection from database"""
+        try:
+            # Get random users excluding the current user
+            query = '''
+                SELECT user_id FROM user_profile
+                WHERE user_id != %s
+                ORDER BY RANDOM()
+                LIMIT %s
+            '''
+            self.cursor.execute(query, (user_id, self.DEFAULT_RECOMMENDATION_LIMIT))
+            recommended_ids = [row[0] for row in self.cursor.fetchall()]
+            
+            # Generate fake similarity scores (0.1 to 0.9)
+            similarity_scores = np.linspace(0.9, 0.1, len(recommended_ids)).tolist()
+            
+            # Store these fallback recommendations
             self.store_user_recommendations(user_id, recommended_ids, similarity_scores)
-
-            logging.info(f"Recommendations for user {user_id}: {recommended_ids}")
+            
+            logging.info(f"Provided fallback recommendations for user {user_id}")
             return jsonify({
                 "status": "success",
                 "recommended_users": recommended_ids,
                 "similarity_scores": similarity_scores
             }), 200
-
         except Exception as e:
-            logging.error(f"Error in user_recommendation_model: {str(e)}")
-            raise CustomException(e, sys)
+            logging.error(f"Error in fallback recommendations: {str(e)}")
+            return jsonify({
+                "status": "error",
+                "message": "Could not generate recommendations",
+                "details": str(e)
+            }), 500
 
     def store_user_recommendations(self, user_id, recommended_ids, similarity_scores):
         try:

@@ -27,6 +27,7 @@
     "@shopify/flash-list": "^1.8.0",
     "@types/socket.io-client": "^1.4.36",
     "axios": "^1.7.9",
+    "axios-retry": "^4.5.0",
     "crypto-js": "^4.2.0",
     "date-fns": "^4.1.0",
     "expo": "~52.0.27",

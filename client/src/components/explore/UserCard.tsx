@@ -9,8 +9,8 @@ const { width, height } = Dimensions.get('window');
 
 const DEFAULT_PROFILE_IMAGE = 'https://filmfare.wwmindia.com/content/2024/aug/sharvariwaghinspiration31725098613.jpg';
 
-interface UserCardProps {
-  user: {
+export interface UserCardProps {
+  profile: {
     username: string;
     location: string;
     interests: string[] | string;
@@ -28,10 +28,12 @@ interface UserCardProps {
     };
     recommended_user_profile_id: number;
   };
+  onSwipeLeft: () => void;
+  onSwipeRight: () => void;
 }
 
-export function UserCard({ user }: UserCardProps) {
-  if (!user) {
+export function UserCard({ profile, onSwipeLeft, onSwipeRight }: UserCardProps) {
+  if (!profile) {
     return (
       <View style={styles.noProfileContainer}>
         <Text style={styles.noProfileText}>
@@ -46,18 +48,18 @@ export function UserCard({ user }: UserCardProps) {
 
   // Process the profile photo
   const processProfilePhoto = () => {
-    if (!user.profile_photo) return null;
+    if (!profile.profile_photo) return null;
     
     try {
-      if (typeof user.profile_photo === 'string' && 
-          (user.profile_photo.startsWith('{') || user.profile_photo.startsWith('['))) {
-        const parsed = JSON.parse(user.profile_photo);
+      if (typeof profile.profile_photo === 'string' && 
+          (profile.profile_photo.startsWith('{') || profile.profile_photo.startsWith('['))) {
+        const parsed = JSON.parse(profile.profile_photo);
         return parsed.url || parsed[0]?.url || parsed;
       }
-      return user.profile_photo;
+      return profile.profile_photo;
     } catch (e) {
       console.error('Error processing profile photo:', e);
-      return user.profile_photo;
+      return profile.profile_photo;
     }
   };
 
@@ -66,14 +68,14 @@ export function UserCard({ user }: UserCardProps) {
 
   // Process interests to ensure it's always an array of strings
   const processInterests = () => {
-    if (!user.interests) return [];
+    if (!profile.interests) return [];
     
-    if (Array.isArray(user.interests)) {
-      return user.interests;
+    if (Array.isArray(profile.interests)) {
+      return profile.interests;
     }
 
-    if (typeof user.interests === 'string') {
-      return user.interests
+    if (typeof profile.interests === 'string') {
+      return profile.interests
         .replace(/[{}"]/g, '')
         .split(',')
         .map(i => i.trim())
@@ -136,24 +138,24 @@ export function UserCard({ user }: UserCardProps) {
               <View style={styles.infoHeader}>
                 <View>
                   <Text style={styles.userName}>
-                    {user.username.replace('user_', '')}, {user.age || 'N/A'}
+                    {profile.username.replace('user_', '')}, {profile.age || 'N/A'}
                   </Text>
                   <View style={styles.infoRow}>
                     <Ionicons name="location-outline" size={16} color="#7D5BA6" />
                     <Text style={styles.infoText}>
-                      {user.location || 'Location not specified'}
+                      {profile.location || 'Location not specified'}
                     </Text>
                   </View>
                   <View style={styles.infoRow}>
                     <Ionicons name="briefcase-outline" size={16} color="#7D5BA6" />
                     <Text style={styles.infoText}>
-                      {user.occupation || 'Occupation not specified'}
+                      {profile.occupation || 'Occupation not specified'}
                     </Text>
                   </View>
                 </View>
                 <View style={styles.matchScore}>
                   <Text style={styles.matchText}>
-                    {Math.round((user.similarity_score || 0) * 100)}%
+                    {Math.round((profile.similarity_score || 0) * 100)}%
                   </Text>
                 </View>
               </View>
@@ -162,15 +164,15 @@ export function UserCard({ user }: UserCardProps) {
               <View style={styles.infoRow}>
                 <Ionicons name="person-outline" size={16} color="#7D5BA6" />
                 <Text style={styles.infoText}>
-                  {user.gender || 'Gender not specified'}
+                  {profile.gender || 'Gender not specified'}
                 </Text>
               </View>
 
               {/* About Section */}
-              {user.bio && (
+              {profile.bio && (
                 <View style={styles.bioSection}>
                   <Text style={styles.sectionTitle}>About</Text>
-                  <Text style={styles.bioText}>{user.bio}</Text>
+                  <Text style={styles.bioText}>{profile.bio}</Text>
                 </View>
               )}
 
@@ -189,11 +191,11 @@ export function UserCard({ user }: UserCardProps) {
               )}
 
               {/* Prompts Section - Show all prompts */}
-              {user.prompts?.prompts?.length > 0 && (
+              {profile.prompts?.prompts?.length > 0 && (
                 <View style={styles.promptSection}>
                   <Text style={styles.sectionTitle}>Prompts</Text>
-                  {user.prompts.prompts.map((prompt, index) => (
-                    <BlurView key={index} intensity={10} tint="light" style={[styles.promptCard, { marginBottom: index < user.prompts.prompts.length - 1 ? 10 : 0 }]}>
+                  {profile.prompts.prompts.map((prompt, index) => (
+                    <BlurView key={index} intensity={10} tint="light" style={[styles.promptCard, { marginBottom: index < profile.prompts.prompts.length - 1 ? 10 : 0 }]}>
                       <Text style={styles.promptQuestion}>{prompt.question}</Text>
                       <Text style={styles.promptAnswer}>{prompt.answer}</Text>
                     </BlurView>
@@ -206,7 +208,7 @@ export function UserCard({ user }: UserCardProps) {
                 <Text style={styles.sectionTitle}>Match Score</Text>
                 <View style={styles.matchDetailCard}>
                   <Text style={styles.matchDetailText}>
-                    You are {Math.round((user.similarity_score || 0) * 100)}% compatible with {user.username.replace('user_', '')}
+                    You are {Math.round((profile.similarity_score || 0) * 100)}% compatible with {profile.username.replace('user_', '')}
                   </Text>
                 </View>
               </View>
