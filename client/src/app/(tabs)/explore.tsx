@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, SafeAreaView, ActivityIndicator, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, SafeAreaView, ActivityIndicator, Text, TouchableOpacity, StyleSheet, Image, Dimensions } from 'react-native';
 import { UserCard } from '@/src/components/explore/UserCard';
 import { useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
@@ -15,11 +15,15 @@ import Animated, {
   withSpring,
   withTiming, 
   FadeInDown,
-  SlideInDown 
+  SlideInDown,
+  FadeInUp 
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import Swiper from 'react-native-deck-swiper';
 import IMAGES from '@/src/constants/images';
+
+const { width, height } = Dimensions.get('window');
 
 // Set API URL to your local server
 const API_URL = 'http://10.0.2.2:5000';
@@ -129,14 +133,6 @@ export default function ExploreScreen() {
   const heroHeight = useSharedValue(200);
   const filterSheetTranslateY = useSharedValue(1000);
   
-  const filterSheetGesture = Gesture.Pan()
-    .onStart(() => {
-      filterSheetTranslateY.value = withSpring(0);
-    })
-    .onEnd(() => {
-      filterSheetTranslateY.value = withSpring(1000);
-    });
-
   const filterSheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: filterSheetTranslateY.value }]
   }));
@@ -144,6 +140,9 @@ export default function ExploreScreen() {
   const heroStyle = useAnimatedStyle(() => ({
     height: heroHeight.value
   }));
+
+  // Swiper reference
+  const swiperRef = useRef<Swiper<TransformedProfile>>(null);
 
   // Check remaining swipes
   const checkRemainingSwipes = useCallback(async () => {
@@ -381,9 +380,9 @@ export default function ExploreScreen() {
     }
   };
 
-  // Function to handle swipe action
-  const handleSwipe = async (direction: string) => {
-    if (isLimited) {
+  // Modified swipe handler to work with the deck swiper
+  const handleSwipe = async (direction: 'left' | 'right', index: number) => {
+    if (direction === 'right' && isLimited) {
       Toast.show({
         type: 'info',
         text1: 'Limit Reached',
@@ -392,91 +391,86 @@ export default function ExploreScreen() {
       return;
     }
 
-    if (!recommendations[currentIndex]) {
+    if (!recommendations[index]) {
       return;
-    }
-
-    // Animate card out
-    if (direction === 'right') {
-      cardScale.value = withTiming(1.05, { duration: 200 });
-      cardOpacity.value = withTiming(0, { duration: 300 });
-      cardOffsetY.value = withTiming(-100, { duration: 300 });
-    } else {
-      cardScale.value = withTiming(0.95, { duration: 200 });
-      cardOpacity.value = withTiming(0, { duration: 300 });
-      cardOffsetY.value = withTiming(100, { duration: 300 });
     }
 
     try {
       const token = await AsyncStorage.getItem('accessToken');
       if (!token) throw new Error('No access token found');
 
-      const targetUsername = recommendations[currentIndex].username;
+      const targetUsername = recommendations[index].username;
       const apiPayload = {
         target_username: targetUsername,
         direction: direction === 'right' ? 'right' : 'left'
       };
 
-      const swipeResponse = await axios.post(
-        `${API_URL}/api/swipe`,
-        apiPayload,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: 10000 // 10 second timeout
-        }
-      );
+      // Only make API call for right swipes if we're not limited
+      if (direction === 'right') {
+        const swipeResponse = await axios.post(
+          `${API_URL}/api/swipe`,
+          apiPayload,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            timeout: 10000 // 10 second timeout
+          }
+        );
 
-      if (swipeResponse.data.status === 'success') {
-        setSwipesRemaining(swipeResponse.data.remaining_swipes);
-        setTotalLimit(swipeResponse.data.total_limit);
-        setIsLimited(swipeResponse.data.remaining_swipes <= 0);
-      }
+        if (swipeResponse.data.status === 'success') {
+          setSwipesRemaining(swipeResponse.data.remaining_swipes);
+          setTotalLimit(swipeResponse.data.total_limit);
+          setIsLimited(swipeResponse.data.remaining_swipes <= 0);
 
-      // Check for matches only after successful right swipe
-      if (direction === 'right' && swipeResponse.data.status === 'success') {
-        try {
-          const matchResponse = await axios.get(
-            `${API_URL}/api/matches/me`,
-            {
-              headers: { 
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              },
-              timeout: 10000 // 10 second timeout
-            }
-          );
-
-          if (matchResponse.data?.matches?.length > 0) {
-            const isMatch = matchResponse.data.matches.some(
-              (match: any) => match.matched_username === targetUsername
+          // Check for matches after right swipe
+          try {
+            const matchResponse = await axios.get(
+              `${API_URL}/api/matches/me`,
+              {
+                headers: { 
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                },
+                timeout: 10000 // 10 second timeout
+              }
             );
 
-            if (isMatch) {
-              Toast.show({
-                type: 'success',
-                text1: 'Match! 🎉',
-                text2: `You matched with ${targetUsername}!`,
-                visibilityTime: 4000,
-                autoHide: true,
-                topOffset: 60
-              });
-            }
-          }
-        } catch (matchError: any) {
-          console.error('Match check error:', matchError);
-        }
-      }
+            if (matchResponse.data?.matches?.length > 0) {
+              const isMatch = matchResponse.data.matches.some(
+                (match: any) => match.matched_username === targetUsername
+              );
 
-      // Update index and reset animation values after a small delay
-      setTimeout(() => {
-        setCurrentIndex(prev => Math.min(prev + 1, recommendations.length - 1));
-        cardOpacity.value = withTiming(1, { duration: 300 });
-        cardScale.value = withTiming(1, { duration: 300 });
-        cardOffsetY.value = withTiming(0, { duration: 300 });
-      }, 300);
+              if (isMatch) {
+                Toast.show({
+                  type: 'success',
+                  text1: 'Match! 🎉',
+                  text2: `You matched with ${targetUsername}!`,
+                  visibilityTime: 4000,
+                  autoHide: true,
+                  topOffset: 60
+                });
+              }
+            }
+          } catch (matchError: any) {
+            console.error('Match check error:', matchError);
+          }
+        }
+      } else {
+        // For left swipes, just record the swipe without deducting from limit
+        await axios.post(
+          `${API_URL}/api/swipe`,
+          apiPayload,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            timeout: 10000 // 10 second timeout
+          }
+        );
+      }
 
     } catch (error: any) {
       console.error('Swipe error:', error);
@@ -491,11 +485,6 @@ export default function ExploreScreen() {
         text2: errorMessage,
         visibilityTime: 3000
       });
-      
-      // Reset animation
-      cardOpacity.value = withTiming(1, { duration: 300 });
-      cardScale.value = withTiming(1, { duration: 300 });
-      cardOffsetY.value = withTiming(0, { duration: 300 });
     }
   };
 
@@ -563,14 +552,33 @@ export default function ExploreScreen() {
           />
         </BlurView>
         <Animated.View entering={FadeInDown.springify()} style={{ alignItems: 'center', zIndex: 2 }}>
-          <Ionicons name="search" size={48} color="#7D5BA6" style={{ marginBottom: 24, opacity: 0.8 }} />
+          <Ionicons name="search" size={56} color="#7D5BA6" style={{ marginBottom: 28, opacity: 0.8 }} />
           <Animated.Text
             entering={FadeInDown.delay(200).springify()}
-            style={{ color: '#7D5BA6', fontSize: 22, fontWeight: 'bold', textAlign: 'center', letterSpacing: 0.5 }}
+            style={{ 
+              color: '#7D5BA6', 
+              fontSize: 24, 
+              fontWeight: 'bold', 
+              textAlign: 'center', 
+              letterSpacing: 0.5, 
+              marginBottom: 6 
+            }}
           >
             Finding your perfect matches…
           </Animated.Text>
-          <ActivityIndicator size="large" color="#7D5BA6" style={{ marginTop: 24 }} />
+          <Animated.Text
+            entering={FadeInDown.delay(300).springify()}
+            style={{ 
+              color: '#666', 
+              fontSize: 16, 
+              textAlign: 'center', 
+              marginHorizontal: 30,
+              marginBottom: 32
+            }}
+          >
+            We're searching for travelers matching your interests
+          </Animated.Text>
+          <ActivityIndicator size="large" color="#7D5BA6" style={{ marginTop: 8 }} />
         </Animated.View>
       </View>
     );
@@ -579,127 +587,382 @@ export default function ExploreScreen() {
 
   if (error) {
     return (
-      <View className="flex-1 items-center justify-center bg-white p-4">
-        <Ionicons name="alert-circle-outline" size={64} color="#FF6B6B" />
-        <Text className="mt-4 text-center text-neutral-800 font-medium text-lg">
-          {error}
-        </Text>
-        <TouchableOpacity
-          onPress={refreshAll}
-          className="mt-4 bg-[#45B7D1] px-6 py-3 rounded-full"
+      <View className="flex-1 items-center justify-center bg-white p-6">
+        <LinearGradient
+          colors={['rgba(69, 183, 209, 0.05)', 'rgba(69, 183, 209, 0.01)']}
+          style={{...StyleSheet.absoluteFillObject}}
+        />
+        <Animated.View 
+          entering={FadeInUp.duration(400)}
+          className="bg-white shadow-md rounded-3xl p-8 w-full items-center"
+          style={{
+            shadowColor: '#7D5BA6',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.15,
+            shadowRadius: 12,
+            elevation: 5,
+          }}
         >
-          <Text className="text-white font-medium">Try Again</Text>
-        </TouchableOpacity>
+          <Ionicons name="alert-circle-outline" size={70} color="#FF6B6B" />
+          <Text className="mt-5 text-center text-neutral-800 font-semibold text-xl">
+            {error}
+          </Text>
+          <Text className="mt-2 text-center text-neutral-500 mb-6">
+            We couldn't load your recommendations at this time
+          </Text>
+          <TouchableOpacity
+            onPress={refreshAll}
+            className="mt-4 bg-[#45B7D1] px-8 py-4 rounded-full"
+            style={{
+              shadowColor: '#45B7D1',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.2,
+              shadowRadius: 8,
+              elevation: 4,
+            }}
+          >
+            <Text className="text-white font-semibold text-lg">Try Again</Text>
+          </TouchableOpacity>
+        </Animated.View>
       </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      {/* Hero Section */}
-      <Animated.View style={heroStyle} className="relative">
-        <LinearGradient
-          colors={['rgba(69, 183, 209, 0.1)', 'rgba(69, 183, 209, 0.05)']}
-          className="absolute inset-0"
-        />
-        <View className="px-6 py-4">
-          <Animated.Text 
-            entering={FadeInDown.delay(200)}
-            className="text-2xl font-bold text-neutral-800"
-          >
-            Discover
-          </Animated.Text>
-          <Animated.Text
-            entering={FadeInDown.delay(300)}
-            className="text-base text-neutral-600 mt-2"
-          >
-            Find your perfect travel companion
-          </Animated.Text>
-          
-        </View>
-      </Animated.View>
-
-      {/* Main Content */}
-      <View className="flex-1 px-4">
-        {recommendations.length > 0 ? (
-          <UserCard
-            profile={recommendations[currentIndex]}
-            onSwipeLeft={() => handleSwipe('left')}
-            onSwipeRight={() => handleSwipe('right')}
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView className="flex-1 bg-[#FBFBFD]">
+        {/* Hero Section */}
+        <Animated.View 
+          style={[heroStyle, { height: 60 }]} 
+          className="relative overflow-hidden"
+        >
+          <LinearGradient
+            colors={['rgba(125,91,166,0.05)', 'rgba(69, 183, 209, 0.03)']}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+            }}
           />
-        ) : (
-          <View className="flex-1 items-center justify-center">
-            <Ionicons name="search" size={64} color="#E6E4EC" />
-            <Text className="mt-4 text-center text-neutral-600">
-              No more recommendations available.
-              Check back later!
-            </Text>
-          </View>
-        )}
-      </View>
-
-      {/* Action Buttons */}
-      <Animated.View 
-        entering={SlideInDown.delay(400)}
-        className="flex-row justify-center items-center pb-8 pt-4"
-      >
-        <TouchableOpacity
-          onPress={() => handleSwipe('left')}
-          className="w-14 h-14 rounded-full bg-white shadow-md items-center justify-center mx-4"
-        >
-          <Ionicons name="close" size={24} color="#FF6B6B" />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => handleSwipe('right')}
-          className="w-14 h-14 rounded-full bg-[#45B7D1] shadow-md items-center justify-center mx-4"
-        >
-          <Ionicons name="heart" size={24} color="white" />
-        </TouchableOpacity>
-      </Animated.View>
-
-      {/* Swipe Limit Warning */}
-      {isLimited && (
-        <BlurView
-          intensity={20}
-          tint="light"
-          className="absolute inset-0 items-center justify-center"
-          style={{ zIndex: 10 }}
-        >
-          <View className="bg-white rounded-2xl p-6 m-4 shadow-lg items-center">
-            {/* Unsplash or custom image for reset */}
-            <Image
-              source={{ uri: 'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=800&q=80' }}
-              style={{ width: 180, height: 120, borderRadius: 18, marginBottom: 18, opacity: 0.95 }}
-              resizeMode="cover"
-            />
-            <Ionicons name="timer-outline" size={48} color="#45B7D1" style={{ marginBottom: 8 }} />
-            <Text className="text-xl font-bold text-center mt-2 text-neutral-darkest">
-              Daily Limit Reached
-            </Text>
-            <Text className="text-neutral-600 text-center mt-2 mb-2">
-              You've used all {totalLimit} swipes for today. Check back tomorrow for more matches!
-            </Text>
-            <TouchableOpacity
-              onPress={() => router.push('/(tabs)/premium' as any)}
-              className="mt-4 bg-[#45B7D1] rounded-full py-3 px-8"
-              style={{ minWidth: 180 }}
+          <View className="px-7 py-2 flex-row justify-between items-center">
+            <View>
+              <Animated.Text 
+                entering={FadeInDown.delay(200)}
+                className="text-xl font-bold text-neutral-800"
+                style={{ letterSpacing: 0.5 }}
+              >
+                Discover
+              </Animated.Text>
+              <Animated.Text
+                entering={FadeInDown.delay(300)}
+                className="text-sm text-neutral-500"
+              >
+                Find your perfect travel companion
+              </Animated.Text>
+            </View>
+            
+            {/* Swipes Counter */}
+            <Animated.View
+              entering={FadeInDown.delay(400)}
+              className="rounded-full bg-white px-3 py-1 flex-row items-center"
+              style={{
+                shadowColor: '#7D5BA6',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 2,
+              }}
             >
-              <Text className="text-white text-center font-medium">
-                Get Premium for Unlimited Swipes
+              <Ionicons name="flame-outline" size={14} color="#7D5BA6" />
+              <Text className="text-[#7D5BA6] font-medium text-sm ml-1">
+                {swipesRemaining}/{totalLimit}
               </Text>
-            </TouchableOpacity>
+            </Animated.View>
           </View>
-        </BlurView>
-      )}
-    </SafeAreaView>
+        </Animated.View>
+
+        {/* Main Content */}
+        <View className="flex-1 px-4 pb-16 pt-2">
+          {recommendations.length > 0 && !isLimited ? (
+            <Swiper
+              ref={swiperRef}
+              cards={recommendations}
+              renderCard={(card) => {
+                if (!card) return null;
+                return (
+                  <UserCard
+                    profile={card}
+                    onSwipeLeft={() => {}}
+                    onSwipeRight={() => {}}
+                  />
+                );
+              }}
+              onSwiped={(cardIndex) => {
+                // Card was swiped but direction is handled in onSwipedLeft/Right
+              }}
+              onSwipedLeft={(cardIndex) => handleSwipe('left', cardIndex)}
+              onSwipedRight={(cardIndex) => handleSwipe('right', cardIndex)}
+              cardIndex={0}
+              backgroundColor="transparent"
+              stackSize={2}
+              stackSeparation={-30}
+              stackScale={10}
+              infinite={false}
+              animateOverlayLabelsOpacity
+              overlayLabels={{
+                left: {
+                  title: 'NOPE',
+                  style: {
+                    label: {
+                      backgroundColor: 'rgba(233, 64, 87, 0.2)',
+                      color: '#E94057',
+                      fontSize: 24,
+                      borderWidth: 1,
+                      borderColor: '#E94057',
+                      borderRadius: 10
+                    },
+                    wrapper: {
+                      flexDirection: 'column',
+                      alignItems: 'flex-end',
+                      justifyContent: 'flex-start',
+                      marginTop: 30,
+                      marginLeft: -30,
+                    }
+                  }
+                },
+                right: {
+                  title: 'LIKE',
+                  style: {
+                    label: {
+                      backgroundColor: 'rgba(94, 186, 125, 0.2)',
+                      color: '#5EBA7D',
+                      fontSize: 24,
+                      borderWidth: 1,
+                      borderColor: '#5EBA7D',
+                      borderRadius: 10
+                    },
+                    wrapper: {
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      justifyContent: 'flex-start',
+                      marginTop: 30,
+                      marginLeft: 30,
+                    }
+                  }
+                }
+              }}
+              disableTopSwipe
+              disableBottomSwipe
+              cardHorizontalMargin={0}
+              cardVerticalMargin={0}
+              outputRotationRange={['-10deg', '0deg', '10deg']}
+              verticalSwipe={false}
+            />
+          ) : recommendations.length > 0 && isLimited ? (
+            // Daily Limit Card - Same size/style as user cards
+            <Animated.View 
+              entering={FadeIn.duration(400)}
+              style={{
+                flex: 1,
+                backgroundColor: 'white',
+                borderRadius: 24,
+                overflow: 'hidden',
+                shadowColor: '#7D5BA6',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.12,
+                shadowRadius: 8,
+                elevation: 5,
+              }}
+            >
+              <LinearGradient
+                colors={['rgba(125, 91, 166, 0.05)', 'rgba(80, 166, 167, 0.05)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  flex: 1,
+                  padding: 2,
+                  borderRadius: 24,
+                }}
+              >
+                <View style={{
+                  flex: 1,
+                  backgroundColor: 'white',
+                  borderRadius: 22,
+                  alignItems: 'center',
+                  padding: 24,
+                }}>
+                  {/* Top image - night sky */}
+                  <Image
+                    source={{ uri: 'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=800&q=80' }}
+                    style={{ 
+                      width: '100%',
+                      height: 200,
+                      borderRadius: 20,
+                      marginBottom: 16,
+                    }}
+                    resizeMode="cover"
+                  />
+                  
+                  {/* Timer Icon */}
+                  <View style={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: 40,
+                    backgroundColor: 'rgba(125, 91, 166, 0.08)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: 20,
+                  }}>
+                    <Ionicons name="time-outline" size={40} color="#7D5BA6" />
+                  </View>
+                  
+                  {/* Limit Reached Text */}
+                  <Text style={{
+                    fontSize: 24,
+                    fontWeight: 'bold',
+                    color: '#333',
+                    marginBottom: 12,
+                    textAlign: 'center',
+                  }}>
+                    Daily Limit Reached
+                  </Text>
+                  
+                  <Text style={{
+                    fontSize: 16,
+                    color: '#666',
+                    textAlign: 'center',
+                    marginBottom: 30,
+                    paddingHorizontal: 20,
+                    lineHeight: 22,
+                  }}>
+                    You've used all {totalLimit} swipes for today. Check back tomorrow for more matches!
+                  </Text>
+                  
+                  {/* Premium Button */}
+                  <TouchableOpacity
+                    onPress={() => router.push('/(tabs)/premium' as any)}
+                    style={{
+                      paddingVertical: 14,
+                      paddingHorizontal: 24,
+                      backgroundColor: '#45B7D1',
+                      borderRadius: 30,
+                      shadowColor: '#45B7D1',
+                      shadowOffset: { width: 0, height: 3 },
+                      shadowOpacity: 0.2,
+                      shadowRadius: 6,
+                      elevation: 4,
+                      marginTop: 10,
+                    }}
+                  >
+                    <Text style={{
+                      color: 'white',
+                      fontSize: 16,
+                      fontWeight: '600',
+                      textAlign: 'center',
+                    }}>
+                      Get Premium for Unlimited Swipes
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </LinearGradient>
+            </Animated.View>
+          ) : (
+            <Animated.View 
+              entering={FadeIn.duration(400)} 
+              className="flex-1 items-center justify-center bg-white rounded-3xl shadow-sm px-6"
+              style={{
+                shadowColor: '#7D5BA6',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.08,
+                shadowRadius: 8,
+                elevation: 2,
+              }}
+            >
+              <Ionicons name="search-outline" size={64} color="#E6E4EC" />
+              <Text className="mt-5 text-center text-neutral-600 text-lg font-medium">
+                No more recommendations available
+              </Text>
+              <Text className="mt-2 text-center text-neutral-400 mb-4">
+                Check back later for new matches!
+              </Text>
+              <TouchableOpacity
+                onPress={refreshAll}
+                className="mt-4 bg-[#45B7D1] px-6 py-3 rounded-full"
+              >
+                <Text className="text-white font-medium">Refresh</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
+        </View>
+
+        {/* Action Buttons - Only show when not limited and have recommendations */}
+        {recommendations.length > 0 && !isLimited && (
+          <Animated.View 
+            entering={SlideInDown.delay(400)}
+            className="flex-row justify-center items-center"
+            style={{
+              position: 'absolute',
+              bottom: 80,
+              left: 0,
+              right: 0,
+              zIndex: 99
+            }}
+          >
+            <TouchableOpacity
+              onPress={() => swiperRef.current?.swipeLeft()}
+              className="w-16 h-16 rounded-full bg-white shadow-md items-center justify-center mx-4"
+              style={{
+                shadowColor: '#FF6B6B',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.15,
+                shadowRadius: 8,
+                elevation: 5,
+                borderWidth: 1,
+                borderColor: 'rgba(255,107,107,0.1)',
+              }}
+            >
+              <Ionicons name="close" size={28} color="#FF6B6B" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => swiperRef.current?.swipeRight()}
+              className="w-20 h-20 rounded-full shadow-md items-center justify-center mx-4"
+              style={{
+                shadowColor: '#7D5BA6',
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.25,
+                shadowRadius: 10,
+                elevation: 8,
+              }}
+            >
+              <LinearGradient
+                colors={['#7D5BA6', '#50A6A7']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: 99,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="heart" size={32} color="white" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1D1B26',
+    backgroundColor: '#FBFBFD',
   },
   loadingContainer: {
     flex: 1,
@@ -707,7 +970,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    color: '#FFF',
+    color: '#7D5BA6',
     marginTop: 16,
     fontFamily: 'Montserrat',
     fontSize: 16,
@@ -720,27 +983,26 @@ const styles = StyleSheet.create({
   },
   errorBlur: {
     padding: 24,
-    borderRadius: 24,
+    borderRadius: 28,
     alignItems: 'center',
     width: '100%',
   },
   errorText: {
-    color: '#FFF',
-    fontSize: 18,
-    fontFamily: 'YoungSerif-Regular',
+    color: '#333',
+    fontSize: 20,
     marginTop: 16,
     textAlign: 'center',
   },
   retryButton: {
-    marginTop: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    marginTop: 28,
+    backgroundColor: '#45B7D1',
     paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 16,
+    borderRadius: 18,
   },
   retryText: {
     color: '#FFF',
-    fontFamily: 'Montserrat-Medium',
+    fontWeight: '600',
     fontSize: 16,
   },
   cardContainer: {
@@ -752,10 +1014,10 @@ const styles = StyleSheet.create({
   cardWrapper: {
     width: '100%',
     height: '80%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowColor: '#7D5BA6',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
     elevation: 5,
   },
   actionButtons: {
@@ -786,20 +1048,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 15,
-  },
-  refreshButton: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    padding: 10,
-    borderRadius: 20,
-  },
-  refreshOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    zIndex: 10,
   },
 }); 

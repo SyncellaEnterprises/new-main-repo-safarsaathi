@@ -3,7 +3,7 @@ import { View, Text, Image, StyleSheet, Dimensions, TouchableOpacity, ActivityIn
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 const { width, height } = Dimensions.get('window');
 
@@ -36,6 +36,7 @@ export function UserCard({ profile, onSwipeLeft, onSwipeRight }: UserCardProps) 
   if (!profile) {
     return (
       <View style={styles.noProfileContainer}>
+        <Ionicons name="alert-circle-outline" size={56} color="#DDDDDD" style={{ marginBottom: 16 }} />
         <Text style={styles.noProfileText}>
           No more profiles available. Check back later!
         </Text>
@@ -86,139 +87,145 @@ export function UserCard({ profile, onSwipeLeft, onSwipeRight }: UserCardProps) 
   };
 
   const interestsArray = processInterests();
+  const matchScore = Math.round((profile.similarity_score || 0) * 100);
 
   return (
     <Animated.View 
       entering={FadeIn.duration(300)}
       style={styles.container}
     >
-      {/* Main Card with Gradient Border */}
-      <LinearGradient
-        colors={['#7D5BA6', '#50A6A7']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.cardBorder}
-      >
-        <View style={styles.cardContent}>
-          {/* Profile Image - Fixed at top */}
-          <View style={styles.imageContainer}>
-            {imageLoading && (
-              <View style={styles.loaderContainer}>
-                <ActivityIndicator size="large" color="#7D5BA6" />
-              </View>
-            )}
-            <Image
-              source={{ uri: imageError ? DEFAULT_PROFILE_IMAGE : photoUrl }}
-              style={styles.profileImage}
-              onLoad={() => setImageLoading(false)}
-              onError={() => {
-                setImageLoading(false);
-                setImageError(true);
-              }}
-            />
-            <LinearGradient
-              colors={['rgba(0,0,0,0.6)', 'transparent']}
-              style={styles.imageOverlay}
-            />
-            <View style={styles.verifiedBadge}>
-              <BlurView intensity={80} tint="dark" style={styles.badgeContent}>
-                <Ionicons name="checkmark-circle" size={14} color="#50A6A7" />
-                <Text style={styles.badgeText}>Verified</Text>
-              </BlurView>
+      <View style={styles.cardContent}>
+        {/* Profile Image Section */}
+        <View style={styles.imageContainer}>
+          {imageLoading && (
+            <View style={styles.loaderContainer}>
+              <ActivityIndicator size="large" color="#7D5BA6" />
+            </View>
+          )}
+          <Image
+            source={{ uri: imageError ? DEFAULT_PROFILE_IMAGE : photoUrl }}
+            style={styles.profileImage}
+            onLoad={() => setImageLoading(false)}
+            onError={() => {
+              setImageLoading(false);
+              setImageError(true);
+            }}
+          />
+          
+          {/* Gradient overlays for better text visibility */}
+          <LinearGradient
+            colors={['rgba(0,0,0,0.7)', 'rgba(0,0,0,0.3)', 'transparent']}
+            style={[styles.imageOverlay, { height: 100 }]}
+          />
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.6)']}
+            style={[styles.imageOverlay, { bottom: 0, height: 120 }]}
+          />
+          
+          {/* Verified badge */}
+          <View style={styles.verifiedBadge}>
+            <BlurView intensity={90} tint="dark" style={styles.badgeContent}>
+              <Ionicons name="checkmark-circle" size={14} color="#50A6A7" />
+              <Text style={styles.badgeText}>Verified</Text>
+            </BlurView>
+          </View>
+          
+          {/* Username overlay on image */}
+          <View style={styles.imageUsernameContainer}>
+            <Text style={styles.imageUsername}>
+              {profile.username.replace('user_', '')}, {profile.age || 'N/A'}
+            </Text>
+          </View>
+        </View>
+
+        {/* Info Section */}
+        <View style={styles.infoSection}>
+          {/* Basic Info with Icons */}
+          <View style={styles.basicInfoContainer}>
+            <View style={styles.infoRow}>
+              <Ionicons name="location-outline" size={16} color="#7D5BA6" style={styles.infoIcon} />
+              <Text style={styles.infoText}>{profile.location || 'Location not specified'}</Text>
+            </View>
+            
+            <View style={styles.infoRow}>
+              <Ionicons name="briefcase-outline" size={16} color="#7D5BA6" style={styles.infoIcon} />
+              <Text style={styles.infoText}>{profile.occupation || 'Occupation not specified'}</Text>
+            </View>
+            
+            <View style={styles.infoRow}>
+              <Ionicons name="person-outline" size={16} color="#7D5BA6" style={styles.infoIcon} />
+              <Text style={styles.infoText}>{profile.gender || 'Gender not specified'}</Text>
             </View>
           </View>
-
-          {/* Scrollable Content Section */}
-          <ScrollView 
-            style={styles.scrollContainer}
-            showsVerticalScrollIndicator={false}
-            bounces={true}
-          >
-            <View style={styles.infoContainer}>
-              <View style={styles.infoHeader}>
-                <View>
-                  <Text style={styles.userName}>
-                    {profile.username.replace('user_', '')}, {profile.age || 'N/A'}
-                  </Text>
-                  <View style={styles.infoRow}>
-                    <Ionicons name="location-outline" size={16} color="#7D5BA6" />
-                    <Text style={styles.infoText}>
-                      {profile.location || 'Location not specified'}
-                    </Text>
-                  </View>
-                  <View style={styles.infoRow}>
-                    <Ionicons name="briefcase-outline" size={16} color="#7D5BA6" />
-                    <Text style={styles.infoText}>
-                      {profile.occupation || 'Occupation not specified'}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.matchScore}>
-                  <Text style={styles.matchText}>
-                    {Math.round((profile.similarity_score || 0) * 100)}%
-                  </Text>
-                </View>
-              </View>
-
-              {/* Gender */}
-              <View style={styles.infoRow}>
-                <Ionicons name="person-outline" size={16} color="#7D5BA6" />
-                <Text style={styles.infoText}>
-                  {profile.gender || 'Gender not specified'}
-                </Text>
-              </View>
-
-              {/* About Section */}
-              {profile.bio && (
-                <View style={styles.bioSection}>
-                  <Text style={styles.sectionTitle}>About</Text>
-                  <Text style={styles.bioText}>{profile.bio}</Text>
-                </View>
-              )}
-
-              {/* Interests Section */}
-              {interestsArray.length > 0 && (
-                <View style={styles.interestsSection}>
-                  <Text style={styles.sectionTitle}>Interests</Text>
-                  <View style={styles.interestTags}>
-                    {interestsArray.map((interest: string, index: number) => (
-                      <View key={index} style={styles.interestTag}>
-                        <Text style={styles.interestText}>{interest}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              )}
-
-              {/* Prompts Section - Show all prompts */}
-              {profile.prompts?.prompts?.length > 0 && (
-                <View style={styles.promptSection}>
-                  <Text style={styles.sectionTitle}>Prompts</Text>
-                  {profile.prompts.prompts.map((prompt, index) => (
-                    <BlurView key={index} intensity={10} tint="light" style={[styles.promptCard, { marginBottom: index < profile.prompts.prompts.length - 1 ? 10 : 0 }]}>
-                      <Text style={styles.promptQuestion}>{prompt.question}</Text>
-                      <Text style={styles.promptAnswer}>{prompt.answer}</Text>
-                    </BlurView>
-                  ))}
-                </View>
-              )}
-
-              {/* Match Score Details */}
-              <View style={styles.matchDetailSection}>
-                <Text style={styles.sectionTitle}>Match Score</Text>
-                <View style={styles.matchDetailCard}>
-                  <Text style={styles.matchDetailText}>
-                    You are {Math.round((profile.similarity_score || 0) * 100)}% compatible with {profile.username.replace('user_', '')}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Bottom padding for scrolling */}
-              <View style={{ height: 20 }} />
-            </View>
-          </ScrollView>
+          
+          {/* Match Score */}
+          <View style={styles.matchScoreContainer}>
+            <LinearGradient
+              colors={matchScore > 70 ? ['#7D5BA6', '#50A6A7'] : ['#7D5BA6', '#7D5BA6']}
+              style={styles.matchScoreGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Text style={styles.matchText}>{matchScore}%</Text>
+              <Text style={styles.matchLabel}>Match</Text>
+            </LinearGradient>
+          </View>
         </View>
-      </LinearGradient>
+
+        {/* Scrollable Content */}
+        <ScrollView 
+          style={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+        >
+          {/* About Section */}
+          {profile.bio && (
+            <View style={styles.sectionContainer}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="information-circle-outline" size={18} color="#7D5BA6" />
+                <Text style={styles.sectionTitle}>About</Text>
+              </View>
+              <Text style={styles.bioText}>{profile.bio}</Text>
+            </View>
+          )}
+
+          {/* Interests Section */}
+          {interestsArray.length > 0 && (
+            <View style={styles.sectionContainer}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="heart-outline" size={18} color="#7D5BA6" />
+                <Text style={styles.sectionTitle}>Interests</Text>
+              </View>
+              <View style={styles.interestTags}>
+                {interestsArray.map((interest: string, index: number) => (
+                  <View key={index} style={styles.interestTag}>
+                    <Text style={styles.interestText}>{interest}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Prompts Section */}
+          {profile.prompts?.prompts?.length > 0 && (
+            <View style={styles.sectionContainer}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="chatbubble-outline" size={18} color="#7D5BA6" />
+                <Text style={styles.sectionTitle}>Prompts</Text>
+              </View>
+              {profile.prompts.prompts.map((prompt, index) => (
+                <View key={index} style={styles.promptCard}>
+                  <Text style={styles.promptQuestion}>{prompt.question}</Text>
+                  <Text style={styles.promptAnswer}>{prompt.answer}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+          
+          {/* Bottom padding for scrolling */}
+          <View style={{ height: 20 }} />
+        </ScrollView>
+      </View>
     </Animated.View>
   );
 }
@@ -228,16 +235,18 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 24,
     overflow: 'hidden',
-  },
-  cardBorder: {
-    flex: 1,
-    padding: 2,
-    borderRadius: 24,
+    backgroundColor: 'white',
+    shadowColor: '#7D5BA6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 5,
+    marginBottom: 70,
   },
   cardContent: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 22,
+    backgroundColor: 'white',
+    borderRadius: 24,
     overflow: 'hidden',
   },
   noProfileContainer: {
@@ -247,15 +256,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 24,
     padding: 24,
+    shadowColor: '#7D5BA6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   noProfileText: {
-    fontSize: 18,
-    color: '#333',
+    fontSize: 16,
+    color: '#666',
     textAlign: 'center',
-    fontFamily: 'Montserrat',
+    lineHeight: 22,
   },
   imageContainer: {
-    height: '45%', // Reduced height to make more room for scrollable content
+    height: 380,
     width: '100%',
     position: 'relative',
   },
@@ -273,138 +287,153 @@ const styles = StyleSheet.create({
   },
   imageOverlay: {
     position: 'absolute',
-    top: 0,
     left: 0,
     right: 0,
-    height: 100,
+    top: 0,
+  },
+  imageUsernameContainer: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
+  },
+  imageUsername: {
+    color: 'white',
+    fontSize: 22,
+    fontWeight: 'bold', 
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   verifiedBadge: {
     position: 'absolute',
     top: 16,
     right: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
   },
   badgeContent: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingVertical: 5,
+    borderRadius: 20,
   },
   badgeText: {
     color: '#fff',
     fontSize: 12,
     marginLeft: 4,
-    fontFamily: 'Montserrat-Medium',
+    fontWeight: '600',
   },
-  scrollContainer: {
-    flex: 1,
-  },
-  infoContainer: {
-    padding: 16,
-  },
-  infoHeader: {
+  infoSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
-  userName: {
-    fontSize: 24,
-    fontFamily: 'YoungSerif-Regular',
-    color: '#333',
-    marginBottom: 8,
+  basicInfoContainer: {
+    flex: 1,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
+  },
+  infoIcon: {
+    marginRight: 8,
+    width: 20,
+    textAlign: 'center',
   },
   infoText: {
     fontSize: 14,
-    color: '#666',
-    marginLeft: 6,
-    fontFamily: 'Montserrat',
+    color: '#555',
   },
-  matchScore: {
-    backgroundColor: 'rgba(125, 91, 166, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
+  matchScoreContainer: {
+    marginLeft: 10,
+  },
+  matchScoreGradient: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   matchText: {
-    color: '#7D5BA6',
-    fontSize: 16,
-    fontFamily: 'Montserrat-Bold',
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
   },
-  bioSection: {
-    marginTop: 8,
-    marginBottom: 20,
+  matchLabel: {
+    color: 'white',
+    fontSize: 11,
+    marginTop: -2,
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  sectionContainer: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     color: '#333',
-    marginBottom: 10,
-    fontFamily: 'YoungSerif-Regular',
+    fontWeight: '600',
+    marginLeft: 8,
   },
   bioText: {
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
-    fontFamily: 'Montserrat',
-  },
-  interestsSection: {
-    marginBottom: 20,
   },
   interestTags: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    marginTop: 5,
   },
   interestTag: {
-    backgroundColor: 'rgba(80, 166, 167, 0.15)',
+    backgroundColor: 'rgba(125, 91, 166, 0.08)',
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingVertical: 7,
+    borderRadius: 20,
     marginRight: 8,
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(125, 91, 166, 0.1)',
   },
   interestText: {
-    color: '#50A6A7',
-    fontSize: 12,
-    fontFamily: 'Montserrat-Medium',
-  },
-  promptSection: {
-    marginBottom: 20,
+    color: '#7D5BA6',
+    fontSize: 13,
+    fontWeight: '500',
   },
   promptCard: {
-    padding: 12,
-    borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(125, 91, 166, 0.05)',
+    padding: 14,
+    backgroundColor: 'rgba(80, 166, 167, 0.06)',
+    borderRadius: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(80, 166, 167, 0.1)',
   },
   promptQuestion: {
     fontSize: 14,
     color: '#7D5BA6',
+    fontWeight: '600',
     marginBottom: 6,
-    fontFamily: 'Montserrat-Medium',
   },
   promptAnswer: {
     fontSize: 14,
     color: '#666',
-    fontFamily: 'Montserrat',
     lineHeight: 20,
-  },
-  matchDetailSection: {
-    marginBottom: 16,
-  },
-  matchDetailCard: {
-    padding: 12,
-    borderRadius: 16,
-    backgroundColor: 'rgba(125, 91, 166, 0.1)',
-  },
-  matchDetailText: {
-    fontSize: 14,
-    color: '#7D5BA6',
-    fontFamily: 'Montserrat-Medium',
-    textAlign: 'center',
   },
 });
