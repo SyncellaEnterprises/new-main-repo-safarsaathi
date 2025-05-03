@@ -759,6 +759,13 @@ export default function ExploreScreen() {
               cardVerticalMargin={0}
               outputRotationRange={['-10deg', '0deg', '10deg']}
               verticalSwipe={false}
+              containerStyle={{ flex: 1 }}
+              swipeBackCard
+              horizontalSwipe={true}
+              horizontalThreshold={width * 0.25}
+              useViewOverflow={false}
+              verticalThreshold={height * 0.8}
+              zoomFriction={50}
             />
           ) : recommendations.length > 0 && isLimited ? (
             // Daily Limit Card - Same size/style as user cards

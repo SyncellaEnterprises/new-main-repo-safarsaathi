@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, Dimensions, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, Image, StyleSheet, Dimensions, TouchableOpacity, ActivityIndicator, ScrollView, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 
 const { width, height } = Dimensions.get('window');
 
@@ -46,6 +47,7 @@ export function UserCard({ profile, onSwipeLeft, onSwipeRight }: UserCardProps) 
 
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   // Process the profile photo
   const processProfilePhoto = () => {
@@ -172,59 +174,63 @@ export function UserCard({ profile, onSwipeLeft, onSwipeRight }: UserCardProps) 
           </View>
         </View>
 
-        {/* Scrollable Content */}
-        <ScrollView 
-          style={styles.scrollContainer}
-          showsVerticalScrollIndicator={false}
-          bounces={true}
-        >
-          {/* About Section */}
-          {profile.bio && (
-            <View style={styles.sectionContainer}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="information-circle-outline" size={18} color="#7D5BA6" />
-                <Text style={styles.sectionTitle}>About</Text>
+        {/* Force scrolling with a Pressable wrapper to intercept swipe gestures */}
+        <Pressable style={styles.scrollWrapper} onTouchStart={(e) => e.stopPropagation()}>
+          <ScrollView 
+            ref={scrollViewRef}
+            style={styles.scrollContainer}
+            showsVerticalScrollIndicator={true}
+            nestedScrollEnabled={true}
+            contentContainerStyle={{ paddingBottom: 20 }}
+          >
+            {/* About Section */}
+            {profile.bio && (
+              <View style={styles.sectionContainer}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons name="information-circle-outline" size={18} color="#7D5BA6" />
+                  <Text style={styles.sectionTitle}>About</Text>
+                </View>
+                <Text style={styles.bioText}>{profile.bio}</Text>
               </View>
-              <Text style={styles.bioText}>{profile.bio}</Text>
-            </View>
-          )}
+            )}
 
-          {/* Interests Section */}
-          {interestsArray.length > 0 && (
-            <View style={styles.sectionContainer}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="heart-outline" size={18} color="#7D5BA6" />
-                <Text style={styles.sectionTitle}>Interests</Text>
+            {/* Interests Section */}
+            {interestsArray.length > 0 && (
+              <View style={styles.sectionContainer}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons name="heart-outline" size={18} color="#7D5BA6" />
+                  <Text style={styles.sectionTitle}>Interests</Text>
+                </View>
+                <View style={styles.interestTags}>
+                  {interestsArray.map((interest: string, index: number) => (
+                    <View key={index} style={styles.interestTag}>
+                      <Text style={styles.interestText}>{interest}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
-              <View style={styles.interestTags}>
-                {interestsArray.map((interest: string, index: number) => (
-                  <View key={index} style={styles.interestTag}>
-                    <Text style={styles.interestText}>{interest}</Text>
+            )}
+
+            {/* Prompts Section */}
+            {profile.prompts?.prompts?.length > 0 && (
+              <View style={styles.sectionContainer}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons name="chatbubble-outline" size={18} color="#7D5BA6" />
+                  <Text style={styles.sectionTitle}>Prompts</Text>
+                </View>
+                {profile.prompts.prompts.map((prompt, index) => (
+                  <View key={index} style={styles.promptCard}>
+                    <Text style={styles.promptQuestion}>{prompt.question}</Text>
+                    <Text style={styles.promptAnswer}>{prompt.answer}</Text>
                   </View>
                 ))}
               </View>
-            </View>
-          )}
-
-          {/* Prompts Section */}
-          {profile.prompts?.prompts?.length > 0 && (
-            <View style={styles.sectionContainer}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="chatbubble-outline" size={18} color="#7D5BA6" />
-                <Text style={styles.sectionTitle}>Prompts</Text>
-              </View>
-              {profile.prompts.prompts.map((prompt, index) => (
-                <View key={index} style={styles.promptCard}>
-                  <Text style={styles.promptQuestion}>{prompt.question}</Text>
-                  <Text style={styles.promptAnswer}>{prompt.answer}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-          
-          {/* Bottom padding for scrolling */}
-          <View style={{ height: 20 }} />
-        </ScrollView>
+            )}
+            
+            {/* Extra space for scrolling */}
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </Pressable>
       </View>
     </Animated.View>
   );
@@ -435,5 +441,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
+  },
+  scrollWrapper: {
+    flex: 1,
+    width: '100%',
   },
 });
