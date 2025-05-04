@@ -2,96 +2,226 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  html {
-    font-family: "Montserrat", system-ui, sans-serif;
-  }
-  
-  h1, h2, h3 {
-    font-family: "YoungSerif-Regular", serif;
-  }
-  
-  h4, h5, h6, strong {
-    font-family: "Montserrat-Bold", system-ui, sans-serif;
-  }
+/* Global Styles */
+html, body {
+  @apply bg-secondary-50 text-neutral-dark font-montserrat;
 }
 
-@layer components {
-  .btn-primary {
-    @apply bg-primary text-white py-3 px-6 rounded-xl font-montserratBold shadow-button transition-transform active:scale-95;
-  }
-  
-  .btn-secondary {
-    @apply bg-secondary text-white py-3 px-6 rounded-xl font-montserratBold shadow-button transition-transform active:scale-95;
-  }
-  
-  .btn-accent {
-    @apply bg-accent text-neutral-darkest py-3 px-6 rounded-xl font-montserratBold shadow-button transition-transform active:scale-95;
-  }
-  
-  .btn-outline {
-    @apply bg-transparent border-2 py-3 px-6 rounded-xl font-montserratBold transition-transform active:scale-95;
-  }
-  
-  .card {
-    @apply bg-neutral-lightest p-6 rounded-2xl shadow-card;
-  }
-  
-  .section-title {
-    @apply text-2xl font-youngSerif text-primary-dark mb-4;
-  }
-  
-  .page-container {
-    @apply px-4 py-6 bg-neutral-light min-h-screen;
-  }
-  
-  .input-container {
-    @apply mb-4;
-  }
-  
-  .input-label {
-    @apply text-neutral-dark mb-2 ml-1 font-montserratMedium text-sm;
-  }
-  
-  .input-field {
-    @apply bg-neutral-lightest px-4 py-3.5 rounded-xl border border-neutral-medium font-montserrat;
-  }
-  
-  .input-field-icon {
-    @apply bg-neutral-lightest pl-11 pr-4 py-3.5 rounded-xl border border-neutral-medium font-montserrat;
-  }
-  
-  .input-icon-container {
-    @apply absolute left-3.5 top-3.5;
-  }
-  
-  .auth-heading {
-    @apply text-3xl font-youngSerif text-primary-dark;
-  }
-  
-  .auth-subheading {
-    @apply text-neutral-dark font-montserratLight text-base;
-  }
-  
-  .auth-container {
-    @apply flex-1 px-6 py-8;
-  }
-  
-  .gradient-background {
-    @apply bg-gradient-romance;
-  }
-  
-  .travel-gradient-background {
-    @apply bg-gradient-travel;
-  }
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  @apply font-montserratBold;
 }
 
-@layer utilities {
-  .text-shadow {
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-  
-  .bg-pattern {
-    background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23ffffff' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
-  }
+/* Custom Button Classes */
+.btn-primary {
+  @apply bg-primary-500 text-white font-montserratBold py-3 px-6 rounded-full 
+    shadow-button transition-all duration-200 active:translate-y-0.5
+    hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-300;
+}
+
+.btn-secondary {
+  @apply bg-secondary-500 text-primary-500 font-montserratBold py-3 px-6 rounded-full 
+    border border-primary-300 transition-all duration-200 active:translate-y-0.5
+    hover:bg-secondary-600 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-300;
+}
+
+.btn-accent {
+  @apply bg-accent-500 text-white font-montserratBold py-3 px-6 rounded-full 
+    shadow-button transition-all duration-200 active:translate-y-0.5
+    hover:bg-accent-600 focus:outline-none focus:ring-2 focus:ring-accent-300;
+}
+
+.btn-outline {
+  @apply bg-transparent text-primary-500 font-montserratBold py-3 px-6 rounded-full 
+    border border-primary-500 transition-all duration-200 active:translate-y-0.5
+    hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-300;
+}
+
+.btn-small {
+  @apply py-2 px-4 text-sm;
+}
+
+.btn-large {
+  @apply py-4 px-8 text-lg;
+}
+
+.btn-icon {
+  @apply inline-flex items-center justify-center;
+}
+
+.btn-icon svg,
+.btn-icon img {
+  @apply mr-2 h-5 w-5;
+}
+
+/* Card Styles */
+.card {
+  @apply bg-white rounded-3xl shadow-card p-6 transition-all duration-200;
+}
+
+.card-hover {
+  @apply hover:shadow-hover hover:-translate-y-1 cursor-pointer;
+}
+
+.card-primary {
+  @apply border-l-4 border-primary-500;
+}
+
+.card-accent {
+  @apply border-l-4 border-accent-500;
+}
+
+/* Form Styles */
+.form-input {
+  @apply bg-secondary-100 border border-secondary-200 rounded-xl px-4 py-3 w-full
+    focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-transparent
+    placeholder:text-neutral-medium;
+}
+
+.form-label {
+  @apply block text-sm font-montserratMedium mb-2 text-neutral-dark;
+}
+
+.form-error {
+  @apply text-primary-500 text-sm mt-1;
+}
+
+/* Badge Styles */
+.badge {
+  @apply inline-flex items-center justify-center px-3 py-1 text-xs font-montserratBold rounded-full;
+}
+
+.badge-primary {
+  @apply bg-primary-100 text-primary-700;
+}
+
+.badge-accent {
+  @apply bg-accent-100 text-accent-700;
+}
+
+.badge-neutral {
+  @apply bg-neutral-light text-neutral-dark;
+}
+
+/* Icon Styles */
+.icon-primary {
+  @apply text-primary-500;
+}
+
+.icon-accent {
+  @apply text-accent-500;
+}
+
+.icon-neutral {
+  @apply text-neutral-medium;
+}
+
+/* Special Effects */
+.gradient-primary {
+  @apply bg-gradient-primary from-primary-400 to-primary-600;
+}
+
+.gradient-romance {
+  @apply bg-gradient-romance;
+}
+
+.gradient-travel {
+  @apply bg-gradient-travel;
+}
+
+.gradient-sunset {
+  @apply bg-gradient-sunset;
+}
+
+.gradient-peachy {
+  @apply bg-gradient-peachy;
+}
+
+.shine-effect {
+  @apply relative overflow-hidden;
+}
+
+.shine-effect::after {
+  content: '';
+  @apply absolute top-0 left-0 h-full w-full bg-gradient-shine;
+  animation: shine 2s infinite;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-secondary-100 rounded-full;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-primary-200 rounded-full hover:bg-primary-300;
+}
+
+/* Pattern Backgrounds */
+.bg-pattern-waves {
+  @apply bg-pattern-waves bg-repeat;
+}
+
+.bg-pattern-dots {
+  @apply bg-pattern-dots bg-repeat;
+}
+
+.bg-pattern-travel {
+  @apply bg-pattern-travel bg-repeat;
+}
+
+/* Animation Utilities */
+.animate-float {
+  @apply animate-float;
+}
+
+.animate-pulse-slow {
+  @apply animate-pulse-slow;
+}
+
+.animate-shine {
+  @apply animate-shine;
+}
+
+/* Travel-Dating Specific Classes */
+.match-indicator {
+  @apply bg-primary-500 text-white text-center font-montserratBold text-sm px-3 py-1 rounded-full absolute top-3 right-3;
+}
+
+.location-tag {
+  @apply inline-flex items-center text-sm text-accent-600 font-montserratMedium;
+}
+
+.location-tag svg {
+  @apply mr-1 h-4 w-4;
+}
+
+.travel-interest {
+  @apply inline-flex items-center justify-center bg-accent-50 text-accent-700 px-3 py-1 
+    rounded-full text-xs font-montserratMedium mr-1 mb-1;
+}
+
+.dating-preference {
+  @apply inline-flex items-center justify-center bg-primary-50 text-primary-700 px-3 py-1 
+    rounded-full text-xs font-montserratMedium mr-1 mb-1;
+}
+
+.verified-badge {
+  @apply inline-flex items-center text-accent-500 font-montserratMedium;
+}
+
+.verified-badge svg {
+  @apply mr-1 h-4 w-4;
+}
+
+.premium-badge {
+  @apply inline-flex items-center text-primary-500 font-montserratBold;
+}
+
+.premium-badge svg {
+  @apply mr-1 h-4 w-4;
 }

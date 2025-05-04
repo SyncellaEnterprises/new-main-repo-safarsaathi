@@ -132,7 +132,7 @@ export default function ExploreScreen() {
   // New animated values for modern UI
   const heroHeight = useSharedValue(200);
   const filterSheetTranslateY = useSharedValue(1000);
-  
+
   const filterSheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: filterSheetTranslateY.value }]
   }));
@@ -226,121 +226,121 @@ export default function ExploreScreen() {
       // Step 1: Get recommended user IDs and similarity scores
       console.log('Fetching initial recommendations...');
       try {
-        const recommendationResponse = await axios.post(
-          `${API_URL}/user/recommendation`,
-          {},
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
+      const recommendationResponse = await axios.post(
+        `${API_URL}/user/recommendation`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
             timeout: 60000 // 60 seconds to allow for model loading time
-          }
-        );
+        }
+      );
 
-        console.log('Initial recommendation IDs:', recommendationResponse.data);
-        
-        if (recommendationResponse.data.status !== 'success') {
+      console.log('Initial recommendation IDs:', recommendationResponse.data);
+      
+      if (recommendationResponse.data.status !== 'success') {
           throw new Error(recommendationResponse.data.message || 'Failed to get initial recommendations');
-        }
+      }
 
-        // Create a map of profile IDs to similarity scores
-        const profileMap = new Map<number, number>();
-        recommendationResponse.data.recommended_users.forEach((id: number, index: number) => {
-          profileMap.set(id, recommendationResponse.data.similarity_scores[index]);
-        });
+      // Create a map of profile IDs to similarity scores
+      const profileMap = new Map<number, number>();
+      recommendationResponse.data.recommended_users.forEach((id: number, index: number) => {
+        profileMap.set(id, recommendationResponse.data.similarity_scores[index]);
+      });
 
-        // Step 2: Get detailed user profiles
-        console.log('Fetching detailed profiles...');
-        const detailedResponse = await axios.get(
-          `${API_URL}/api/recommended_users/me`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
+      // Step 2: Get detailed user profiles
+      console.log('Fetching detailed profiles...');
+      const detailedResponse = await axios.get(
+        `${API_URL}/api/recommended_users/me`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
           }
-        );
-
-        console.log('Detailed profiles raw data:', detailedResponse.data);
-
-        if (!detailedResponse.data?.recommended_users?.length) {
-          throw new Error('No recommendations available');
         }
+      );
 
-        // Transform the data
-        const mappedProfiles: (TransformedProfile | null)[] = detailedResponse.data.recommended_users.map(
-          (rec: RecommendationResponse) => {
-            // Get profile ID from either field name (handle API inconsistency)
-            const profileId = rec.recommended_user_profile_id || rec.recommended_user_profile_user_id;
-            
-            console.log('Processing profile with ID:', profileId);
-            
-            if (!profileId) {
-              console.error('Missing profile ID in recommendation:', rec);
-              // Instead of throwing error, log and skip this profile
-              console.warn('Skipping profile due to missing ID');
-              return null;
-            }
+      console.log('Detailed profiles raw data:', detailedResponse.data);
 
-            // Parse location data
-            let locationText = 'Location not specified';
-            if (rec.recommended_user_location) {
-              try {
-                const locationData: LocationData = JSON.parse(rec.recommended_user_location);
-                locationText = locationData.city || locationData.district || 
-                             locationData.state || locationData.address || 
-                             'Location not specified';
-              } catch (e) {
-                console.error('Error parsing location:', e);
-              }
-            }
+      if (!detailedResponse.data?.recommended_users?.length) {
+        throw new Error('No recommendations available');
+      }
 
-            // Parse interests
-            const interestsStr = rec.recommended_user_interest || '';
-            const interests = interestsStr
-              .replace(/[{}"]/g, '') // Remove all braces and quotes
-              .split(',')
-              .map(i => i.trim())
-              .filter(i => i);
-
-            // Get similarity score from the map
-            const similarity_score = profileMap.get(profileId) || rec.similarity_score || 0;
-
+      // Transform the data
+      const mappedProfiles: (TransformedProfile | null)[] = detailedResponse.data.recommended_users.map(
+        (rec: RecommendationResponse) => {
+          // Get profile ID from either field name (handle API inconsistency)
+          const profileId = rec.recommended_user_profile_id || rec.recommended_user_profile_user_id;
           
-            return {
-              username: rec.recommended_user_username,
-              age: rec.recommended_user_age,
-              bio: rec.recommended_user_bio,
-              gender: rec.recommended_user_gender,
-              interests: interests,
-              location: locationText,
-              occupation: rec.recommended_user_occupation,
-              profile_photo: rec.recommended_user_photo,
-              prompts: rec.recommended_user_prompts || { prompts: [] },
-              similarity_score: similarity_score,
-              recommended_user_profile_id: profileId
-            };
+          console.log('Processing profile with ID:', profileId);
+          
+          if (!profileId) {
+            console.error('Missing profile ID in recommendation:', rec);
+            // Instead of throwing error, log and skip this profile
+            console.warn('Skipping profile due to missing ID');
+            return null;
           }
-        );
 
-        // Filter out any null entries (skipped profiles)
-        const transformedProfiles: TransformedProfile[] = mappedProfiles.filter(
-          (profile): profile is TransformedProfile => profile !== null
-        );
+          // Parse location data
+          let locationText = 'Location not specified';
+          if (rec.recommended_user_location) {
+            try {
+              const locationData: LocationData = JSON.parse(rec.recommended_user_location);
+              locationText = locationData.city || locationData.district || 
+                           locationData.state || locationData.address || 
+                           'Location not specified';
+            } catch (e) {
+              console.error('Error parsing location:', e);
+            }
+          }
 
-        if (transformedProfiles.length === 0) {
-          throw new Error('No valid profiles found');
+          // Parse interests
+          const interestsStr = rec.recommended_user_interest || '';
+          const interests = interestsStr
+            .replace(/[{}"]/g, '') // Remove all braces and quotes
+            .split(',')
+            .map(i => i.trim())
+            .filter(i => i);
+
+          // Get similarity score from the map
+          const similarity_score = profileMap.get(profileId) || rec.similarity_score || 0;
+
+        
+          return {
+            username: rec.recommended_user_username,
+            age: rec.recommended_user_age,
+            bio: rec.recommended_user_bio,
+            gender: rec.recommended_user_gender,
+            interests: interests,
+            location: locationText,
+            occupation: rec.recommended_user_occupation,
+            profile_photo: rec.recommended_user_photo,
+            prompts: rec.recommended_user_prompts || { prompts: [] },
+            similarity_score: similarity_score,
+            recommended_user_profile_id: profileId
+          };
         }
+      );
 
-        // Sort by similarity score
-        const sortedProfiles = transformedProfiles.sort(
-          (a: TransformedProfile, b: TransformedProfile) => 
-            b.similarity_score - a.similarity_score
-        );
+      // Filter out any null entries (skipped profiles)
+      const transformedProfiles: TransformedProfile[] = mappedProfiles.filter(
+        (profile): profile is TransformedProfile => profile !== null
+      );
 
-        console.log('Transformed profiles:', sortedProfiles);
-        setRecommendations(sortedProfiles);
+      if (transformedProfiles.length === 0) {
+        throw new Error('No valid profiles found');
+      }
+
+      // Sort by similarity score
+      const sortedProfiles = transformedProfiles.sort(
+        (a: TransformedProfile, b: TransformedProfile) => 
+          b.similarity_score - a.similarity_score
+      );
+
+      console.log('Transformed profiles:', sortedProfiles);
+      setRecommendations(sortedProfiles);
       } catch (recommendationError: any) {
         // Handle errors specifically from recommendation model
         if (recommendationError.response?.status === 503) {
@@ -357,7 +357,7 @@ export default function ExploreScreen() {
           throw recommendationError;
         }
       }
-      
+
     } catch (error: any) {
       // Main error handling for the entire function
       console.error('Fetch error:', {
@@ -407,55 +407,55 @@ export default function ExploreScreen() {
 
       // Only make API call for right swipes if we're not limited
       if (direction === 'right') {
-        const swipeResponse = await axios.post(
-          `${API_URL}/api/swipe`,
-          apiPayload,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
+      const swipeResponse = await axios.post(
+        `${API_URL}/api/swipe`,
+        apiPayload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
             timeout: 10000 // 10 second timeout
-          }
-        );
+        }
+      );
 
-        if (swipeResponse.data.status === 'success') {
-          setSwipesRemaining(swipeResponse.data.remaining_swipes);
-          setTotalLimit(swipeResponse.data.total_limit);
-          setIsLimited(swipeResponse.data.remaining_swipes <= 0);
+      if (swipeResponse.data.status === 'success') {
+        setSwipesRemaining(swipeResponse.data.remaining_swipes);
+        setTotalLimit(swipeResponse.data.total_limit);
+        setIsLimited(swipeResponse.data.remaining_swipes <= 0);
 
           // Check for matches after right swipe
-          try {
-            const matchResponse = await axios.get(
-              `${API_URL}/api/matches/me`,
-              {
-                headers: { 
-                  Authorization: `Bearer ${token}`,
-                  'Content-Type': 'application/json'
+        try {
+          const matchResponse = await axios.get(
+            `${API_URL}/api/matches/me`,
+            {
+              headers: { 
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
                 },
                 timeout: 10000 // 10 second timeout
-              }
+            }
+          );
+
+          if (matchResponse.data?.matches?.length > 0) {
+            const isMatch = matchResponse.data.matches.some(
+              (match: any) => match.matched_username === targetUsername
             );
 
-            if (matchResponse.data?.matches?.length > 0) {
-              const isMatch = matchResponse.data.matches.some(
-                (match: any) => match.matched_username === targetUsername
-              );
-
-              if (isMatch) {
-                Toast.show({
-                  type: 'success',
-                  text1: 'Match! 🎉',
-                  text2: `You matched with ${targetUsername}!`,
-                  visibilityTime: 4000,
-                  autoHide: true,
-                  topOffset: 60
-                });
-              }
+            if (isMatch) {
+              Toast.show({
+                type: 'success',
+                text1: 'Match! 🎉',
+                text2: `You matched with ${targetUsername}!`,
+                visibilityTime: 4000,
+                autoHide: true,
+                topOffset: 60
+              });
             }
-          } catch (matchError: any) {
-            console.error('Match check error:', matchError);
           }
+        } catch (matchError: any) {
+          console.error('Match check error:', matchError);
+        }
         }
       } else {
         // For left swipes, just record the swipe without deducting from limit
@@ -605,13 +605,13 @@ export default function ExploreScreen() {
         >
           <Ionicons name="alert-circle-outline" size={70} color="#FF6B6B" />
           <Text className="mt-5 text-center text-neutral-800 font-semibold text-xl">
-            {error}
-          </Text>
+          {error}
+        </Text>
           <Text className="mt-2 text-center text-neutral-500 mb-6">
             We couldn't load your recommendations at this time
           </Text>
-          <TouchableOpacity
-            onPress={refreshAll}
+        <TouchableOpacity
+          onPress={refreshAll}
             className="mt-4 bg-[#45B7D1] px-8 py-4 rounded-full"
             style={{
               shadowColor: '#45B7D1',
@@ -622,7 +622,7 @@ export default function ExploreScreen() {
             }}
           >
             <Text className="text-white font-semibold text-lg">Try Again</Text>
-          </TouchableOpacity>
+        </TouchableOpacity>
         </Animated.View>
       </View>
     );
@@ -631,13 +631,13 @@ export default function ExploreScreen() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView className="flex-1 bg-[#FBFBFD]">
-        {/* Hero Section */}
+      {/* Hero Section */}
         <Animated.View 
           style={[heroStyle, { height: 60 }]} 
           className="relative overflow-hidden"
         >
-          <LinearGradient
-            colors={['rgba(125,91,166,0.05)', 'rgba(69, 183, 209, 0.03)']}
+        <LinearGradient
+            colors={['rgba(7, 223, 212, 0.05)', 'rgba(240, 81, 88, 0.03)']}
             style={{
               position: 'absolute',
               top: 0,
@@ -648,19 +648,19 @@ export default function ExploreScreen() {
           />
           <View className="px-7 py-2 flex-row justify-between items-center">
             <View>
-              <Animated.Text 
-                entering={FadeInDown.delay(200)}
+          <Animated.Text 
+            entering={FadeInDown.delay(200)}
                 className="text-xl font-bold text-neutral-800"
                 style={{ letterSpacing: 0.5 }}
-              >
-                Discover
-              </Animated.Text>
-              <Animated.Text
-                entering={FadeInDown.delay(300)}
+          >
+            Discover
+          </Animated.Text>
+          <Animated.Text
+            entering={FadeInDown.delay(300)}
                 className="text-sm text-neutral-500"
-              >
-                Find your perfect travel companion
-              </Animated.Text>
+          >
+            Find your perfect travel companion
+          </Animated.Text>
             </View>
             
             {/* Swipes Counter */}
@@ -668,22 +668,22 @@ export default function ExploreScreen() {
               entering={FadeInDown.delay(400)}
               className="rounded-full bg-white px-3 py-1 flex-row items-center"
               style={{
-                shadowColor: '#7D5BA6',
+                shadowColor: '#ca99b9',
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.1,
                 shadowRadius: 4,
                 elevation: 2,
               }}
             >
-              <Ionicons name="flame-outline" size={14} color="#7D5BA6" />
-              <Text className="text-[#7D5BA6] font-medium text-sm ml-1">
+              <Ionicons name="flame-outline" size={14} color="#f05158" />
+              <Text className="text-[#f05158] font-medium text-sm ml-1">
                 {swipesRemaining}/{totalLimit}
               </Text>
             </Animated.View>
-          </View>
-        </Animated.View>
+        </View>
+      </Animated.View>
 
-        {/* Main Content */}
+      {/* Main Content */}
         <View className="flex-1 px-4 pb-16 pt-2">
           {recommendations.length > 0 && !isLimited ? (
             <Swiper
@@ -692,7 +692,7 @@ export default function ExploreScreen() {
               renderCard={(card) => {
                 if (!card) return null;
                 return (
-                  <UserCard
+          <UserCard
                     profile={card}
                     onSwipeLeft={() => {}}
                     onSwipeRight={() => {}}
@@ -769,7 +769,7 @@ export default function ExploreScreen() {
             />
           ) : recommendations.length > 0 && isLimited ? (
             // Daily Limit Card - Same size/style as user cards
-            <Animated.View 
+      <Animated.View 
               entering={FadeIn.duration(400)}
               style={{
                 flex: 1,
@@ -801,16 +801,16 @@ export default function ExploreScreen() {
                   padding: 24,
                 }}>
                   {/* Top image - night sky */}
-                  <Image
-                    source={{ uri: 'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=800&q=80' }}
+            <Image
+              source={{ uri: 'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=800&q=80' }}
                     style={{ 
                       width: '100%',
                       height: 200,
                       borderRadius: 20,
                       marginBottom: 16,
                     }}
-                    resizeMode="cover"
-                  />
+              resizeMode="cover"
+            />
                   
                   {/* Timer Icon */}
                   <View style={{
@@ -833,8 +833,8 @@ export default function ExploreScreen() {
                     marginBottom: 12,
                     textAlign: 'center',
                   }}>
-                    Daily Limit Reached
-                  </Text>
+              Daily Limit Reached
+            </Text>
                   
                   <Text style={{
                     fontSize: 16,
@@ -844,11 +844,11 @@ export default function ExploreScreen() {
                     paddingHorizontal: 20,
                     lineHeight: 22,
                   }}>
-                    You've used all {totalLimit} swipes for today. Check back tomorrow for more matches!
-                  </Text>
+              You've used all {totalLimit} swipes for today. Check back tomorrow for more matches!
+            </Text>
                   
                   {/* Premium Button */}
-                  <TouchableOpacity
+            <TouchableOpacity
                     onPress={() => router.push('/(tabs)/premium' as any)}
                     style={{
                       paddingVertical: 14,
@@ -869,10 +869,10 @@ export default function ExploreScreen() {
                       fontWeight: '600',
                       textAlign: 'center',
                     }}>
-                      Get Premium for Unlimited Swipes
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                Get Premium for Unlimited Swipes
+              </Text>
+            </TouchableOpacity>
+          </View>
               </LinearGradient>
             </Animated.View>
           ) : (
@@ -921,23 +921,23 @@ export default function ExploreScreen() {
               onPress={() => swiperRef.current?.swipeLeft()}
               className="w-16 h-16 rounded-full bg-white shadow-md items-center justify-center mx-4"
               style={{
-                shadowColor: '#FF6B6B',
+                shadowColor: '#f05158',
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.15,
                 shadowRadius: 8,
                 elevation: 5,
                 borderWidth: 1,
-                borderColor: 'rgba(255,107,107,0.1)',
+                borderColor: 'rgba(240, 81, 88, 0.1)',
               }}
             >
-              <Ionicons name="close" size={28} color="#FF6B6B" />
+              <Ionicons name="close" size={28} color="#f05158" />
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => swiperRef.current?.swipeRight()}
               className="w-20 h-20 rounded-full shadow-md items-center justify-center mx-4"
               style={{
-                shadowColor: '#7D5BA6',
+                shadowColor: '#07dfd4',
                 shadowOffset: { width: 0, height: 6 },
                 shadowOpacity: 0.25,
                 shadowRadius: 10,
@@ -945,7 +945,7 @@ export default function ExploreScreen() {
               }}
             >
               <LinearGradient
-                colors={['#7D5BA6', '#50A6A7']}
+                colors={['#07dfd4', '#0cb2a9']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
@@ -960,8 +960,8 @@ export default function ExploreScreen() {
               </LinearGradient>
             </TouchableOpacity>
           </Animated.View>
-        )}
-      </SafeAreaView>
+      )}
+    </SafeAreaView>
     </GestureHandlerRootView>
   );
 }
