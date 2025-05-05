@@ -396,196 +396,171 @@ export default function ProfileScreen() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaView className="flex-1 bg-neutral-light">
-        <StatusBar barStyle="light-content" />
-        
-        {/* Animated Header */}
-        <Animated.View style={headerStyle}>
-          <LinearGradient
-            colors={["#7D5BA6", "#50A6A7", "#181825"]}
-            start={{ x: 0.1, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            className="px-4 pt-4 pb-20 rounded-b-[40px]"
-          >
-            <View className="flex-row items-center justify-between mb-6">
-              <TouchableOpacity 
-                onPress={() => router.back()}
-                className="w-10 h-10 bg-white/20 rounded-full items-center justify-center"
-              >
-                <Feather name="chevron-left" size={24} color="white" />
-              </TouchableOpacity>
-              <Text className="text-2xl text-white font-youngSerif">My Profile</Text>
-              <TouchableOpacity 
-                onPress={() => setIsMenuVisible(true)}
-                className="w-10 h-10 bg-white/20 rounded-full items-center justify-center"
-              >
-                <Feather name="more-horizontal" size={24} color="white" />
-              </TouchableOpacity>
-            </View>
-          </LinearGradient>
-        </Animated.View>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" />
+      <ScrollView 
+        className="flex-1 bg-neutral-lightest"
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor="#7C3AED"
+          />
+        }
+      >
+        {/* Profile Header */}
+        <View className="px-6 pt-4">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-3xl font-youngSerif text-neutral-darkest">
+              My Profile
+            </Text>
+            <TouchableOpacity 
+              onPress={() => setIsMenuVisible(true)}
+              className="w-10 h-10 bg-neutral-light rounded-full items-center justify-center"
+            >
+              <Feather name="more-horizontal" size={24} color="#0F172A" />
+            </TouchableOpacity>
+          </View>
+        </View>
 
-        {/* Main Content */}
-        <ScrollView 
-          className="flex-1 -mt-16"
-          refreshControl={
-            <RefreshControl 
-              refreshing={refreshing} 
-              onRefresh={onRefresh} 
-              colors={["#7C3AED"]}
-              progressViewOffset={20}
-            />
-          }
-          onScroll={(event) => {
-            scrollY.value = event.nativeEvent.contentOffset.y;
-          }}
-          scrollEventThrottle={16}
-        >
-          {/* Profile Card */}
-          <Animated.View 
-            entering={FadeInDown.delay(300).springify()}
-            style={contentStyle}
-            className="px-4"
-          >
-            <BlurView intensity={30} tint="light" className="rounded-3xl overflow-hidden">
+        {/* Profile Info */}
+        <View className="px-6 mt-6">
+          {/* Profile Image */}
+          <View className="items-center">
+            <MotiView
+              from={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', delay: 300 }}
+            >
               <LinearGradient
-                colors={['rgba(124, 58, 237, 0.1)', 'rgba(6, 182, 212, 0.1)']}
-                className="p-6"
+                colors={['#ffffff', '#ffffff']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                className="w-32 h-32 rounded-full p-1"
               >
-                {/* Profile Header */}
-                <View className="items-center">
-                  <MotiView
-                    from={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: 'spring', delay: 300 }}
-                  >
-                    <LinearGradient
-                      colors={['#7C3AED', '#06B6D4']}
-                      className="w-32 h-32 rounded-full p-1"
-                    >
-                      <View className="w-full h-full rounded-full overflow-hidden border-4 border-white">
-                        {profile?.profile_photo ? (
-                          <Image
-                            source={{ uri: profile.profile_photo }}
-                            className="w-full h-full"
-                            defaultSource={require('@/assets/images/safarsaathi.png')}
-                          />
-                        ) : (
-                          <View className="w-full h-full bg-neutral-lightest items-center justify-center">
-                            <Feather name="user" size={50} color="#7C3AED" />
-                          </View>
-                        )}
-                      </View>
-                    </LinearGradient>
-                  </MotiView>
-
-                  {/* Badges */}
-                  <View className="flex-row mt-4 gap-2">
-                    {BADGES.map((badge, index) => (
-                      <Animated.View
-                        key={badge.id}
-                        entering={FadeInRight.delay(400 + index * 100).springify()}
-                      >
-                        <BlurView intensity={30} tint="light" className="rounded-full overflow-hidden">
-                          <View className="flex-row items-center px-3 py-2 space-x-1">
-                            <MaterialCommunityIcons name={badge.icon as any} size={16} color={badge.color} />
-                            <Text className="text-xs font-montserratMedium text-neutral-darkest">
-                              {badge.name}
-                            </Text>
-                          </View>
-                        </BlurView>
-                      </Animated.View>
-                    ))}
-                  </View>
-
-                  {/* User Info */}
-                  <Animated.Text 
-                    entering={FadeInDown.delay(500).springify()}
-                    className="text-2xl font-youngSerif text-neutral-darkest mt-4"
-                  >
-                    {profile?.username || 'User'}
-                  </Animated.Text>
-
-                  {profile?.occupation && (
-                    <Animated.Text 
-                      entering={FadeInDown.delay(600).springify()}
-                      className="text-neutral-dark mt-1 font-montserrat"
-                    >
-                      {profile.occupation}
-                    </Animated.Text>
-                  )}
-
-                  {profile?.location && (
-                    <Animated.View 
-                      entering={FadeInDown.delay(700).springify()}
-                      className="flex-row items-center mt-2"
-                    >
-                      <Feather name="map-pin" size={16} color="#7C3AED" />
-                      <Text className="text-neutral-dark font-montserrat ml-1">
-                        {profile.location}
+                <View className="w-full h-full rounded-full overflow-hidden border-4 border-white">
+                  {profile?.profile_photo ? (
+                    <Image
+                      source={{ uri: profile.profile_photo }}
+                      className="w-full h-full"
+                      defaultSource={require('@/assets/images/safarsaathi.png')}
+                    />
+                  ) : (
+                    <View className="w-full h-full bg-neutral-lightest items-center justify-center">
+                      <Text className="text-4xl font-montserratBold text-primary">
+                        {profile?.username?.charAt(0).toUpperCase() || '?'}
                       </Text>
-                    </Animated.View>
+                    </View>
                   )}
-                </View>
-
-                {/* Quick Actions */}
-                <View className="flex-row justify-around mt-8">
-                  {QUICK_ACTIONS.map((action, index) => (
-                    <Animated.View
-                      key={action.id}
-                      entering={ZoomIn.delay(800 + index * 100).springify()}
-                    >
-                      <TouchableOpacity 
-                        className="items-center" 
-                        onPress={() => handleQuickActionPress(action)}
-                        activeOpacity={0.7}
-                      >
-                        <LinearGradient
-                          colors={['rgba(124, 58, 237, 0.1)', 'rgba(6, 182, 212, 0.1)']}
-                          className="w-12 h-12 rounded-full items-center justify-center"
-                        >
-                          <Feather name={action.icon as any} size={20} color={action.color} />
-                        </LinearGradient>
-                        <Text className="text-xs font-montserrat text-neutral-dark mt-2">
-                          {action.name}
-                        </Text>
-                      </TouchableOpacity>
-                    </Animated.View>
-                  ))}
                 </View>
               </LinearGradient>
-            </BlurView>
+            </MotiView>
 
-            {/* Stats Cards */}
-            <View className="flex-row justify-between mt-6 gap-4">
-              {['Interests', 'Matches', 'Trips'].map((stat, index) => (
+            {/* Name and Occupation */}
+            <Animated.Text 
+              entering={FadeInDown.delay(400).springify()}
+              className="text-2xl font-youngSerif text-neutral-darkest mt-4"
+            >
+              {profile?.username || 'User'}
+            </Animated.Text>
+            
+            {profile?.occupation && (
+              <Animated.Text 
+                entering={FadeInDown.delay(500).springify()}
+                className="text-neutral-dark font-montserrat mt-1"
+              >
+                {profile.occupation}
+              </Animated.Text>
+            )}
+
+            {/* Location */}
+            {profile?.location && (
+              <Animated.View 
+                entering={FadeInDown.delay(600).springify()}
+                className="flex-row items-center mt-2 bg-neutral-light px-4 py-2 rounded-full"
+              >
+                <Feather name="map-pin" size={16} color="#7C3AED" />
+                <Text className="text-neutral-dark font-montserrat ml-2">
+                  {profile.location}
+                </Text>
+              </Animated.View>
+            )}
+
+            {/* Badges */}
+            <View className="flex-row mt-6 gap-3">
+              {BADGES.map((badge, index) => (
                 <Animated.View
-                  key={stat}
-                  entering={FadeInDown.delay(900 + index * 100).springify()}
-                  className="flex-1"
+                  key={badge.id}
+                  entering={FadeInRight.delay(700 + index * 100).springify()}
+                  className="bg-neutral-light rounded-full overflow-hidden"
                 >
-                  <TouchableOpacity>
-                    <BlurView intensity={30} tint="light" className="rounded-2xl overflow-hidden">
-                      <LinearGradient
-                        colors={['rgba(124, 58, 237, 0.1)', 'rgba(6, 182, 212, 0.1)']}
-                        className="p-4 items-center"
-                      >
-                        <Text className="text-2xl font-youngSerif text-primary">
-                          {index === 0 ? getInterestCount() : '0'}
-                        </Text>
-                        <Text className="text-xs font-montserrat text-neutral-dark mt-1">
-                          {stat}
-                        </Text>
-                      </LinearGradient>
-                    </BlurView>
-                  </TouchableOpacity>
+                  <View className="flex-row items-center px-4 py-2 space-x-2">
+                    <MaterialCommunityIcons name={badge.icon as any} size={18} color={badge.color} />
+                    <Text className="text-sm font-montserratMedium text-neutral-darkest">
+                      {badge.name}
+                    </Text>
+                  </View>
                 </Animated.View>
               ))}
             </View>
+          </View>
 
-            {/* Tab Navigation */}
-            <View className="flex-row justify-around mt-6 bg-white rounded-2xl p-2">
+          {/* Quick Actions */}
+          <View className="flex-row justify-around mt-8">
+            {QUICK_ACTIONS.map((action, index) => (
+              <Animated.View
+                key={action.id}
+                entering={ZoomIn.delay(800 + index * 100).springify()}
+              >
+                <TouchableOpacity 
+                  className="items-center" 
+                  onPress={() => handleQuickActionPress(action)}
+                  activeOpacity={0.7}
+                >
+                  <LinearGradient
+                    colors={['rgba(124, 58, 237, 0.1)', 'rgba(6, 182, 212, 0.1)']}
+                    className="w-14 h-14 rounded-2xl items-center justify-center"
+                  >
+                    <Feather name={action.icon as any} size={22} color={action.color} />
+                  </LinearGradient>
+                  <Text className="text-xs font-montserratMedium text-neutral-dark mt-2">
+                    {action.name}
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
+            ))}
+          </View>
+
+          {/* Stats */}
+          <View className="flex-row justify-between mt-8">
+            {['Interests', 'Matches', 'Trips'].map((stat, index) => (
+              <Animated.View
+                key={stat}
+                entering={FadeInDown.delay(900 + index * 100).springify()}
+                className="flex-1 mx-2"
+              >
+                <TouchableOpacity>
+                  <BlurView intensity={30} tint="light" className="rounded-2xl overflow-hidden">
+                    <LinearGradient
+                      colors={['rgba(124, 58, 237, 0.05)', 'rgba(6, 182, 212, 0.05)']}
+                      className="p-4 items-center"
+                    >
+                      <Text className="text-2xl font-youngSerif text-primary">
+                        {index === 0 ? getInterestCount() : '0'}
+                      </Text>
+                      <Text className="text-sm font-montserratMedium text-neutral-dark mt-1">
+                        {stat}
+                      </Text>
+                    </LinearGradient>
+                  </BlurView>
+                </TouchableOpacity>
+              </Animated.View>
+            ))}
+          </View>
+
+          {/* Tabs */}
+          <View className="mt-8 bg-white rounded-2xl shadow-sm">
+            <View className="flex-row justify-around p-2">
               {['about', 'interests', 'prompts'].map((tab) => (
                 <TouchableOpacity
                   key={tab}
@@ -604,313 +579,134 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
               ))}
             </View>
+          </View>
 
-            {/* Tab Content */}
-            <View className="mt-6">
-              {activeTab === 'about' && (
-                <Animated.View 
-                  entering={FadeIn.delay(100).springify()}
-                  className="bg-white rounded-3xl p-6"
-                >
-                  <Text className="text-neutral-dark leading-relaxed font-montserrat">
-                    {profile?.bio || 'No bio available yet. Tell others about yourself!'}
-                  </Text>
-                </Animated.View>
-              )}
-
-              {activeTab === 'interests' && profile?.interest && (
-                <Animated.View 
-                  entering={FadeIn.delay(100).springify()}
-                  className="bg-white rounded-3xl p-6"
-                >
-                  <View className="flex-row flex-wrap gap-2">
-                    {(Array.isArray(profile.interest) ? profile.interest : profile.interest.split(','))
-                      .map((interest, index) => (
-                        <Animated.View
-                          key={index}
-                          entering={FadeInDown.delay(200 + index * 50).springify()}
-                        >
-                          <LinearGradient
-                            colors={['rgba(124, 58, 237, 0.1)', 'rgba(6, 182, 212, 0.1)']}
-                            className="px-4 py-2 rounded-xl"
-                          >
-                            <Text className="text-primary font-montserratMedium">
-                              {interest.trim()}
-                            </Text>
-                          </LinearGradient>
-                        </Animated.View>
-                      ))
-                    }
-                  </View>
-                </Animated.View>
-              )}
-
-              {activeTab === 'prompts' && profile?.prompts?.prompts && (
-                <Animated.View 
-                  entering={FadeIn.delay(100).springify()}
-                  className="space-y-4"
-                >
-                  {profile.prompts.prompts.map((prompt, index) => (
-                    <Animated.View
-                      key={index}
-                      entering={FadeInDown.delay(200 + index * 100).springify()}
-                      className="bg-white rounded-3xl p-6"
-                    >
-                      <Text className="text-primary font-montserratBold mb-2">
-                        {prompt.question}
-                      </Text>
-                      <Text className="text-neutral-dark font-montserrat">
-                        {prompt.answer}
-                      </Text>
-                    </Animated.View>
-                  ))}
-                </Animated.View>
-              )}
-            </View>
-
-            {/* Trusted Contacts Section */}
-            <Animated.View 
-              entering={FadeInDown.delay(1000).springify()}
-              className="mt-6 bg-white rounded-3xl p-6 mb-8"
-            >
-              <View className="flex-row items-center justify-between mb-4">
-                <View className="flex-row items-center">
-                  <LinearGradient
-                    colors={['#7C3AED', '#06B6D4']}
-                    className="w-10 h-10 rounded-xl items-center justify-center"
-                  >
-                    <Feather name="shield" size={20} color="white" />
-                  </LinearGradient>
-                  <Text className="text-lg font-montserratBold text-neutral-darkest ml-3">
-                    Trusted Contacts
-                  </Text>
-                </View>
-                <TouchableOpacity 
-                  onPress={() => openSection('trusted-contacts')}
-                  className="bg-primary/10 w-10 h-10 rounded-full items-center justify-center"
-                >
-                  <Feather name="plus" size={24} color="#7C3AED" />
-                </TouchableOpacity>
-              </View>
-
-              {profile?.trusted_contacts && profile.trusted_contacts.length > 0 ? (
-                profile.trusted_contacts.map((contact, index) => (
-                  <Animated.View 
-                    key={index}
-                    entering={FadeInDown.delay(1100 + index * 100).springify()}
-                    className="bg-neutral-lightest rounded-2xl p-4 mb-3 last:mb-0"
-                  >
-                    <View className="flex-row items-center justify-between">
-                      <View>
-                        <Text className="font-montserratBold text-neutral-darkest">
-                          {contact.name}
-                        </Text>
-                        <Text className="font-montserrat text-neutral-dark mt-1">
-                          {contact.relationship}
-                        </Text>
-                      </View>
-                      <TouchableOpacity 
-                        className="w-10 h-10 bg-white rounded-full items-center justify-center"
-                      >
-                        <Feather name="phone" size={18} color="#7C3AED" />
-                      </TouchableOpacity>
-                    </View>
-                  </Animated.View>
-                ))
-              ) : (
-                <BlurView intensity={30} tint="light" className="rounded-2xl p-6">
-                  <View className="items-center">
-                    <Feather name="users" size={40} color="#7C3AED" />
-                    <Text className="text-neutral-dark font-montserrat text-center mt-4">
-                      Add trusted contacts for enhanced safety during your travels
-                    </Text>
-                    <TouchableOpacity 
-                      onPress={() => openSection('trusted-contacts')}
-                      className="mt-4"
-                    >
-                      <LinearGradient
-                        colors={['#7C3AED', '#06B6D4']}
-                        className="px-6 py-3 rounded-xl"
-                      >
-                        <Text className="text-white font-montserratBold">
-                          Add Contact
-                        </Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  </View>
-                </BlurView>
-              )}
-            </Animated.View>
-          </Animated.View>
-        </ScrollView>
-
-        {/* Add the Menu Modal */}
-        {isMenuVisible && (
-          <View className="absolute inset-0 bg-black/50" style={{ zIndex: 50 }}>
-            <TouchableOpacity 
-              className="absolute inset-0"
-              activeOpacity={0.5}
-              onPress={() => setIsMenuVisible(false)}
-            />
-            <Animated.View 
-              entering={SlideInDown}
-              className="absolute top-20 right-4 bg-white rounded-2xl shadow-lg w-72"
-              style={{ zIndex: 51 }}
-            >
-              {MENU_OPTIONS.map((option, index) => (
-                <TouchableOpacity
-                  key={option.title}
-                  onPress={() => handleMenuItemPress(option)}
-                  activeOpacity={0.7}
-                  className="flex-row items-center px-4 py-3 border-b border-neutral-100"
-                >
-                  <View className="w-8 h-8 bg-primary/10 rounded-full items-center justify-center">
-                    <Ionicons name={option.icon} size={18} color="#7C3AED" />
-                  </View>
-                  <Text className="ml-3 font-montserratMedium text-neutral-dark">
-                    {option.title}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-              
-              {/* Update Sign Out Button */}
-              <TouchableOpacity
-                onPress={handleSignOut}
-                activeOpacity={0.7}
-                className="flex-row items-center px-4 py-3"
+          {/* Tab Content */}
+          <View className="mt-6 mb-8">
+            {activeTab === 'about' && (
+              <Animated.View 
+                entering={FadeIn.delay(100).springify()}
+                className="bg-white rounded-3xl p-6 shadow-sm"
               >
-                <View className="w-8 h-8 bg-red-100 rounded-full items-center justify-center">
-                  <Ionicons name="log-out-outline" size={18} color="#EF4444" />
+                <Text className="text-neutral-dark leading-relaxed font-montserrat">
+                  {profile?.bio || 'No bio available yet. Tell others about yourself!'}
+                </Text>
+              </Animated.View>
+            )}
+
+            {activeTab === 'interests' && profile?.interest && (
+              <Animated.View 
+                entering={FadeIn.delay(100).springify()}
+                className="bg-white rounded-3xl p-6 shadow-sm"
+              >
+                <View className="flex-row flex-wrap gap-2">
+                  {(Array.isArray(profile.interest) ? profile.interest : profile.interest.split(','))
+                    .map((interest, index) => (
+                      <Animated.View
+                        key={index}
+                        entering={FadeInDown.delay(200 + index * 50).springify()}
+                      >
+                        <LinearGradient
+                          colors={['rgba(124, 58, 237, 0.1)', 'rgba(6, 182, 212, 0.1)']}
+                          className="px-4 py-2 rounded-xl"
+                        >
+                          <Text className="text-primary font-montserratMedium">
+                            {interest.trim()}
+                          </Text>
+                        </LinearGradient>
+                      </Animated.View>
+                    ))
+                  }
                 </View>
-                <Text className="ml-3 font-montserratMedium text-red-500">
-                  Sign Out
-                </Text>
-              </TouchableOpacity>
-            </Animated.View>
-          </View>
-        )}
+              </Animated.View>
+            )}
 
-        {/* Bottom Sheet - Now using Modal for simpler presentation */}
-        {isBottomSheetVisible && selectedSection === 'trusted-contacts' && (
-          <View className="absolute inset-0 bg-black/50">
-            <View className="absolute bottom-0 left-0 right-0 bg-white h-[400px] rounded-t-3xl shadow-lg">
-              {/* Form Header */}
-              <View className="px-6 py-4 flex-row items-center justify-between border-b border-neutral-lightest">
-                <TouchableOpacity onPress={currentStep === 1 ? closeForm : handleBackStep}>
-                  <Ionicons 
-                    name={currentStep === 1 ? "close" : "chevron-back"} 
-                    size={24} 
-                    color="#7C3AED" 
-                  />
-                </TouchableOpacity>
-                <Text className="text-lg font-youngSerif text-neutral-darkest">
-                  {currentStep === 1 && "Contact Name"}
-                  {currentStep === 2 && "Phone Number"}
-                  {currentStep === 3 && "Relationship"}
-                </Text>
-                <View style={{ width: 24 }} />
-              </View>
-
-              {/* Form Steps */}
-              <View className="p-6 flex-1">
-                {currentStep === 1 && (
-                  <Animated.View entering={FadeInDown.springify()} className="flex-1">
-                    <Text className="text-neutral-dark font-montserratMedium mb-2">Contact Name</Text>
-                    <TextInput
-                      value={formData.name}
-                      onChangeText={(text) => {
-                        setFormData(prev => ({ ...prev, name: text }));
-                        setError(''); // Clear error when typing
-                      }}
-                      className="bg-neutral-lightest p-4 rounded-xl font-montserrat"
-                      placeholder="Enter contact name"
-                      returnKeyType="next"
-                      onSubmitEditing={handleNextStep}
-                      autoFocus
-                    />
-                  </Animated.View>
-                )}
-
-                {currentStep === 2 && (
-                  <Animated.View entering={FadeInDown.springify()} className="flex-1">
-                    <Text className="text-neutral-dark font-montserratMedium mb-2">Phone Number</Text>
-                    <TextInput
-                      value={formData.number}
-                      onChangeText={(text) => {
-                        setFormData(prev => ({ ...prev, number: text }));
-                        setError(''); // Clear error when typing
-                      }}
-                      className="bg-neutral-lightest p-4 rounded-xl font-montserrat"
-                      placeholder="Enter phone number"
-                      keyboardType="phone-pad"
-                      returnKeyType="next"
-                      onSubmitEditing={handleNextStep}
-                      autoFocus
-                    />
-                  </Animated.View>
-                )}
-
-                {currentStep === 3 && (
-                  <Animated.View entering={FadeInDown.springify()} className="flex-1">
-                    <Text className="text-neutral-dark font-montserratMedium mb-2">Relationship</Text>
-                    <TextInput
-                      value={formData.relationship}
-                      onChangeText={(text) => {
-                        setFormData(prev => ({ ...prev, relationship: text }));
-                        setError(''); // Clear error when typing
-                      }}
-                      className="bg-neutral-lightest p-4 rounded-xl font-montserrat"
-                      placeholder="Enter relationship"
-                      returnKeyType="done"
-                      onSubmitEditing={handleAddContact}
-                      autoFocus
-                    />
-                  </Animated.View>
-                )}
-
-                {/* Error Message */}
-                {error && (
-                  <Animated.Text 
-                    entering={FadeInDown}
-                    className="text-red-500 font-montserrat text-center mt-2"
+            {activeTab === 'prompts' && profile?.prompts?.prompts && (
+              <Animated.View 
+                entering={FadeIn.delay(100).springify()}
+                className="space-y-4"
+              >
+                {profile.prompts.prompts.map((prompt, index) => (
+                  <Animated.View
+                    key={index}
+                    entering={FadeInDown.delay(200 + index * 100).springify()}
+                    className="bg-white rounded-3xl p-6 shadow-sm"
                   >
-                    {error}
-                  </Animated.Text>
-                )}
-              </View>
-
-              {/* Bottom Button */}
-              <View className="p-6 pt-0">
-                <TouchableOpacity
-                  onPress={handleAddContact}
-                  className="w-full"
-                >
-                  <LinearGradient
-                    colors={['#7C3AED', '#06B6D4']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    className="py-4 rounded-xl"
-                  >
-                    <Text className="text-white font-montserratBold text-center">
-                      {currentStep === 3 ? 'Add Contact' : 'Next'}
+                    <Text className="text-primary font-montserratBold mb-2">
+                      {prompt.question}
                     </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            </View>
+                    <Text className="text-neutral-dark font-montserrat">
+                      {prompt.answer}
+                    </Text>
+                  </Animated.View>
+                ))}
+              </Animated.View>
+            )}
           </View>
-        )}
+        </View>
+      </ScrollView>
 
-        {/* Error Toast */}
-        {error && (
+      {/* Menu Modal */}
+      {isMenuVisible && (
+        <View className="absolute inset-0 bg-black/50" style={{ zIndex: 50 }}>
+          <TouchableOpacity 
+            className="absolute inset-0"
+            activeOpacity={0.5}
+            onPress={() => setIsMenuVisible(false)}
+          />
           <Animated.View 
             entering={SlideInDown}
-            className="absolute bottom-20 left-4 right-4 bg-red-500 p-4 rounded-xl"
+            className="absolute top-20 right-4 bg-white rounded-2xl shadow-lg w-72"
+            style={{ zIndex: 51 }}
           >
-            <Text className="text-white font-montserratMedium text-center">{error}</Text>
+            {MENU_OPTIONS.map((option, index) => (
+              <TouchableOpacity
+                key={option.title}
+                onPress={() => handleMenuItemPress(option)}
+                activeOpacity={0.7}
+                className="flex-row items-center px-4 py-3 border-b border-neutral-100"
+              >
+                <View className="w-8 h-8 bg-primary/10 rounded-full items-center justify-center">
+                  <Ionicons name={option.icon} size={18} color="#7C3AED" />
+                </View>
+                <Text className="ml-3 font-montserratMedium text-neutral-dark">
+                  {option.title}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            
+            <TouchableOpacity
+              onPress={handleSignOut}
+              activeOpacity={0.7}
+              className="flex-row items-center px-4 py-3"
+            >
+              <View className="w-8 h-8 bg-red-100 rounded-full items-center justify-center">
+                <Ionicons name="log-out-outline" size={18} color="#EF4444" />
+              </View>
+              <Text className="ml-3 font-montserratMedium text-red-500">
+                Sign Out
+              </Text>
+            </TouchableOpacity>
           </Animated.View>
-        )}
-      </SafeAreaView>
-    </GestureHandlerRootView>
+        </View>
+      )}
+
+      {/* Loading State */}
+      {loading && !refreshing && (
+        <View className="absolute inset-0 bg-white items-center justify-center">
+          <ActivityIndicator size="large" color="#7C3AED" />
+          <Text className="mt-4 font-montserratMedium text-neutral-dark">
+            Loading profile...
+          </Text>
+        </View>
+      )}
+    </SafeAreaView>
   );
-} 
+}
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+}); 
