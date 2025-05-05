@@ -5,12 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d6080ac8-7173-4192-944d-77feefd4c71d" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/app/chat/[id].tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/chat/[id].tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/app/group-chat/[id].tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/group-chat/[id].tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/app.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/model/socket_chat.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/model/socket_chat.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/model/user_auth_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/model/user_auth_model.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
