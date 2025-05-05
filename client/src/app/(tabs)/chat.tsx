@@ -99,6 +99,30 @@ interface GroupMember {
   joined_at: string;
 }
 
+// Add ProfileInitials component for avatar fallbacks
+const ProfileInitials = ({ name, size }: { name: string; size: number }) => {
+  const initial = name && name.length > 0 ? name.charAt(0).toUpperCase() : '?';
+  
+  return (
+    <View style={{
+      width: size,
+      height: size,
+      borderRadius: size / 2,
+      backgroundColor: '#007AFF',
+      justifyContent: 'center',
+      alignItems: 'center',
+    }}>
+      <Text style={{
+        color: 'white',
+        fontSize: size / 2.5,
+        fontWeight: 'bold',
+      }}>
+        {initial}
+      </Text>
+    </View>
+  );
+};
+
 export default function ChatScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -477,43 +501,25 @@ export default function ChatScreen() {
       >
         <View className="relative">
           {item.type === 'group' ? (
-            // Group avatar with member count
-            <LinearGradient
-              colors={['#3D90E3', '#70AEF0']}
-              className="w-14 h-14 rounded-full items-center justify-center"
-            >
+            <View className="w-14 h-14 rounded-full bg-blue-500 items-center justify-center">
               <Ionicons name="people" size={24} color="#fff" />
               {item.group_data && (
-                <View className="absolute -bottom-1 -right-1 bg-primary rounded-full min-w-5 h-5 items-center justify-center px-1 border-2 border-neutral-lightest">
-                  <Text className="text-xs text-white font-montserratBold">
+                <View className="absolute -bottom-1 -right-1 bg-gray-100 rounded-full min-w-5 h-5 items-center justify-center px-1">
+                  <Text className="text-xs text-gray-800 font-bold">
                     {item.group_data.member_count}
                   </Text>
                 </View>
               )}
-            </LinearGradient>
-          ) : (
-            // User avatar with online indicator and match badge
-            <View className="relative">
-              <LinearGradient
-                colors={['#FF4D6D', '#FF758F']}
-                className="w-14 h-14 rounded-full p-[2px]"
-              >
-                <Image
-                  source={{ uri: item.image }}
-                  className="w-full h-full rounded-full border-2 border-neutral-lightest"
-                />
-              </LinearGradient>
-              
-              {item.isOnline && (
-                <View className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-secondary rounded-full border-2 border-neutral-lightest" />
-              )}
-              
-              {item.type === 'match' && (
-                <View className="absolute -top-1 -right-1 bg-primary rounded-full w-5 h-5 items-center justify-center border-2 border-neutral-lightest">
-                  <Ionicons name="heart" size={12} color="#fff" />
-                </View>
-              )}
             </View>
+          ) : (
+            item.image && item.image !== DEFAULT_PROFILE_IMAGE ? (
+              <Image
+                source={{ uri: item.image }}
+                className="w-14 h-14 rounded-full"
+              />
+            ) : (
+              <ProfileInitials name={item.name} size={56} />
+            )
           )}
         </View>
 
@@ -625,123 +631,155 @@ export default function ChatScreen() {
   });
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F7F9FC]">
-      {/* Hero Section */}
-      <Animated.View 
-        entering={FadeInDown.duration(1000).springify()}
-        style={headerStyle}
-        className="px-6 pt-4"
-      >
-        <LinearGradient
-          colors={['#4ECDC4', '#45B7D1']}
-          className="rounded-3xl p-6 mb-8"
-        >
-          <View className="flex-row justify-between items-center mb-4">
-            <View>
-              <Text className="text-white/80 font-montserrat mb-2">Your Messages</Text>
-              <Text className="text-white text-2xl font-youngSerif">Chats</Text>
-            </View>
+    <SafeAreaView className="flex-1 bg-white">
+      {/* Header */}
+      <View className="px-5 pt-2 pb-4">
+        <View className="flex-row items-center justify-between">
+          <Text className="text-2xl font-bold text-gray-900">Chats</Text>
+          <View className="flex-row space-x-4">
             <TouchableOpacity 
-              onPress={() => setIsGroupModalVisible(true)}
-              className="bg-white/20 p-3 rounded-2xl"
+              className="w-9 h-9 items-center justify-center rounded-full bg-gray-100"
+              onPress={() => router.push("/(tabs)/explore")}
             >
-              <Ionicons name="people" size={24} color="white" />
+              <Ionicons name="search" size={20} color="#333" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              className="w-9 h-9 items-center justify-center rounded-full bg-gray-100"
+              onPress={() => setIsGroupModalVisible(true)}
+            >
+              <Ionicons name="people" size={20} color="#333" />
             </TouchableOpacity>
           </View>
+        </View>
+        <Text className="text-gray-500 text-sm mt-1">Your recent conversations</Text>
+      </View>
 
-          {/* Search Bar */}
-          <View className="bg-white/10 rounded-xl flex-row items-center px-4 py-3 mt-2">
-            <Ionicons name="search" size={20} color="white" />
-            <TextInput
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search chats..."
-              placeholderTextColor="rgba(255,255,255,0.6)"
-              className="flex-1 ml-3 text-white font-montserrat"
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={20} color="white" />
-              </TouchableOpacity>
-            )}
-          </View>
-        </LinearGradient>
-      </Animated.View>
+      {/* Search Bar */}
+      <View className="px-5 mb-4">
+        <View className="flex-row items-center bg-gray-100 rounded-full px-4 py-2">
+          <Ionicons name="search" size={18} color="#8E8E93" />
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search by name or message..."
+            placeholderTextColor="#8E8E93"
+            className="flex-1 ml-2 text-base text-gray-800 font-medium"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <View className="bg-gray-300 rounded-full w-5 h-5 items-center justify-center">
+                <Ionicons name="close" size={12} color="white" />
+              </View>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
 
       {loading && !refreshing ? (
         <View className="flex-1 items-center justify-center">
-          <LinearGradient
-            colors={['#4ECDC4', '#45B7D1']}
-            className="w-20 h-20 rounded-2xl items-center justify-center mb-4"
-          >
-            <ActivityIndicator size="large" color="white" />
-          </LinearGradient>
-          <Text className="text-neutral-dark font-montserrat">Loading your chats...</Text>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text className="mt-4 text-gray-500">Loading your chats...</Text>
         </View>
       ) : (
         <FlatList
           data={filteredChats}
-          renderItem={renderChatItem}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              onPress={() => handleChatPress(item)}
+              className="px-5 py-3 border-b border-gray-100"
+            >
+              <View className="flex-row">
+                {/* Avatar with indicators */}
+                <View className="relative">
+                  {item.type === 'group' ? (
+                    <View className="w-14 h-14 rounded-full bg-blue-500 items-center justify-center">
+                      <Ionicons name="people" size={24} color="#fff" />
+                      {item.group_data && (
+                        <View className="absolute -bottom-1 -right-1 bg-gray-100 rounded-full min-w-5 h-5 items-center justify-center px-1">
+                          <Text className="text-xs text-gray-800 font-bold">
+                            {item.group_data.member_count}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  ) : (
+                    item.image && item.image !== DEFAULT_PROFILE_IMAGE ? (
+                      <Image
+                        source={{ uri: item.image }}
+                        className="w-14 h-14 rounded-full"
+                      />
+                    ) : (
+                      <ProfileInitials name={item.name} size={56} />
+                    )
+                  )}
+                  {item.isOnline && (
+                    <View className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white" />
+                  )}
+                </View>
+
+                {/* Chat details */}
+                <View className="flex-1 ml-3 justify-center">
+                  <View className="flex-row items-center justify-between">
+                    <Text className={`font-semibold text-base ${item.unreadCount > 0 ? 'text-black' : 'text-gray-800'}`}>
+                      {item.name}
+                    </Text>
+                    <Text className="text-xs text-gray-500">
+                      {getTimeDisplay(item.last_active)}
+                    </Text>
+                  </View>
+                  
+                  <View className="flex-row items-center justify-between mt-1">
+                    <Text numberOfLines={1} className={`text-sm ${item.unreadCount > 0 ? 'text-gray-800 font-medium' : 'text-gray-500'}`} style={{maxWidth: '80%'}}>
+                      {item.lastMessage}
+                    </Text>
+                    
+                    {item.unreadCount > 0 && (
+                      <View className="bg-blue-500 rounded-full min-w-5 h-5 items-center justify-center px-1.5">
+                        <Text className="text-white text-xs font-bold">
+                          {item.unreadCount}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+          )}
           keyExtractor={item => item.id}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#4ECDC4"
-              colors={["#4ECDC4"]}
+              tintColor="#007AFF"
+              colors={["#007AFF"]}
             />
           }
-          onScroll={(event) => {
-            scrollY.value = event.nativeEvent.contentOffset.y;
-          }}
-          scrollEventThrottle={16}
           ListEmptyComponent={renderEmptyComponent}
-          contentContainerStyle={[
-            filteredChats.length === 0 ? { flex: 1 } : undefined,
-            { paddingHorizontal: 24 }
-          ]}
-          className="flex-1"
+          contentContainerStyle={filteredChats.length === 0 ? { flex: 1 } : undefined}
         />
       )}
 
-      {/* Quick Action FABs */}
-      <View className="absolute bottom-24 right-6 items-end space-y-4">
-        <TouchableOpacity
-          onPress={() => router.push("/(tabs)/explore")}
-          className="shadow-lg"
-          style={{
-            shadowColor: '#4ECDC4',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 5,
-            elevation: 6
-          }}
-        >
-          <LinearGradient
-            colors={['#4ECDC4', '#45B7D1']}
-            className="w-14 h-14 rounded-full items-center justify-center"
-          >
-            <Ionicons name="search" size={24} color="white" />
-          </LinearGradient>
+      {/* Tab Bar */}
+      <View className="flex-row items-center justify-around py-3 border-t border-gray-200 bg-white">
+        <TouchableOpacity className="items-center">
+          <Ionicons name="home-outline" size={24} color="#8E8E93" />
+          <Text className="text-xs text-gray-500 mt-1">Home</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setIsGroupModalVisible(true)}
-          className="shadow-lg"
-          style={{
-            shadowColor: '#FF6B6B',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 5,
-            elevation: 6
-          }}
-        >
-          <LinearGradient
-            colors={['#FF6B6B', '#FF8E8E']}
-            className="w-14 h-14 rounded-full items-center justify-center"
-          >
-            <Ionicons name="people" size={24} color="white" />
-          </LinearGradient>
+        <TouchableOpacity className="items-center">
+          <Ionicons name="map-outline" size={24} color="#8E8E93" />
+          <Text className="text-xs text-gray-500 mt-1">Trips</Text>
+        </TouchableOpacity>
+        <TouchableOpacity className="items-center">
+          <Ionicons name="chatbubbles" size={24} color="#007AFF" />
+          <Text className="text-xs text-blue-500 mt-1">Chat</Text>
+        </TouchableOpacity>
+        <TouchableOpacity className="items-center" onPress={() => setIsGroupModalVisible(true)}>
+          <Ionicons name="people-outline" size={24} color="#8E8E93" />
+          <Text className="text-xs text-gray-500 mt-1">Groups</Text>
+        </TouchableOpacity>
+        <TouchableOpacity className="items-center">
+          <Ionicons name="person-outline" size={24} color="#8E8E93" />
+          <Text className="text-xs text-gray-500 mt-1">Profile</Text>
         </TouchableOpacity>
       </View>
 
@@ -753,231 +791,219 @@ export default function ChatScreen() {
         onRequestClose={() => setIsGroupModalVisible(false)}
       >
         <View className="flex-1 justify-end bg-black/50">
-          <BlurView intensity={20} className="rounded-t-3xl overflow-hidden">
-            <View className="bg-white/90 max-h-[90%]">
-              <View className="p-4 border-b border-neutral-medium/10">
-                <View className="w-12 h-1 bg-neutral-medium/20 rounded-full self-center mb-4" />
-                <View className="flex-row justify-between items-center">
-                  <Text className="font-youngSerif text-2xl text-neutral-darkest">
-                    Create Travel Group
-                  </Text>
-                  <TouchableOpacity 
-                    onPress={() => setIsGroupModalVisible(false)}
-                    className="bg-neutral-lightest p-2 rounded-xl"
-                  >
-                    <Ionicons name="close" size={24} color="#6B7280" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-              
-              <ScrollView className="max-h-[70%]">
-                <View className="p-6">
-                  {/* Group Name */}
-                  <View className="mb-6">
-                    <Text className="font-montserratMedium text-neutral-dark mb-2">
-                      Group Name *
-                    </Text>
-                    <View className="relative">
-                      <View className="absolute left-4 top-4 z-10">
-                        <Ionicons name="people" size={20} color="#4ECDC4" />
-                      </View>
-                      <TextInput
-                        placeholder="Enter group name"
-                        value={groupForm.name}
-                        onChangeText={(text) => setGroupForm({...groupForm, name: text})}
-                        className="bg-neutral-lightest pl-12 pr-4 py-4 rounded-xl font-montserrat text-neutral-darkest border border-neutral-light"
-                      />
-                    </View>
-                  </View>
-                  
-                  {/* Group Description */}
-                  <View className="mb-6">
-                    <Text className="font-montserratMedium text-neutral-dark mb-2">
-                      Description
-                    </Text>
-                    <View className="relative">
-                      <View className="absolute left-4 top-4 z-10">
-                        <Ionicons name="document-text" size={20} color="#4ECDC4" />
-                      </View>
-                      <TextInput
-                        placeholder="What's this group about?"
-                        value={groupForm.description}
-                        onChangeText={(text) => setGroupForm({...groupForm, description: text})}
-                        className="bg-neutral-lightest pl-12 pr-4 py-4 rounded-xl font-montserrat text-neutral-darkest border border-neutral-light"
-                        multiline
-                        numberOfLines={3}
-                        textAlignVertical="top"
-                      />
-                    </View>
-                  </View>
-                  
-                  {/* Travel Destination */}
-                  <View className="mb-6">
-                    <Text className="font-montserratMedium text-neutral-dark mb-2">
-                      Travel Destination
-                    </Text>
-                    <View className="relative">
-                      <View className="absolute left-4 top-4 z-10">
-                        <Ionicons name="location" size={20} color="#4ECDC4" />
-                      </View>
-                      <TextInput
-                        placeholder="Where are you planning to travel?"
-                        value={groupForm.destination}
-                        onChangeText={(text) => setGroupForm({...groupForm, destination: text})}
-                        className="bg-neutral-lightest pl-12 pr-4 py-4 rounded-xl font-montserrat text-neutral-darkest border border-neutral-light"
-                      />
-                    </View>
-                  </View>
-                  
-                  {/* Travel Dates */}
-                  <View className="mb-6">
-                    <Text className="font-montserratMedium text-neutral-dark mb-2">
-                      Travel Dates
-                    </Text>
-                    <View className="flex-row gap-3">
-                      <TouchableOpacity 
-                        onPress={() => setShowStartDatePicker(true)}
-                        className="flex-1"
-                      >
-                        <View className="relative">
-                          <View className="absolute left-4 top-4 z-10">
-                            <Ionicons name="calendar" size={20} color="#4ECDC4" />
-                          </View>
-                          <View className="bg-neutral-lightest pl-12 pr-4 py-4 rounded-xl border border-neutral-light">
-                            <Text className={`font-montserrat ${groupForm.startDate ? 'text-neutral-darkest' : 'text-neutral-dark'}`}>
-                              {groupForm.startDate ? formatDateDisplay(groupForm.startDate) : 'Start Date'}
-                            </Text>
-                          </View>
-                        </View>
-                      </TouchableOpacity>
-                      
-                      <TouchableOpacity 
-                        onPress={() => setShowEndDatePicker(true)}
-                        className="flex-1"
-                      >
-                        <View className="relative">
-                          <View className="absolute left-4 top-4 z-10">
-                            <Ionicons name="calendar" size={20} color="#4ECDC4" />
-                          </View>
-                          <View className="bg-neutral-lightest pl-12 pr-4 py-4 rounded-xl border border-neutral-light">
-                            <Text className={`font-montserrat ${groupForm.endDate ? 'text-neutral-darkest' : 'text-neutral-dark'}`}>
-                              {groupForm.endDate ? formatDateDisplay(groupForm.endDate) : 'End Date'}
-                            </Text>
-                          </View>
-                        </View>
-                      </TouchableOpacity>
-                    </View>
-                    
-                    {showStartDatePicker && (
-                      <DateTimePicker
-                        value={groupForm.startDate ? new Date(groupForm.startDate) : new Date()}
-                        mode="date"
-                        display="default"
-                        onChange={onStartDateChange}
-                      />
-                    )}
-                    
-                    {showEndDatePicker && (
-                      <DateTimePicker
-                        value={groupForm.endDate ? new Date(groupForm.endDate) : new Date()}
-                        mode="date"
-                        display="default"
-                        onChange={onEndDateChange}
-                      />
-                    )}
-                  </View>
-                  
-                  {/* Group Members Selection */}
-                  <View className="mb-6">
-                    <Text className="font-montserratMedium text-neutral-dark mb-2">
-                      Select Group Members
-                    </Text>
-                    <View className="bg-neutral-lightest rounded-xl border border-neutral-light overflow-hidden">
-                      {matches.length > 0 ? (
-                        matches.map((match) => (
-                          <TouchableOpacity 
-                            key={match.userId} 
-                            onPress={() => toggleMatchSelection(match.userId)}
-                            className={`flex-row items-center p-4 border-b border-neutral-light last:border-b-0 ${
-                              groupForm.selectedMembers.includes(match.userId) ? 'bg-[#4ECDC4]/10' : ''
-                            }`}
-                          >
-                            <Image 
-                              source={{ uri: match.profile_photo || DEFAULT_PROFILE_IMAGE }}
-                              className="h-12 w-12 rounded-full"
-                            />
-                            <View className="flex-1 ml-4">
-                              <Text className="font-montserratBold text-neutral-darkest">
-                                {match.username}
-                              </Text>
-                              <Text className="text-sm text-neutral-dark font-montserrat" numberOfLines={1}>
-                                {match.bio || "No bio available"}
-                              </Text>
-                            </View>
-                            <View className={`h-6 w-6 rounded-full items-center justify-center ${
-                              groupForm.selectedMembers.includes(match.userId) 
-                                ? 'bg-[#4ECDC4]' 
-                                : 'border-2 border-neutral-medium'
-                            }`}>
-                              {groupForm.selectedMembers.includes(match.userId) && (
-                                <Ionicons name="checkmark" size={16} color="white" />
-                              )}
-                            </View>
-                          </TouchableOpacity>
-                        ))
-                      ) : (
-                        <View className="p-4 items-center">
-                          <Ionicons name="people" size={40} color="#4ECDC4" />
-                          <Text className="text-center text-neutral-dark font-montserrat mt-2">
-                            No matches available
-                          </Text>
-                          <TouchableOpacity 
-                            onPress={() => {
-                              setIsGroupModalVisible(false);
-                              router.push("/(tabs)/explore");
-                            }}
-                            className="mt-4 bg-[#4ECDC4] px-6 py-2 rounded-full"
-                          >
-                            <Text className="text-white font-montserratBold">Find Matches</Text>
-                          </TouchableOpacity>
-                        </View>
-                      )}
-                    </View>
-                    <Text className="text-sm text-neutral-dark mt-2 font-montserrat">
-                      Selected: {groupForm.selectedMembers.length} members
-                    </Text>
-                  </View>
-                </View>
-              </ScrollView>
-              
-              <View className="p-6 border-t border-neutral-medium/10">
-                <TouchableOpacity
+          <View className="bg-white rounded-t-3xl max-h-[90%]">
+            {/* Modal Header */}
+            <View className="px-6 pt-6 pb-4 border-b border-gray-100">
+              <View className="w-12 h-1 bg-gray-200 rounded-full self-center mb-6" />
+              <View className="flex-row justify-between items-center">
+                <TouchableOpacity onPress={() => setIsGroupModalVisible(false)}>
+                  <Text className="text-blue-500 text-base font-medium">Cancel</Text>
+                </TouchableOpacity>
+                <Text className="text-lg font-bold text-gray-900">Create Group</Text>
+                <TouchableOpacity 
                   onPress={handleCreateGroup}
-                  disabled={isCreatingGroup}
+                  disabled={!groupForm.name || isCreatingGroup}
                 >
-                  <LinearGradient
-                    colors={['#4ECDC4', '#45B7D1']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    className="py-4 rounded-xl items-center justify-center"
+                  <Text 
+                    className={`text-base font-medium ${!groupForm.name || isCreatingGroup ? 'text-blue-300' : 'text-blue-500'}`}
                   >
-                    {isCreatingGroup ? (
-                      <View className="flex-row items-center">
-                        <ActivityIndicator size="small" color="white" />
-                        <Text className="text-white font-montserratBold ml-2">
-                          Creating...
-                        </Text>
-                      </View>
-                    ) : (
-                      <Text className="text-white font-montserratBold">
-                        Create Travel Group
-                      </Text>
-                    )}
-                  </LinearGradient>
+                    Create
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
-          </BlurView>
+            
+            <ScrollView className="max-h-[70%]">
+              <View className="p-6 space-y-6">
+                {/* Group Name */}
+                <View>
+                  <Text className="text-gray-500 text-sm mb-2 font-medium">Group Name *</Text>
+                  <View className="relative">
+                    <TextInput
+                      placeholder="Enter group name"
+                      value={groupForm.name}
+                      onChangeText={(text) => setGroupForm({...groupForm, name: text})}
+                      className="bg-gray-100 px-4 py-3.5 rounded-lg font-medium text-gray-900 border border-gray-200"
+                    />
+                  </View>
+                </View>
+                
+                {/* Group Description */}
+                <View>
+                  <Text className="text-gray-500 text-sm mb-2 font-medium">Description</Text>
+                  <View className="relative">
+                    <TextInput
+                      placeholder="What's this group about?"
+                      value={groupForm.description}
+                      onChangeText={(text) => setGroupForm({...groupForm, description: text})}
+                      className="bg-gray-100 px-4 py-3.5 rounded-lg font-medium text-gray-900 border border-gray-200"
+                      multiline
+                      numberOfLines={3}
+                      textAlignVertical="top"
+                      style={{ minHeight: 100 }}
+                    />
+                  </View>
+                </View>
+                
+                {/* Travel Destination */}
+                <View>
+                  <Text className="text-gray-500 text-sm mb-2 font-medium">Travel Destination</Text>
+                  <View className="relative">
+                    <View className="absolute left-3.5 top-3.5 z-10">
+                      <Ionicons name="location" size={20} color="#007AFF" />
+                    </View>
+                    <TextInput
+                      placeholder="Where are you planning to travel?"
+                      value={groupForm.destination}
+                      onChangeText={(text) => setGroupForm({...groupForm, destination: text})}
+                      className="bg-gray-100 pl-11 pr-4 py-3.5 rounded-lg font-medium text-gray-900 border border-gray-200"
+                    />
+                  </View>
+                </View>
+                
+                {/* Travel Dates */}
+                <View>
+                  <Text className="text-gray-500 text-sm mb-2 font-medium">Travel Dates</Text>
+                  <View className="flex-row gap-3">
+                    <TouchableOpacity 
+                      onPress={() => setShowStartDatePicker(true)}
+                      className="flex-1"
+                    >
+                      <View className="relative">
+                        <View className="absolute left-3.5 top-3.5 z-10">
+                          <Ionicons name="calendar" size={20} color="#007AFF" />
+                        </View>
+                        <View className="bg-gray-100 pl-11 pr-4 py-3.5 rounded-lg border border-gray-200">
+                          <Text className={groupForm.startDate ? 'text-gray-900 font-medium' : 'text-gray-500'}>
+                            {groupForm.startDate ? formatDateDisplay(groupForm.startDate) : 'Start Date'}
+                          </Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                      onPress={() => setShowEndDatePicker(true)}
+                      className="flex-1"
+                    >
+                      <View className="relative">
+                        <View className="absolute left-3.5 top-3.5 z-10">
+                          <Ionicons name="calendar" size={20} color="#007AFF" />
+                        </View>
+                        <View className="bg-gray-100 pl-11 pr-4 py-3.5 rounded-lg border border-gray-200">
+                          <Text className={groupForm.endDate ? 'text-gray-900 font-medium' : 'text-gray-500'}>
+                            {groupForm.endDate ? formatDateDisplay(groupForm.endDate) : 'End Date'}
+                          </Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+                  
+                  {showStartDatePicker && (
+                    <DateTimePicker
+                      value={groupForm.startDate ? new Date(groupForm.startDate) : new Date()}
+                      mode="date"
+                      display="default"
+                      onChange={onStartDateChange}
+                    />
+                  )}
+                  
+                  {showEndDatePicker && (
+                    <DateTimePicker
+                      value={groupForm.endDate ? new Date(groupForm.endDate) : new Date()}
+                      mode="date"
+                      display="default"
+                      onChange={onEndDateChange}
+                    />
+                  )}
+                </View>
+                
+                {/* Group Members Selection */}
+                <View>
+                  <Text className="text-gray-500 text-sm mb-2 font-medium">Select Group Members</Text>
+                  <View className="bg-gray-100 rounded-lg border border-gray-200 overflow-hidden">
+                    {matches.length > 0 ? (
+                      matches.map((match) => (
+                        <TouchableOpacity 
+                          key={match.userId} 
+                          onPress={() => toggleMatchSelection(match.userId)}
+                          className={`flex-row items-center p-4 border-b border-gray-200 ${
+                            groupForm.selectedMembers.includes(match.userId) ? 'bg-blue-50' : ''
+                          }`}
+                        >
+                          {match.profile_photo ? (
+                            <Image 
+                              source={{ uri: match.profile_photo || DEFAULT_PROFILE_IMAGE }}
+                              className="h-10 w-10 rounded-full"
+                            />
+                          ) : (
+                            <ProfileInitials name={match.username} size={40} />
+                          )}
+                          <View className="flex-1 ml-3">
+                            <Text className="font-medium text-gray-900">
+                              {match.username}
+                            </Text>
+                            <Text className="text-sm text-gray-500" numberOfLines={1}>
+                              {match.bio || "No bio available"}
+                            </Text>
+                          </View>
+                          <View className={`h-6 w-6 rounded-full items-center justify-center ${
+                            groupForm.selectedMembers.includes(match.userId) 
+                              ? 'bg-blue-500' 
+                              : 'border-2 border-gray-300'
+                          }`}>
+                            {groupForm.selectedMembers.includes(match.userId) && (
+                              <Ionicons name="checkmark" size={14} color="white" />
+                            )}
+                          </View>
+                        </TouchableOpacity>
+                      ))
+                    ) : (
+                      <View className="p-6 items-center">
+                        <Ionicons name="people" size={40} color="#007AFF" />
+                        <Text className="text-center text-gray-500 mt-2">
+                          No matches available
+                        </Text>
+                        <TouchableOpacity 
+                          onPress={() => {
+                            setIsGroupModalVisible(false);
+                            router.push("/(tabs)/explore");
+                          }}
+                          className="mt-4 bg-blue-500 px-6 py-2 rounded-full"
+                        >
+                          <Text className="text-white font-medium">Find Matches</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                  <Text className="text-sm text-gray-500 mt-2">
+                    Selected: {groupForm.selectedMembers.length} members
+                  </Text>
+                </View>
+              </View>
+            </ScrollView>
+            
+            {/* Create Button (Mobile style) */}
+            <View className="p-6 pt-4 border-t border-gray-100">
+              <TouchableOpacity
+                onPress={handleCreateGroup}
+                disabled={!groupForm.name || isCreatingGroup}
+                className={`py-3.5 rounded-lg items-center justify-center ${!groupForm.name || isCreatingGroup ? 'bg-gray-200' : 'bg-blue-500'}`}
+              >
+                {isCreatingGroup ? (
+                  <View className="flex-row items-center">
+                    <ActivityIndicator size="small" color="white" />
+                    <Text className="text-white font-medium ml-2">
+                      Creating...
+                    </Text>
+                  </View>
+                ) : (
+                  <Text className={`font-medium ${!groupForm.name ? 'text-gray-500' : 'text-white'}`}>
+                    Create Travel Group
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </Modal>
     </SafeAreaView>
