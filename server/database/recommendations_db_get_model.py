@@ -33,9 +33,15 @@ class RecommendationModel:
                                 up_recommended.location AS recommended_user_location,
                                 up_recommended.occupation AS recommended_user_occupation,
                                 up_recommended.prompts AS recommended_user_prompts,
-                                up_recommended.profile_photo AS recommended_user_photo,
+                                up_recommended.images AS recommended_user_photo,
                                 up_recommended.created_at AS recommended_user_created_at,
-                                ur.similarity_score
+                                up_recommended.isVerified AS recommended_user_isVerified,
+                                ur.similarity_score,
+                                CASE
+                                WHEN age(NOW(), ud.created_at) < INTERVAL '3 months' THEN 0
+                                WHEN age(NOW(), ud.created_at) >= INTERVAL '3 months' AND age(NOW(), ud.created_at) < INTERVAL '6 months' THEN 1
+                                ELSE 2
+                    END AS level  
                             FROM 
                                 user_recommendations_db ur
 

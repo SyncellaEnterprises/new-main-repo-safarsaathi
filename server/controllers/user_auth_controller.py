@@ -64,6 +64,7 @@ def login():
                 "status": "error",
                 "message": "Username/Email and password are required"
             }), 400
+        logging.info(f"Login attempt for user: {username}")
 
         user_auth_model = UserAuthModel()
         result = user_auth_model.login_user(username, password)

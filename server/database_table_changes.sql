@@ -7,7 +7,7 @@ CREATE TABLE user_db (
 );
 
 -- First, create the ENUM type for gender
-CREATE TYPE gender_enum AS ENUM ('Non-Binary', 'non-binary', 'male', 'female', 'Male', 'Female', 'Other', 'other');
+CREATE TYPE gender_enum AS ENUM ('Non-Binary', 'non-binary', 'male', 'female', 'Male', 'Female', 'Other', 'other', 'prefer not to say', 'Prefer not to say', 'Prefer Not To Say', 'Prefer not to say');
 
 -- Now, create the user_profile table
 CREATE TABLE user_profile (
@@ -97,3 +97,9 @@ CREATE TABLE messages (
 CREATE INDEX idx_messages_sender ON messages(sender_id);
 CREATE INDEX idx_messages_receiver ON messages(receiver_id);
 CREATE INDEX idx_messages_group ON messages(group_id); 
+
+
+ALTER TABLE user_profile
+RENAME COLUMN profile_photo TO images;
+
+ALTER TABLE user_profile ADD COLUMN isVerified BOOLEAN DEFAULT FALSE;

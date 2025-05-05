@@ -1,7 +1,8 @@
 import eventlet
 eventlet.monkey_patch()
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from config.config import *
+from flask_cors import CORS
 import psycopg2
 from flask_jwt_extended import JWTManager
 from utils.logger import logging
@@ -15,7 +16,14 @@ from controllers.travel_group_controller import (
 
 # Initialize Flask app
 app = Flask(__name__)
+CORS(app)
 logging.info("Flask app initialized")
+
+# Add request logging
+@app.before_request
+def log_request_info():
+    logging.info('Headers: %s', request.headers)
+    logging.info('Body: %s', request.get_data())
 
 app.config["JWT_SECRET_KEY"] = JWT_SECRET_KEY
 jwt = JWTManager(app)
@@ -31,7 +39,8 @@ def get_db_connection():
             port=POSTGRES_PORT
         )
         cursor = conn.cursor()
-        logging.info("Connected to PostgreSQL database")
+     
+        logging.info(f"Database connection established: {conn}")
         return conn, cursor
     except Exception as e:
         logging.error(f"Database connection failed: {e}")
@@ -48,6 +57,7 @@ except Exception as e:
 # Import controllers
 with app.app_context():
     from controllers.user_auth_controller import *
+    from admin.verifiedUser import *
     from controllers.user_onboarding_controller import *
     from controllers.swipe_controller import *
     from controllers.recommendations_controller import *
@@ -81,5 +91,7 @@ def socket_info_handler():
 # Register the route for socket info
 app.add_url_rule('/api/socket/info', 'socket_info_endpoint', socket_info_handler, methods=['GET'])
 
+
 if __name__ == '__main__':
+    logging.info("Starting Flask server...")
     app.run(host='0.0.0.0', port=5000, debug=True)

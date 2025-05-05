@@ -33,8 +33,14 @@ class GetUserData:
                     p.location,
                     p.occupation,
                     p.prompts,
-                    p.profile_photo,
-                    p.created_at
+                    p.images,
+                    p.isVerified,
+                    p.created_at,
+                    CASE
+                        WHEN age(NOW(), u.created_at) < INTERVAL '3 months' THEN 0
+                        WHEN age(NOW(), u.created_at) >= INTERVAL '3 months' AND age(NOW(), u.created_at) < INTERVAL '6 months' THEN 1
+                        ELSE 2
+                    END AS level               
                 FROM user_db u
                 LEFT JOIN user_profile p ON u.id = p.user_id
                 WHERE u.username = %s

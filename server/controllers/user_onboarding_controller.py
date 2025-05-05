@@ -7,7 +7,7 @@ from utils.exception import CustomException
 from utils.logger import logging
 from model.user_onboarding_model import UserOnboardingmodel
 import os
-from utils.cloudinary import upload_video
+from utils.cloudinary import upload_video, upload_image
 import time
 from werkzeug.utils import secure_filename
 import sys
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 # Configure upload folder
 UPLOAD_FOLDER = 'temp_uploads'
-ALLOWED_EXTENSIONS = {'mp4', 'mov', 'avi', 'wmv'}
+ALLOWED_EXTENSIONS = {'mp4', 'mov', 'avi', 'wmv','jpg', 'jpeg', 'png'}
 
 # Create upload folder if it doesn't exist
 if not os.path.exists(UPLOAD_FOLDER):
@@ -269,8 +269,6 @@ def onboarding_videos():
     4. Cleans up temporary file
     """
     try:
-        if 'video' not in request.files:
-            return {"status": "error", "message": "No video file provided"}, 400
 
         video_file = request.files['video']
         
@@ -328,4 +326,93 @@ def onboarding_videos():
 
     except Exception as e:
         logger.error(f"Error in onboarding_videos: {str(e)}")
+        raise CustomException(e, sys)
+
+@app.route('/api/onboarding/images', methods=['POST'])
+@jwt_required()
+def onboarding_images():
+    """
+    Handles multiple images upload for user onboarding:
+    1. Validates 2-6 images are provided
+    2. Saves images temporarily
+    3. Uploads to Cloudinary
+    4. Stores Cloudinary URLs in database
+    5. Cleans up temporary files
+    """
+    try:
+        # Check if 'images' field exists in request
+        if 'images' not in request.files:
+            return {"status": "error", "message": "No images provided"}, 400
+
+        # Get all images from request
+        image_files = request.files.getlist('images')
+        
+        # Validate number of images (2-6)
+        if len(image_files) < 2 or len(image_files) > 6:
+            return {"status": "error", "message": "2-6 images are required"}, 400
+
+        # Validate each image
+        for image_file in image_files:
+            if image_file.filename == '':
+                return {"status": "error", "message": "One or more files are empty"}, 400
+            if not allowed_file(image_file.filename):
+                return {"status": "error", "message": f"File type not allowed: {image_file.filename}"}, 400
+
+        uploaded_urls = []
+        temp_paths = []
+
+        try:
+            # Process each image
+            for image_file in image_files:
+                # Secure the filename and create temporary path
+                filename = secure_filename(image_file.filename)
+                temp_path = os.path.join(UPLOAD_FOLDER, filename)
+                temp_paths.append(temp_path)
+
+                # Save file temporarily
+                image_file.save(temp_path)
+                logger.info(f"Image saved temporarily at: {temp_path}")
+
+                # Upload to Cloudinary
+                cloudinary_response = upload_image(temp_path)
+                
+                if not cloudinary_response:
+                    raise Exception(f"Failed to upload image to Cloudinary: {filename}")
+
+                # Get the image URL from Cloudinary response
+                image_url = cloudinary_response.get('url')
+                
+                if not image_url:
+                    raise Exception(f"No URL received from Cloudinary for: {filename}")
+
+                uploaded_urls.append(image_url)
+
+            # Save all URLs to database
+            user_model = UserOnboardingmodel()
+            db_response = user_model.add_images(uploaded_urls)
+
+            if db_response.get("status") != "success":
+                raise Exception("Failed to save image URLs to database")
+
+            return {
+                "status": "success",
+                "message": "All images uploaded successfully",
+                "data": {
+                    "image_urls": uploaded_urls
+                }
+            }, 200
+
+        except Exception as e:
+            logger.error(f"Error processing images: {str(e)}")
+            return {"status": "error", "message": str(e)}, 500
+
+        finally:
+            # Clean up all temporary files
+            for temp_path in temp_paths:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                    logger.info(f"Temporary file removed: {temp_path}")
+
+    except Exception as e:
+        logger.error(f"Error in onboarding_images: {str(e)}")
         raise CustomException(e, sys)

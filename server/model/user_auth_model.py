@@ -10,44 +10,62 @@ from config.config import *
 
 class UserAuthModel:
     def __init__(self):
+        self.connection = None
+        self.cursor = None
         try:
+            logging.info("Attempting to connect to database...")
             self.connection = psycopg2.connect(
                 host=POSTGRES_HOST,
                 database=POSTGRES_DB,
                 user=POSTGRES_USER,
                 password=POSTGRES_PASSWORD,
-                port=POSTGRES_PORT
+                port=POSTGRES_PORT,
+                connect_timeout=3  # Add 3 second timeout
             )
             self.cursor = self.connection.cursor(cursor_factory=DictCursor)
+            logging.info("Successfully connected to PostgreSQL database for user auth")
         except Exception as e:
-            logging.info(f"Error while connecting to PostgreSQL database: {e}")
+            logging.error(f"Error while connecting to PostgreSQL database: {e}")
+            if self.connection:
+                self.connection.close()
             raise CustomException(e, sys)
+        
+    def __del__(self):
+        if self.cursor:
+            self.cursor.close()
+        if self.connection:
+            self.connection.close()
+            logging.info("Database connection closed")
         
     def register_user(self, username, email, password, confirm_password):
         try:
-            logging.info("Registering user")
+            logging.info(f"Starting registration for user: {username}")
             if username == '' or email == '' or password == '' or confirm_password == '':
+                logging.warning("Empty fields in registration")
                 return {"status": "error", "message": "Please fill in all fields"}
 
             if password != confirm_password:
-                logging.info("Passwords do not match")
+                logging.warning("Passwords do not match")
                 return {"status": "error", "message": "Passwords do not match"}
         
             # Check if email exists
+            logging.info("Checking if email exists")
             self.cursor.execute('SELECT * FROM user_db WHERE email = %s', (email,))
             existing_email = self.cursor.fetchone()
             if existing_email:
-                logging.info("Email already exists")
+                logging.warning("Email already exists")
                 return {"status": "error", "message": "Email already registered"}
 
             # Check if username exists
+            logging.info("Checking if username exists")
             self.cursor.execute('SELECT * FROM user_db WHERE username = %s', (username,))
             existing_user = self.cursor.fetchone()
             if existing_user:
-                logging.info("Username already exists")
+                logging.warning("Username already exists")
                 return {"status": "error", "message": "Username already taken"}
             
             # If neither exists, proceed with registration
+            logging.info("Creating new user")
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             self.cursor.execute('INSERT INTO user_db (username, email, password) VALUES (%s, %s, %s)', 
                         (username, email, hashed_password))
@@ -66,6 +84,8 @@ class UserAuthModel:
                 }
             }
         except Exception as e:
+            if self.connection:
+                self.connection.rollback()
             logging.error(f"Error in register_user: {e}")
             raise CustomException(e, sys)
         

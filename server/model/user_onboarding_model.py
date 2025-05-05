@@ -238,27 +238,42 @@ class UserOnboardingmodel:
             logging.error(f"Error in update_videos: {e}")
             raise CustomException(e,sys)
         
-    def add_images(self, filename):
+    def add_images(self, image_urls):
+        """
+        Add multiple image URLs to the user's profile
+        Args:
+            image_urls (list): List of image URLs to be saved
+        Returns:
+            dict: Status of the operation
+        """
         try:
-            logging.info("image for Verification")
+            # Get user_id from username
             user_id = self.get_user_id()
             if not user_id:
                 return {"status": "error", "message": "User not found"}
-        except Exception as e:
-            logging.error(f"Error in update_images: {e}")
-            raise CustomException(e,sys)
-        
-        try:
-            # Save the image filename to the database
-            self.cursor.execute('''
-                INSERT INTO user_profile (user_id, images) 
+            
+            # Convert list of URLs to JSON string
+            image_urls_json = json.dumps(image_urls)
+            
+            # Update user's images in database
+            self.cursor.execute(
+                '''INSERT INTO user_profile (user_id, images) 
                 VALUES (%s, %s)
                 ON CONFLICT (user_id) 
-                DO UPDATE SET images = EXCLUDED.images
-            ''', (user_id, json.dumps([filename])))
+                DO UPDATE SET images = EXCLUDED.images''',
+                (user_id, image_urls_json)
+            )
             self.connection.commit()
-            logging.info("images updated successfully")
-            return {"status": "success"}
+            
+            return {
+                "status": "success",
+                "message": "Images saved successfully"
+            }
         except Exception as e:
-            logging.error(f"Error in update_images: {e}")
-            raise CustomException(e,sys)
+            if self.connection:
+                self.connection.rollback()
+            logging.error(f"Error in add_images: {e}")
+            raise CustomException(e, sys)
+        
+
+    
