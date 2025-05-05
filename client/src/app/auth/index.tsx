@@ -11,59 +11,53 @@ export default function AuthScreen() {
     <SafeAreaView className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
-      <View className="flex-1 items-center justify-between px-8 py-12">
-        {/* Logo - Centered with animation */}
+      <View className="flex-1 items-center px-6">
+        {/* Logo - Centered at the top */}
         <Animated.View 
           entering={FadeInDown.duration(800).springify()}
-          className="items-center"
+          className="items-center mt-16 mb-12"
         >
           <Image 
             source={IMAGES.safarsaathi}
-            className="w-48 h-48"
+            className="w-40 h-40"
             resizeMode="contain"
           />
         </Animated.View>
 
         {/* Welcome Text */}
-        <View className="items-center">
+        <View className="items-center w-full">
           <Animated.Text 
             entering={FadeInDown.delay(300).duration(800).springify()}
-            className="text-3xl font-montserratBold text-center text-neutral-darkest mb-3"
+            className="text-3xl font-black text-center text-neutral-darkest"
           >
             Welcome to
           </Animated.Text>
           <Animated.Text 
             entering={FadeInDown.delay(400).duration(800).springify()}
-            className="text-3xl font-montserratBold text-center text-neutral-darkest mb-6"
+            className="text-3xl font-black text-center text-neutral-darkest mt-1 mb-4"
           >
             SafarSaathi
           </Animated.Text>
           <Animated.Text 
             entering={FadeInDown.delay(500).duration(800).springify()}
-            className="text-base text-center text-neutral-dark"
+            className="text-base text-center text-neutral-dark/70 font-montserratLight"
           >
-            Find your perfect travel companion and
-          </Animated.Text>
-          <Animated.Text 
-            entering={FadeInDown.delay(600).duration(800).springify()}
-            className="text-base text-center text-neutral-dark mb-6"
-          >
-            create unforgettable journeys together.
+            Find your perfect travel companion and...
           </Animated.Text>
         </View>
 
-        {/* Action Buttons */}
-        <View className="w-full space-y-4">
+        {/* Action Buttons - Centered in the middle of screen */}
+        <View className="w-full absolute top-1/3 mt-28">
           <TouchableOpacity 
             onPress={() => router.push("/auth/login")}
-            className="w-full"
+            className="w-full mb-5"
             activeOpacity={0.8}
           >
             <Animated.View 
               entering={FadeInDown.delay(700).duration(800).springify()}
               className="w-full"
             >
-              <View className="bg-primary w-full py-4 rounded-lg shadow-button">
+              <View className="bg-primary w-full py-4 rounded-xl shadow-button">
                 <Text className="text-white text-center font-montserratBold text-base">
                   Sign In
                 </Text>
@@ -80,22 +74,22 @@ export default function AuthScreen() {
               entering={FadeInDown.delay(800).duration(800).springify()}
               className="w-full"
             >
-              <View className="border border-primary bg-white w-full py-4 rounded-lg">
+              <View className="border border-primary w-full py-4 rounded-xl">
                 <Text className="text-primary text-center font-montserratBold text-base">
                   Create Account
                 </Text>
               </View>
             </Animated.View>
           </TouchableOpacity>
-        </View>
 
-        {/* Footer Text */}
-        <Animated.Text 
-          entering={FadeInDown.delay(900).duration(800).springify()}
-          className="text-sm text-neutral-dark mt-8"
-        >
-          Your adventure begins here.
-        </Animated.Text>
+          {/* Footer Text - Positioned below Create Account button */}
+          <Animated.Text 
+            entering={FadeInDown.delay(900).duration(800).springify()}
+            className="text-sm text-neutral-dark/70 text-center mt-16 font-montserratLight"
+          >
+            Your adventure begins here.
+          </Animated.Text>
+        </View>
       </View>
     </SafeAreaView>
   );

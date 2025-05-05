@@ -10,43 +10,98 @@ import {
   ActivityIndicator,
   Platform,
   ScrollView,
-  TextInput
+  TextInput,
+  Dimensions
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useToast } from "../../context/ToastContext";
 import { useOnboarding } from "../../context/OnboardingContext";
 import { Ionicons } from "@expo/vector-icons";
 import IMAGES from "@/src/constants/images";
+import Animated, { FadeIn } from "react-native-reanimated";
 
 // Fix for TypeScript error with StatusBar.currentHeight
 const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
+const { width } = Dimensions.get("window");
 
 interface Prompt {
   id: string;
   question: string;
   placeholder: string;
+  category: string;
+  icon: string;
 }
 
 const PROMPT_OPTIONS: Prompt[] = [
   { 
     id: "dream_destination", 
     question: "My dream destination is...",
-    placeholder: "Share where you'd love to travel next and why"
+    placeholder: "Share where you'd love to travel next and why",
+    category: "Travel Dreams",
+    icon: "airplane-outline"
   },
   { 
     id: "best_trip", 
     question: "The best trip I've ever had was...",
-    placeholder: "Tell us about your favorite travel experience"
+    placeholder: "Tell us about your favorite travel experience",
+    category: "Experiences",
+    icon: "map-outline"
   },
   { 
     id: "travel_buddy", 
     question: "I'm looking for a travel buddy who...",
-    placeholder: "Describe your ideal travel companion"
+    placeholder: "Describe your ideal travel companion",
+    category: "Companionship",
+    icon: "people-outline"
   },
   { 
     id: "travel_style", 
     question: "My travel style is...",
-    placeholder: "Are you an adventurer, luxury traveler, backpacker?"
+    placeholder: "Are you an adventurer, luxury traveler, backpacker?",
+    category: "Style",
+    icon: "compass-outline"
+  },
+  { 
+    id: "next_adventure",
+    question: "My next adventure will be...",
+    placeholder: "What are you planning or dreaming about?",
+    category: "Planning",
+    icon: "calendar-outline"
+  },
+  { 
+    id: "local_cuisine",
+    question: "My favorite travel food experience...",
+    placeholder: "Tell us about a memorable culinary moment",
+    category: "Food",
+    icon: "restaurant-outline"
+  },
+  { 
+    id: "hidden_gem",
+    question: "A hidden gem I discovered was...",
+    placeholder: "Share a special place others might not know about",
+    category: "Discovery",
+    icon: "diamond-outline"
+  },
+  { 
+    id: "travel_lesson",
+    question: "Travel has taught me that...",
+    placeholder: "Share an insight or lesson learned while traveling",
+    category: "Reflection",
+    icon: "bulb-outline"
+  },
+  { 
+    id: "bucket_list",
+    question: "On my travel bucket list is...",
+    placeholder: "What experience are you eager to check off?",
+    category: "Goals",
+    icon: "checkmark-circle-outline"
+  },
+  { 
+    id: "travel_quote",
+    question: "My favorite travel quote is...",
+    placeholder: "Share words that inspire your wanderlust",
+    category: "Inspiration",
+    icon: "chatbubble-outline"
   }
 ];
 
@@ -58,6 +113,21 @@ export default function PromptsScreen() {
   const toast = useToast();
   const { updatePrompts, isLoading } = useOnboarding();
   const [selectedPrompts, setSelectedPrompts] = React.useState<{[key: string]: string}>({});
+  const [activeCategory, setActiveCategory] = React.useState<string | null>(null);
+  
+  // Get unique categories
+  const categories = React.useMemo(() => {
+    const uniqueCategories = new Set(PROMPT_OPTIONS.map(prompt => prompt.category));
+    return ['All', ...Array.from(uniqueCategories)];
+  }, []);
+  
+  // Filter prompts by category
+  const filteredPrompts = React.useMemo(() => {
+    if (!activeCategory || activeCategory === 'All') {
+      return PROMPT_OPTIONS;
+    }
+    return PROMPT_OPTIONS.filter(prompt => prompt.category === activeCategory);
+  }, [activeCategory]);
   
   const handleSelectPrompt = (promptId: string) => {
     if (selectedPrompts[promptId]) {
@@ -66,17 +136,26 @@ export default function PromptsScreen() {
       delete newSelectedPrompts[promptId];
       setSelectedPrompts(newSelectedPrompts);
     } else {
-      // If not selected and we're at the limit, show error
-      if (Object.keys(selectedPrompts).length >= MAX_PROMPTS && !selectedPrompts[promptId]) {
-        toast.show(`You can only select ${MAX_PROMPTS} prompts`, "error");
-        return;
+      // If already at the limit of MAX_PROMPTS, remove the oldest selection
+      if (Object.keys(selectedPrompts).length >= MAX_PROMPTS) {
+        const selectedPromptIds = Object.keys(selectedPrompts);
+        const oldestPromptId = selectedPromptIds[0]; // First one is the oldest
+        
+        // Keep all except the oldest one, and add the new one
+        const newSelectedPrompts = {...selectedPrompts};
+        delete newSelectedPrompts[oldestPromptId];
+        
+        setSelectedPrompts({
+          ...newSelectedPrompts,
+          [promptId]: ""
+        });
+      } else {
+        // Otherwise, just add the new selection
+        setSelectedPrompts({
+          ...selectedPrompts,
+          [promptId]: ""
+        });
       }
-      
-      // Otherwise, select it with empty answer
-      setSelectedPrompts({
-        ...selectedPrompts,
-        [promptId]: selectedPrompts[promptId] || ""
-      });
     }
   };
   
@@ -126,113 +205,180 @@ export default function PromptsScreen() {
   const isPromptSelected = (promptId: string) => {
     return promptId in selectedPrompts;
   };
-
-  const getProgressDotsColors = () => {
-    const dots = [
-      '#E5E7EB', // Gray for unfinished steps
-      '#E5E7EB', 
-      '#E5E7EB',
-      '#00CEC9'  // Teal for current step
-    ];
-    return dots;
+  
+  // Generate background pattern elements
+  const renderPatternElements = () => {
+    return (
+      <View style={styles.patternContainer} pointerEvents="none">
+        <View style={[styles.patternElement, styles.patternElement1]} />
+        <View style={[styles.patternElement, styles.patternElement2]} />
+        <View style={[styles.patternElement, styles.patternElement3]} />
+      </View>
+    );
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Logo */}
-        <View style={styles.logoContainer}>
-          <Image 
-            source={IMAGES.safarsaathi}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-        </View>
+      {renderPatternElements()}
+      
+      <View style={styles.header}>
+        <Image 
+          source={IMAGES.safarsaathi}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </View>
+      
+      <View style={styles.content}>
+        <Text style={styles.title}>Your Travel Story</Text>
+        <Text style={styles.subtitle}>
+          Select up to {MAX_PROMPTS} prompts to share what makes you unique.
+        </Text>
         
-        {/* Progress Indicators */}
-        <View style={styles.progressContainer}>
-          {getProgressDotsColors().map((color, index) => (
-            <View
-              key={`dot-${index}`}
-              style={[styles.progressDot, { backgroundColor: color }]}
-            />
+        {/* Category Pills */}
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          contentContainerStyle={styles.categoryContainer}
+        >
+          {categories.map((category) => (
+            <TouchableOpacity
+              key={category}
+              style={[
+                styles.categoryPill,
+                activeCategory === category && styles.activeCategoryPill
+              ]}
+              onPress={() => setActiveCategory(category === activeCategory ? null : category)}
+              activeOpacity={0.9}
+            >
+              <Text 
+                style={[
+                  styles.categoryText,
+                  activeCategory === category && styles.activeCategoryText
+                ]}
+              >
+                {category}
+              </Text>
+            </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
         
-        {/* Main Content */}
-        <View style={styles.contentContainer}>
-          <Text style={styles.title}>Choose Prompts</Text>
-          
-          <Text style={styles.subtitle}>
-            Select up to {MAX_PROMPTS} prompts to share more about yourself.
-          </Text>
-          
-          {/* Prompt Options */}
-          <View style={styles.promptsContainer}>
-            {PROMPT_OPTIONS.map((prompt) => (
+        {/* Prompt Grid */}
+        <ScrollView 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.promptsGrid}
+        >
+          {filteredPrompts.map((prompt) => (
+            <Animated.View
+              key={prompt.id}
+              entering={FadeIn.duration(400).delay(100)}
+              style={styles.promptCard}
+            >
               <TouchableOpacity
-                key={prompt.id}
                 style={[
                   styles.promptOption,
                   isPromptSelected(prompt.id) && styles.selectedPrompt
                 ]}
                 onPress={() => handleSelectPrompt(prompt.id)}
-                activeOpacity={0.7}
+                activeOpacity={0.9}
               >
-                <Text style={styles.promptText}>{prompt.question}</Text>
+                <View style={styles.promptHeader}>
+                  <View style={[
+                    styles.promptIconContainer,
+                    isPromptSelected(prompt.id) && styles.selectedPromptIcon
+                  ]}>
+                    <Ionicons 
+                      name={prompt.icon as any} 
+                      size={16} 
+                      color={isPromptSelected(prompt.id) ? "#FFFFFF" : "#00CEC9"} 
+                    />
+                  </View>
+                  <Text style={styles.promptCategory}>{prompt.category}</Text>
+                </View>
                 
-                <View style={[
-                  styles.promptCheckCircle,
-                  isPromptSelected(prompt.id) && styles.selectedCheckCircle
-                ]}>
-                  {isPromptSelected(prompt.id) && (
-                    <View style={styles.promptCheckInner} />
-                  )}
+                <Text style={styles.promptQuestion}>{prompt.question}</Text>
+                
+                <View style={styles.promptSelection}>
+                  <View style={[
+                    styles.selectionIndicator,
+                    isPromptSelected(prompt.id) && styles.selectedIndicator
+                  ]}>
+                    {isPromptSelected(prompt.id) && (
+                      <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                    )}
+                  </View>
                 </View>
               </TouchableOpacity>
-            ))}
-          </View>
-          
-          {/* Selected Prompts with Answers */}
-          {Object.entries(selectedPrompts).length > 0 && (
-            <View style={styles.selectedPromptsContainer}>
-              {Object.entries(selectedPrompts).map(([promptId, answer]) => {
-                const promptData = PROMPT_OPTIONS.find(p => p.id === promptId);
-                return (
-                  <View key={`answer-${promptId}`} style={styles.answerContainer}>
+            </Animated.View>
+          ))}
+        </ScrollView>
+        
+        {/* Selected Prompts with Answers */}
+        {Object.entries(selectedPrompts).length > 0 && (
+          <View style={styles.selectedPromptsContainer}>
+            <Text style={styles.sectionTitle}>Your Responses</Text>
+            
+            {Object.entries(selectedPrompts).map(([promptId, answer]) => {
+              const promptData = PROMPT_OPTIONS.find(p => p.id === promptId);
+              return (
+                <View key={`answer-${promptId}`} style={styles.answerContainer}>
+                  <View style={styles.answerHeader}>
                     <Text style={styles.answerLabel}>{promptData?.question}</Text>
-                    <TextInput
-                      value={answer}
-                      onChangeText={(text) => handleAnswerChange(promptId, text)}
-                      placeholder={promptData?.placeholder}
-                      placeholderTextColor="#9CA3AF"
-                      multiline
-                      style={styles.answerInput}
-                      maxLength={MAX_ANSWER_LENGTH}
-                    />
+                    <TouchableOpacity 
+                      onPress={() => handleSelectPrompt(promptId)}
+                      style={styles.removeButton}
+                    >
+                      <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                    </TouchableOpacity>
+                  </View>
+                  
+                  <TextInput
+                    value={answer}
+                    onChangeText={(text) => handleAnswerChange(promptId, text)}
+                    placeholder={promptData?.placeholder}
+                    placeholderTextColor="#9CA3AF"
+                    multiline
+                    style={styles.answerInput}
+                    maxLength={MAX_ANSWER_LENGTH}
+                  />
+                  
+                  <View style={styles.characterCountContainer}>
+                    <View style={[
+                      styles.characterCountBar,
+                      {
+                        width: `${Math.min(100, (answer.length / MAX_ANSWER_LENGTH) * 100)}%`,
+                        backgroundColor: answer.length > MAX_ANSWER_LENGTH * 0.8 ? '#FF9AA2' : '#00CEC9'
+                      }
+                    ]} />
                     <Text style={styles.characterCount}>
                       {answer.length}/{MAX_ANSWER_LENGTH}
                     </Text>
                   </View>
-                );
-              })}
-            </View>
-          )}
-          
-          {/* Info Box */}
-          <View style={styles.infoContainer}>
-            <Ionicons name="information-circle" size={22} color="#00CEC9" style={styles.infoIcon} />
-            <Text style={styles.infoText}>
-              Prompts help others understand your travel style and preferences.
-            </Text>
+                </View>
+              );
+            })}
           </View>
+        )}
+        
+        {/* Info Box */}
+        <View style={styles.infoContainer}>
+          <Ionicons name="information-circle" size={22} color="#00CEC9" style={styles.infoIcon} />
+          <Text style={styles.infoText}>
+            Your responses help others understand your travel style and connect with you more meaningfully.
+          </Text>
         </View>
-      </ScrollView>
+        
+        {/* Page Indicators */}
+        <View style={styles.pageIndicators}>
+          <View style={styles.indicator} />
+          <View style={styles.indicator} />
+          <View style={styles.indicator} />
+          <View style={styles.indicator} />
+          <View style={[styles.indicator, styles.activeIndicator]} />
+        </View>
+      </View>
       
       {/* Continue Button */}
       <View style={styles.buttonContainer}>
@@ -246,12 +392,12 @@ export default function PromptsScreen() {
           disabled={isLoading || 
                    Object.keys(selectedPrompts).length === 0 ||
                    Object.values(selectedPrompts).some(answer => !answer.trim())}
-          activeOpacity={0.8}
+          activeOpacity={0.9}
         >
           {isLoading ? (
             <ActivityIndicator color="white" size="small" />
           ) : (
-            <Text style={styles.continueButtonText}>Continue</Text>
+            <Text style={styles.continueButtonText}>Finish</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -267,150 +413,270 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#FFFFFF",
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 100, // Extra space for the fixed button
+  patternContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: 'hidden',
   },
-  logoContainer: {
+  patternElement: {
+    position: 'absolute',
+    borderRadius: 100,
+    opacity: 0.05,
+  },
+  patternElement1: {
+    backgroundColor: '#00CEC9',
+    width: 300,
+    height: 300,
+    top: -150,
+    right: -100,
+  },
+  patternElement2: {
+    backgroundColor: '#00CEC9',
+    width: 200,
+    height: 200,
+    bottom: 100,
+    left: -100,
+  },
+  patternElement3: {
+    backgroundColor: '#FF7675',
+    width: 150,
+    height: 150,
+    bottom: -50,
+    right: -30,
+  },
+  header: {
     alignItems: 'center',
-    marginBottom: 24,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
   logo: {
-    width: 120,
-    height: 48,
+    width: 100,
+    height: 100,
   },
-  progressContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 40,
-  },
-  progressDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginHorizontal: 4,
-  },
-  contentContainer: {
+  content: {
     flex: 1,
+    paddingHorizontal: 16,
+    paddingBottom: 90, // Space for button
   },
   title: {
     fontSize: 28,
     fontFamily: 'montserratBold',
-    color: '#111827',
-    marginBottom: 12,
+    color: '#00CEC9',
+    marginBottom: 8,
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: 'montserrat',
-    color: '#6B7280',
-    marginBottom: 32,
-  },
-  promptsContainer: {
+    color: 'grey',
+    textAlign: 'center',
     marginBottom: 24,
+    paddingHorizontal: 16,
+  },
+  categoryContainer: {
+    paddingHorizontal: 4,
+    marginBottom: 16,
+  },
+  categoryPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 20,
+    marginRight: 8,
+  },
+  activeCategoryPill: {
+    backgroundColor: '#00CEC9',
+  },
+  categoryText: {
+    fontSize: 13,
+    fontFamily: 'montserrat',
+    color: '#4B5563',
+  },
+  activeCategoryText: {
+    color: '#FFFFFF',
+    fontFamily: 'montserratBold',
+  },
+  promptsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingBottom: 16,
+  },
+  promptCard: {
+    width: (width - 40) / 2,
+    marginBottom: 12,
   },
   promptOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#E5E7EB',
     borderRadius: 12,
-    marginBottom: 16,
+    padding: 12,
+    height: 130,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   selectedPrompt: {
     borderColor: '#00CEC9',
-    backgroundColor: '#F0FDFD',
+    backgroundColor: 'rgba(0, 206, 201, 0.05)',
   },
-  promptText: {
-    fontSize: 16,
+  promptHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  promptIconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0, 206, 201, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  selectedPromptIcon: {
+    backgroundColor: '#00CEC9',
+  },
+  promptCategory: {
+    fontSize: 11,
     fontFamily: 'montserrat',
+    color: '#6B7280',
+  },
+  promptQuestion: {
+    fontSize: 13,
+    fontFamily: 'montserratBold',
     color: '#111827',
     flex: 1,
-    paddingRight: 12,
   },
-  promptCheckCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
+  promptSelection: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+  },
+  selectionIndicator: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 1,
     borderColor: '#D1D5DB',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  selectedCheckCircle: {
-    borderColor: '#00CEC9',
-  },
-  promptCheckInner: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+  selectedIndicator: {
     backgroundColor: '#00CEC9',
+    borderColor: '#00CEC9',
   },
   selectedPromptsContainer: {
     marginBottom: 24,
   },
-  answerContainer: {
-    marginBottom: 24,
-  },
-  answerLabel: {
-    fontSize: 16,
+  sectionTitle: {
+    fontSize: 18,
     fontFamily: 'montserratBold',
     color: '#111827',
-    marginBottom: 12,
+    marginBottom: 16,
+  },
+  answerContainer: {
+    marginBottom: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    padding: 12,
+  },
+  answerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  answerLabel: {
+    fontSize: 14,
+    fontFamily: 'montserratBold',
+    color: '#111827',
+    flex: 1,
+  },
+  removeButton: {
+    padding: 4,
   },
   answerInput: {
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    fontFamily: 'montserrat',
-    color: '#111827',
-    minHeight: 120,
-    textAlignVertical: 'top',
-  },
-  characterCount: {
-    fontSize: 12,
-    fontFamily: 'montserrat',
-    color: '#9CA3AF',
-    textAlign: 'right',
-    marginTop: 8,
-  },
-  infoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 206, 201, 0.1)',
-    borderRadius: 12,
-    padding: 16,
-    marginVertical: 16,
-  },
-  infoIcon: {
-    marginRight: 12,
-  },
-  infoText: {
     fontSize: 14,
     fontFamily: 'montserrat',
     color: '#374151',
+    padding: 8,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  characterCountContainer: {
+    marginTop: 8,
+  },
+  characterCountBar: {
+    height: 3,
+    backgroundColor: '#00CEC9',
+    borderRadius: 1.5,
+    marginBottom: 4,
+  },
+  characterCount: {
+    fontSize: 11,
+    fontFamily: 'montserrat',
+    color: '#9CA3AF',
+    textAlign: 'right',
+  },
+  infoContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(0, 206, 201, 0.1)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  infoIcon: {
+    marginRight: 8,
+  },
+  infoText: {
+    fontSize: 13,
+    fontFamily: 'montserrat',
+    color: '#374151',
     flex: 1,
+    lineHeight: 18,
+  },
+  pageIndicators: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  indicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#CBD5E1',
+    marginHorizontal: 4,
+  },
+  activeIndicator: {
+    backgroundColor: '#00CEC9',
+    width: 16,
   },
   buttonContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     paddingBottom: 24,
     paddingTop: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },
   continueButton: {
     backgroundColor: '#00CEC9',
-    borderRadius: 30,
+    borderRadius: 12,
     height: 56,
     justifyContent: 'center',
     alignItems: 'center',

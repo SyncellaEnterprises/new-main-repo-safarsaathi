@@ -9,7 +9,8 @@ import {
   StyleSheet,
   StatusBar,
   ScrollView,
-  Dimensions
+  Dimensions,
+  Alert
 } from "react-native";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -21,13 +22,22 @@ import IMAGES from "@/src/constants/images";
 
 const { width } = Dimensions.get('window');
 const PHOTO_SIZE = (width - 48 - 12) / 2; // Width minus horizontal padding minus gap
+const MAX_PHOTOS = 6;
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export default function PhotosScreen() {
   const router = useRouter();
   const toast = useToast();
   const { updatePhotos, isLoading } = useOnboarding();
-  const [photos, setPhotos] = useState<{ id: string; uri: string }[]>([]);
+  const [photos, setPhotos] = useState<{ id: string; uri: string; type: string }[]>([]);
   const [isPickerLoading, setIsPickerLoading] = useState(false);
+
+  const validateImageFormat = (uri: string): boolean => {
+    const lowercasedUri = uri.toLowerCase();
+    return lowercasedUri.endsWith('.jpg') || 
+           lowercasedUri.endsWith('.jpeg') || 
+           lowercasedUri.endsWith('.png');
+  };
 
   const pickImage = async () => {
     try {
@@ -50,30 +60,46 @@ export default function PhotosScreen() {
       });
 
       if (!result.canceled && result.assets[0].uri) {
-        if (photos.length >= 6) {
-          toast.show("Maximum 6 photos allowed", "error");
+        if (photos.length >= MAX_PHOTOS) {
+          toast.show(`Maximum ${MAX_PHOTOS} photos allowed`, "error");
+          setIsPickerLoading(false);
+          return;
+        }
+
+        const uri = result.assets[0].uri;
+        
+        // Validate image format
+        if (!validateImageFormat(uri)) {
+          toast.show("Only JPG, JPEG, and PNG formats are supported", "error");
           setIsPickerLoading(false);
           return;
         }
 
         // Check file size
-        const fileInfo = await FileSystem.getInfoAsync(result.assets[0].uri);
+        const fileInfo = await FileSystem.getInfoAsync(uri);
         if (!fileInfo.exists) {
           toast.show("Could not access the selected photo", "error");
           setIsPickerLoading(false);
           return;
         }
 
-        // Check if file size is too large (>5MB)
-        if (fileInfo.size > 5 * 1024 * 1024) {
+        // Check if file size is too large
+        if (fileInfo.size > MAX_FILE_SIZE) {
           toast.show("Photo size is too large (max 5MB)", "error");
           setIsPickerLoading(false);
           return;
         }
 
+        // Determine image type
+        const filename = uri.split('/').pop() || '';
+        const match = /\.(\w+)$/.exec(filename);
+        const ext = match ? match[1].toLowerCase() : 'jpg';
+        const type = ext === 'png' ? 'image/png' : 'image/jpeg';
+
         setPhotos(prev => [...prev, {
           id: Date.now().toString(),
-          uri: result.assets[0].uri
+          uri: uri,
+          type: type
         }]);
       }
     } catch (error) {
@@ -141,7 +167,7 @@ export default function PhotosScreen() {
           
           {/* Photos Grid */}
           <View style={styles.photoGrid}>
-            {[...photos, ...Array(Math.max(0, 6 - photos.length)).fill(null)].map((photo, index) => (
+            {[...photos, ...Array(Math.max(0, MAX_PHOTOS - photos.length)).fill(null)].map((photo, index) => (
               <View key={photo?.id || `empty-${index}`} style={styles.photoCell}>
                 {photo ? (
                   // Photo Cell with Image
@@ -185,7 +211,7 @@ export default function PhotosScreen() {
           <View style={styles.tipContainer}>
             <Ionicons name="information-circle" size={22} color="#00CEC9" />
             <Text style={styles.tipText}>
-              Your first photo will be shown as your primary photo. Please add at least one photo to continue.
+              Your first photo will be shown as your primary photo. Only JPG, JPEG, and PNG formats (max 5MB) are supported.
             </Text>
           </View>
           

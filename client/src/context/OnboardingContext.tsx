@@ -147,11 +147,16 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       
       photos.forEach((uri, index) => {
         const filename = uri.split('/').pop() || `photo${index}.jpg`;
-        // Get file extension
+        // Get file extension and validate
         const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : 'image/jpeg';
+        const ext = match ? match[1].toLowerCase() : 'jpg';
         
-        formData.append('photos', {
+        // Set proper mime type for supported formats
+        let type = 'image/jpeg';
+        if (ext === 'png') type = 'image/png';
+        if (ext === 'jpg' || ext === 'jpeg') type = 'image/jpeg';
+        
+        formData.append('images', {
           uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
           type: type,
           name: filename,
@@ -164,7 +169,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         formData: JSON.stringify(formData)
       });
 
-      const response = await axios.post(`${API_URL}/photos`, formData, {
+      const response = await axios.post(`${API_URL}/images`, formData, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'multipart/form-data',

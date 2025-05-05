@@ -1,36 +1,27 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Dimensions, Image, Platform, SafeAreaView, StatusBar } from "react-native";
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Image, Platform, SafeAreaView, StatusBar, StyleSheet, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
 import Animated, { 
-  FadeInDown, 
-  FadeInUp, 
-  SlideInRight,
+  FadeIn,
   useAnimatedStyle,
   withSpring,
   useSharedValue,
-  FadeIn,
-  ZoomIn,
   interpolate,
   useAnimatedScrollHandler,
   Extrapolation
 } from "react-native-reanimated";
 import { useToast } from "../../context/ToastContext";
 import { useOnboarding } from "../../context/OnboardingContext";
-import { Ionicons, MaterialIcons, Feather } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import * as Location from 'expo-location';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import IMAGES from "@/src/constants/images";
 
 const { width, height } = Dimensions.get('window');
 const ITEM_HEIGHT = 70;
 
-type LocationDataType = {
-  [state: string]: string[];
-};
-
-// Hardcoded states and cities data
-const LOCATION_DATA: LocationDataType = {
+// Consolidated location data
+const LOCATION_DATA: { [state: string]: string[] } = {
   "Andhra Pradesh": [
     "Visakhapatnam", "Vijayawada", "Guntur", "Kurnool", "Kakinada", "Tirupati", "Rajahmundry", "Kadapa", "Anantapur"
   ],
@@ -80,105 +71,42 @@ type FilteredLocationsType = {
   data: string[];
 };
 
-// Fix for TypeScript error with StatusBar.currentHeight
 const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
-
-// Mock data for dropdown options
-const STATES = [
-  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", 
-  "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", 
-  "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", 
-  "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", 
-  "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", 
-  "New Hampshire", "New Jersey", "New Mexico", "New York", 
-  "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", 
-  "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota", 
-  "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", 
-  "West Virginia", "Wisconsin", "Wyoming"
-];
-
-const CITIES = {
-  "California": ["Los Angeles", "San Francisco", "San Diego", "San Jose"],
-  "New York": ["New York City", "Buffalo", "Rochester", "Syracuse"],
-  "Texas": ["Houston", "Austin", "Dallas", "San Antonio"],
-  // Add more states and their cities as needed
-};
 
 export default function LocationScreen() {
   const router = useRouter();
   const toast = useToast();
   const { updateLocation, isLoading } = useOnboarding();
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [address, setAddress] = useState<string>('');
-  const [isSkeletonVisible, setIsSkeletonVisible] = useState(true);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isLocationLoading, setIsLocationLoading] = useState(false);
   const [stateDropdownOpen, setStateDropdownOpen] = useState<boolean>(false);
   const [cityDropdownOpen, setCityDropdownOpen] = useState<boolean>(false);
   const [showError, setShowError] = useState<boolean>(false);
-  const scale = useSharedValue(1);
   const scrollY = useSharedValue(0);
-  const animatedOpacity = useSharedValue(0);
   
-  // Animated styles
-  const headerStyle = useAnimatedStyle(() => {
-    return {
-      opacity: interpolate(
+  const headerStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      scrollY.value,
+      [0, 100],
+      [1, 0.8],
+      Extrapolation.CLAMP
+    ),
+    transform: [{
+      translateY: interpolate(
         scrollY.value,
         [0, 100],
-        [1, 0.8],
+        [0, -10],
         Extrapolation.CLAMP
       ),
-      transform: [
-        {
-          translateY: interpolate(
-            scrollY.value,
-            [0, 100],
-            [0, -10],
-            Extrapolation.CLAMP
-          ),
-        },
-      ],
-    };
-  });
-
-  const bgStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        {
-          translateY: interpolate(
-            scrollY.value,
-            [0, 100],
-            [0, -20],
-            Extrapolation.CLAMP
-          ),
-        },
-      ],
-    };
-  });
+    }],
+  }));
 
   const scrollHandler = useAnimatedScrollHandler((event) => {
     scrollY.value = event.contentOffset.y;
   });
-
-  const buttonScale = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: withSpring(selectedState && selectedCity ? 1 : 0.95) }],
-    };
-  });
-
-  // Simulate initial loading
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsSkeletonVisible(false);
-      animatedOpacity.value = withSpring(1);
-    }, 1500);
-    
-    return () => clearTimeout(timer);
-  }, []);
 
   useEffect(() => {
     requestLocation();
@@ -190,7 +118,6 @@ export default function LocationScreen() {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         toast.show('Permission to access location was denied', 'error');
-        setIsLocationLoading(false);
         return;
       }
 
@@ -206,7 +133,6 @@ export default function LocationScreen() {
         const formattedAddress = `${addressResult.city || ''}, ${addressResult.region || ''}`.trim();
         setAddress(formattedAddress);
         
-        // Try to find matching state and city
         const state = Object.keys(LOCATION_DATA).find(state => 
           addressResult.region && state.toLowerCase().includes(addressResult.region.toLowerCase())
         );
@@ -229,120 +155,9 @@ export default function LocationScreen() {
     }
   };
 
-  const getFilteredLocations = (): FilteredLocationsType => {
-    const query = searchQuery.toLowerCase().trim();
-    if (!query) {
-      return selectedState 
-        ? { type: 'cities', data: LOCATION_DATA[selectedState] }
-        : { type: 'states', data: Object.keys(LOCATION_DATA) };
-    }
-
-    if (selectedState) {
-      // Search in cities of selected state
-      const cities = LOCATION_DATA[selectedState];
-      const exactMatches = cities.filter((city: string) => 
-        city.toLowerCase().startsWith(query)
-      );
-      const partialMatches = cities.filter((city: string) => 
-        city.toLowerCase().includes(query) && !city.toLowerCase().startsWith(query)
-      );
-      return { type: 'cities', data: [...exactMatches, ...partialMatches] };
-    } else {
-      // Search in states
-      const states = Object.keys(LOCATION_DATA);
-      const exactMatches = states.filter(state => 
-        state.toLowerCase().startsWith(query)
-      );
-      const partialMatches = states.filter(state => 
-        state.toLowerCase().includes(query) && !state.toLowerCase().startsWith(query)
-      );
-      return { type: 'states', data: [...exactMatches, ...partialMatches] };
-    }
-  };
-
-  const handleSelect = (item: string) => {
-    setSubmitError(null);
-    scale.value = withSpring(1.05, {}, () => {
-      scale.value = withSpring(1);
-    });
-    
-    if (selectedState) {
-      setSelectedCity(item);
-    } else {
-      setSelectedState(item);
-      setSearchQuery('');
-    }
-  };
-
-  const handleBack = () => {
-    setSelectedState(null);
-    setSelectedCity(null);
-    setSearchQuery('');
-  };
-
-  const handleNext = async () => {
-    if (!selectedState || !selectedCity) {
-      setSubmitError("Please select your location");
-      toast.show("Please select your location", "error");
-      return;
-    }
-
-    try {
-      setSubmitError(null);
-      const locationData = {
-        state: selectedState,
-        city: selectedCity,
-        ...(location && {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        }),
-        address
-      };
-
-      const success = await updateLocation(JSON.stringify(locationData));
-      if (success) {
-        router.push('/onboarding/interests');
-      } else {
-        setSubmitError("Failed to save location");
-        toast.show("Failed to save location. Please try again.", "error");
-      }
-    } catch (error) {
-      console.error('Location update error:', error);
-      setSubmitError("An error occurred");
-      toast.show("An error occurred. Please try again.", "error");
-    }
-  };
-
-  // Render skeleton loaders for location items
-  const renderSkeletons = () => {
-    return Array(6).fill(0).map((_, index) => (
-      <Animated.View
-        key={`skeleton-${index}`}
-        entering={FadeIn.delay(index * 100)}
-        className="bg-neutral-dark/50 rounded-xl mb-3 overflow-hidden"
-        style={{ height: ITEM_HEIGHT }}
-      >
-        <LinearGradient
-          colors={['rgba(125, 91, 166, 0.1)', 'rgba(125, 91, 166, 0.2)', 'rgba(125, 91, 166, 0.1)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          className="w-full h-full"
-        />
-      </Animated.View>
-    ));
-  };
-
-  const filteredLocations = getFilteredLocations();
-
-  // Get cities for the selected state
-  const getCitiesForState = (state: string) => {
-    if (!state) return [];
-    return CITIES[state] || [];
-  };
-
   const handleStateSelect = (state: string) => {
     setSelectedState(state);
-    setSelectedCity(""); // Reset city when state changes
+    setSelectedCity(null);
     setStateDropdownOpen(false);
     setShowError(false);
   };
@@ -360,11 +175,19 @@ export default function LocationScreen() {
     }
 
     try {
-      const locationData = `${selectedCity}, ${selectedState}`;
-      const success = await updateLocation(locationData);
-      
+      const locationData = {
+        state: selectedState,
+        city: selectedCity,
+        ...(location && {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        }),
+        address: `${selectedCity}, ${selectedState}`
+      };
+
+      const success = await updateLocation(JSON.stringify(locationData));
       if (success) {
-        router.push('/onboarding/photos');
+        router.push('/onboarding/interests');
       } else {
         toast.show("Failed to save location. Please try again.", "error");
       }
@@ -373,10 +196,23 @@ export default function LocationScreen() {
       toast.show("An error occurred. Please try again.", "error");
     }
   };
+  
+  // Generate background pattern elements
+  const renderPatternElements = () => {
+    return (
+      <View style={styles.patternContainer} pointerEvents="none">
+        <View style={[styles.patternElement, styles.patternElement1]} />
+        <View style={[styles.patternElement, styles.patternElement2]} />
+        <View style={[styles.patternElement, styles.patternElement3]} />
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
+      
+      {renderPatternElements()}
       
       <View style={styles.header}>
         <Image 
@@ -389,6 +225,8 @@ export default function LocationScreen() {
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
       >
         <Text style={styles.title}>Where Are You Based?</Text>
         
@@ -401,13 +239,28 @@ export default function LocationScreen() {
           <TouchableOpacity 
             style={styles.dropdown}
             onPress={() => setStateDropdownOpen(!stateDropdownOpen)}
-            activeOpacity={0.7}
+            activeOpacity={0.9}
           >
             <Text style={selectedState ? styles.dropdownText : styles.placeholderText}>
               {selectedState || "Choose your state"}
             </Text>
             <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
           </TouchableOpacity>
+          
+          {stateDropdownOpen && (
+            <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+              {Object.keys(LOCATION_DATA).map((state) => (
+                <TouchableOpacity
+                  key={state}
+                  style={styles.dropdownItem}
+                  onPress={() => handleStateSelect(state)}
+                  activeOpacity={0.9}
+                >
+                  <Text style={styles.dropdownItemText}>{state}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
           
           <Text style={[styles.inputLabel, { marginTop: 24 }]}>Select City</Text>
           <TouchableOpacity 
@@ -416,7 +269,7 @@ export default function LocationScreen() {
               !selectedState && styles.disabledDropdown
             ]}
             onPress={() => selectedState && setCityDropdownOpen(!cityDropdownOpen)}
-            activeOpacity={selectedState ? 0.7 : 1}
+            activeOpacity={selectedState ? 0.9 : 1}
           >
             <Text style={selectedCity ? styles.dropdownText : styles.placeholderText}>
               {selectedCity || "Choose your city"}
@@ -424,10 +277,26 @@ export default function LocationScreen() {
             <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
           </TouchableOpacity>
           
-          <View style={styles.infoContainer}>
-            <Ionicons name="information-circle-outline" size={20} color="#6B7280" />
-            <Text style={styles.infoText}>
-              Accurate location makes matching smoother.
+          {cityDropdownOpen && selectedState && (
+            <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+              {LOCATION_DATA[selectedState].map((city) => (
+                <TouchableOpacity
+                  key={city}
+                  style={styles.dropdownItem}
+                  onPress={() => handleCitySelect(city)}
+                  activeOpacity={0.9}
+                >
+                  <Text style={styles.dropdownItemText}>{city}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+          
+          {/* Tooltip */}
+          <View style={styles.tooltipContainer}>
+            <Ionicons name="information-circle" size={22} color="#00CEC9" />
+            <Text style={styles.tooltipText}>
+              Accurate location helps us connect you with travel companions in your area.
             </Text>
           </View>
         </View>
@@ -437,6 +306,15 @@ export default function LocationScreen() {
             Please select both state and city to continue.
           </Text>
         )}
+        
+        {/* Page Indicators */}
+        <View style={styles.pageIndicators}>
+          <View style={styles.indicator} />
+          <View style={styles.indicator} />
+          <View style={styles.indicator} />
+          <View style={styles.indicator} />
+          <View style={[styles.indicator, styles.activeIndicator]} />
+        </View>
       </ScrollView>
       
       <View style={styles.buttonContainer}>
@@ -446,6 +324,7 @@ export default function LocationScreen() {
             (!selectedState || !selectedCity) && styles.disabledButton
           ]}
           onPress={handleSetLocation}
+          activeOpacity={0.9}
           disabled={isLoading || !selectedState || !selectedCity}
         >
           {isLoading ? (
@@ -466,9 +345,43 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#FFFFFF",
   },
+  patternContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: 'hidden',
+  },
+  patternElement: {
+    position: 'absolute',
+    borderRadius: 100,
+    opacity: 0.05,
+  },
+  patternElement1: {
+    backgroundColor: '#00CEC9',
+    width: 300,
+    height: 300,
+    top: -150,
+    right: -100,
+  },
+  patternElement2: {
+    backgroundColor: '#00CEC9',
+    width: 200,
+    height: 200,
+    bottom: 100,
+    left: -100,
+  },
+  patternElement3: {
+    backgroundColor: '#FF7675',
+    width: 150,
+    height: 150,
+    bottom: -50,
+    right: -30,
+  },
   header: {
     alignItems: 'center',
-    paddingTop: 24,
+    paddingTop: 20,
     paddingBottom: 16,
   },
   logo: {
@@ -477,19 +390,20 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 24,
-    paddingBottom: 100, // Space for fixed button
+    paddingBottom: 100,
   },
   title: {
     fontSize: 28,
     fontFamily: 'montserratBold',
-    color: '#111827',
+    fontWeight: 'bold',
+    color: '#00CEC9',
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
     fontFamily: 'montserrat',
-    color: '#6B7280',
+    color: 'grey',
     textAlign: 'center',
     marginBottom: 40,
   },
@@ -498,24 +412,23 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 16,
-    fontFamily: 'montserrat',
-    color: '#6B7280',
+    fontFamily: 'montserratMedium',
+    color: '#374151',
     marginBottom: 8,
   },
   dropdown: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
   },
   disabledDropdown: {
-    backgroundColor: '#F9FAFB',
-    borderColor: '#E5E7EB',
+    opacity: 0.5,
   },
   dropdownText: {
     fontSize: 16,
@@ -527,22 +440,65 @@ const styles = StyleSheet.create({
     fontFamily: 'montserrat',
     color: '#9CA3AF',
   },
-  infoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 16,
+  dropdownList: {
+    maxHeight: 200,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    marginTop: 8,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
   },
-  infoText: {
+  dropdownItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  dropdownItemText: {
+    fontSize: 16,
     fontFamily: 'montserrat',
+    color: '#111827',
+  },
+  tooltipContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(0, 206, 201, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 24,
+  },
+  tooltipText: {
+    flex: 1,
+    marginLeft: 12,
     fontSize: 14,
-    color: '#6B7280',
-    marginLeft: 8,
+    fontFamily: 'montserrat',
+    color: '#374151',
+    lineHeight: 20,
   },
   errorText: {
-    fontFamily: 'montserrat',
     fontSize: 14,
+    fontFamily: 'montserrat',
     color: '#EF4444',
+    textAlign: 'center',
+    marginTop: 8,
     marginBottom: 16,
+  },
+  pageIndicators: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 8,
+    marginTop: 24,
+  },
+  indicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#CBD5E1',
+    marginHorizontal: 4,
+  },
+  activeIndicator: {
+    backgroundColor: '#00CEC9',
+    width: 16,
   },
   buttonContainer: {
     position: 'absolute',
@@ -550,34 +506,24 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: 24,
-    paddingBottom: 24,
-    paddingTop: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingBottom: 24 + statusBarHeight,
+    paddingTop: 16,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
   },
   setLocationButton: {
     backgroundColor: '#00CEC9',
-    borderRadius: 50,
+    borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: "#00CEC9",
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-    // Gradient effect will be simulated with backgroundColor
-    // In a real app, you'd use LinearGradient component
   },
   disabledButton: {
     backgroundColor: '#E5E7EB',
-    shadowOpacity: 0,
   },
   buttonText: {
-    fontFamily: 'montserratBold',
     fontSize: 16,
+    fontFamily: 'montserratBold',
     color: '#FFFFFF',
   },
   homeIndicator: {

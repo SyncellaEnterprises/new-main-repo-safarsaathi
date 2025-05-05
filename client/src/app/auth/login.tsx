@@ -1,11 +1,28 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, SafeAreaView, Image, StatusBar } from "react-native";
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  ActivityIndicator, 
+  ImageBackground,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView
+} from "react-native";
 import { Link, useRouter } from "expo-router";
-import Animated, { FadeIn } from "react-native-reanimated";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useToast } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from 'expo-linear-gradient';
 import IMAGES from "../../constants/images";
+
+// Fix for TypeScript error with StatusBar.currentHeight
+const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -78,130 +95,350 @@ export default function LoginScreen() {
   const isLoading = isSubmitting || authLoading;
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       
-      <Animated.View 
-        entering={FadeIn.duration(600)} 
-        className="flex-1 px-6 pt-10 pb-4"
+      <ImageBackground 
+        source={IMAGES.patternBg}
+        style={styles.backgroundImage}
+        resizeMode="cover"
       >
-        {/* Logo */}
-        <View className="items-center mb-12">
-          <Image 
-            source={IMAGES.safarsaathi}
-            className="w-24 h-24"
-            resizeMode="contain"
-          />
-        </View>
-        
-        {/* Welcome Text */}
-        <View className="items-center mb-8">
-          <Text className="text-3xl font-montserratBold text-accent-500 mb-2">
-            Welcome Back!
-          </Text>
-          <Text className="text-base text-neutral-dark text-center">
-            Log in to continue your journey.
-          </Text>
-        </View>
-        
-        {/* Form Fields */}
-        <View className="space-y-5">
-          {/* Email Field */}
-          <View>
-            <Text className="text-sm font-montserratMedium mb-2 ml-1 text-neutral-dark">
-              Email Address
-            </Text>
-            <View className="relative">
-              <View className="absolute left-4 top-4 z-10">
-                <Ionicons name="mail-outline" size={20} color="#9CA3AF" />
-              </View>
-              <TextInput
-                value={formData.email}
-                onChangeText={(text) => setFormData({ ...formData, email: text })}
-                className="bg-neutral-lightest pl-11 pr-4 py-4 rounded-lg border border-neutral-light"
-                placeholder="Enter your email"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                placeholderTextColor="#9CA3AF"
-                editable={!isLoading}
-              />
-            </View>
-          </View>
-
-          {/* Password Field */}
-          <View>
-            <Text className="text-sm font-montserratMedium mb-2 ml-1 text-neutral-dark">
-              Password
-            </Text>
-            <View className="relative">
-              <View className="absolute left-4 top-4 z-10">
-                <Ionicons name="lock-closed-outline" size={20} color="#9CA3AF" />
-              </View>
-              <TextInput
-                value={formData.password}
-                onChangeText={(text) => setFormData({ ...formData, password: text })}
-                className="bg-neutral-lightest pl-11 pr-12 py-4 rounded-lg border border-neutral-light"
-                secureTextEntry={!showPassword}
-                placeholder="Enter your password"
-                placeholderTextColor="#9CA3AF"
-                editable={!isLoading}
-              />
-              <TouchableOpacity 
-                onPress={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-4 z-10"
-                disabled={isLoading}
-              >
-                <Ionicons 
-                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                  size={20} 
-                  color="#9CA3AF"
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Forgot Password Link */}
-          <View className="items-end">
-            <Link href="/auth/forgot-password">
-              <Text className="text-accent-500 text-sm font-montserratMedium">
-                Forgot Password?
-              </Text>
-            </Link>
-          </View>
-        </View>
-
-        {/* Sign In Button */}
-        <View className="mt-8">
-          <TouchableOpacity
-            onPress={handleLogin}
-            disabled={isLoading}
-            className="bg-accent-500 py-4 rounded-lg shadow-button"
-            activeOpacity={0.8}
+        <LinearGradient
+          colors={['rgba(78,205,196,0.3)', 'rgba(69,183,209,0.95)']}
+          style={styles.gradient}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            style={styles.keyboardAvoid}
           >
-            {isLoading ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text className="text-white text-center font-montserratBold text-base">
-                Sign In
-              </Text>
-            )}
-          </TouchableOpacity>
-        </View>
+            <ScrollView 
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.scrollContent}
+            >
+              {/* Logo */}
+              <Animated.View 
+                entering={FadeInDown.duration(800).springify()}
+                style={styles.logoContainer}
+              >
+                <ImageBackground
+                  source={IMAGES.safarsaathi}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+              </Animated.View>
+              
+              <Animated.View 
+                entering={FadeInDown.duration(800).delay(200).springify()}
+                style={styles.formCard}
+              >
+                <View style={styles.formHeader}>
+                  <Text style={styles.formTitle}>
+                    Welcome Back!
+                  </Text>
+                  <Text style={styles.formSubtitle}>
+                    Log in to continue your journey
+                  </Text>
+                </View>
 
-        {/* Error Message */}
-        {errorMessage ? (
-          <View className="bg-red-100 border border-red-300 rounded-lg p-3 mt-6">
-            <Text className="text-red-600 text-sm font-montserratMedium text-center">
-              Ensure your credentials are correct to access your account.
-            </Text>
-          </View>
-        ) : null}
+                <View style={styles.inputsContainer}>
+                  {/* Email Input */}
+                  <Animated.View 
+                    entering={FadeInUp.delay(300)}
+                    style={styles.inputWrapper}
+                  >
+                    <Text style={styles.inputLabel}>Email Address</Text>
+                    <View style={styles.inputContainer}>
+                      <View style={styles.iconContainer}>
+                        <Ionicons name="mail-outline" size={20} color="#4ECDC4" />
+                      </View>
+                      <TextInput
+                        value={formData.email}
+                        onChangeText={(text) => setFormData({ ...formData, email: text })}
+                        style={styles.textInput}
+                        placeholder="your@email.com"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        placeholderTextColor="#9CA3AF"
+                        editable={!isLoading}
+                      />
+                    </View>
+                  </Animated.View>
 
-        {/* Bottom Indicator Line */}
-        <View className="flex-1 justify-end items-center w-full">
-          <View className="w-10 h-1 bg-neutral-medium rounded-full opacity-50"></View>
-        </View>
-      </Animated.View>
+                  {/* Password Input */}
+                  <Animated.View 
+                    entering={FadeInUp.delay(400)}
+                    style={styles.inputWrapper}
+                  >
+                    <Text style={styles.inputLabel}>Password</Text>
+                    <View style={styles.inputContainer}>
+                      <View style={styles.iconContainer}>
+                        <Ionicons name="lock-closed-outline" size={20} color="#4ECDC4" />
+                      </View>
+                      <TextInput
+                        value={formData.password}
+                        onChangeText={(text) => setFormData({ ...formData, password: text })}
+                        style={styles.textInput}
+                        secureTextEntry={!showPassword}
+                        placeholder="Enter your password"
+                        placeholderTextColor="#9CA3AF"
+                        editable={!isLoading}
+                      />
+                      <TouchableOpacity 
+                        onPress={() => setShowPassword(!showPassword)}
+                        style={styles.eyeIcon}
+                        disabled={isLoading}
+                      >
+                        <Ionicons 
+                          name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                          size={20} 
+                          color="#4ECDC4"
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </Animated.View>
+                  
+                  {/* Forgot Password Link */}
+                  <Animated.View 
+                    entering={FadeInUp.delay(500)}
+                    style={styles.forgotPasswordContainer}
+                  >
+                    <Link href="/auth/forgot-password" asChild>
+                      <TouchableOpacity>
+                        <Text style={styles.forgotPasswordText}>
+                          Forgot Password?
+                        </Text>
+                      </TouchableOpacity>
+                    </Link>
+                  </Animated.View>
+                </View>
+
+                {/* Error Message */}
+                {errorMessage ? (
+                  <Animated.View 
+                    entering={FadeInUp.delay(550)}
+                    style={styles.errorContainer}
+                  >
+                    <Text style={styles.errorText}>
+                      {errorMessage}
+                    </Text>
+                  </Animated.View>
+                ) : null}
+
+                {/* Login Button */}
+                <Animated.View 
+                  entering={FadeInUp.delay(600)}
+                  style={styles.buttonContainer}
+                >
+                  <TouchableOpacity
+                    onPress={handleLogin}
+                    disabled={isLoading}
+                    activeOpacity={0.8}
+                  >
+                    <LinearGradient
+                      colors={['#4ECDC4', '#45B7D1']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.gradientButton}
+                    >
+                      {isLoading ? (
+                        <ActivityIndicator color="white" size="small" />
+                      ) : (
+                        <Text style={styles.buttonText}>Sign In</Text>
+                      )}
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </Animated.View>
+
+                {/* Register Link */}
+                <Animated.View 
+                  entering={FadeInUp.delay(700)}
+                  style={styles.registerContainer}
+                >
+                  <Text style={styles.registerText}>Don't have an account? </Text>
+                  <Link href="/auth/register" asChild>
+                    <TouchableOpacity>
+                      <Text style={styles.registerLink}>Create Account</Text>
+                    </TouchableOpacity>
+                  </Link>
+                </Animated.View>
+              </Animated.View>
+
+              {/* Back Button */}
+              <TouchableOpacity
+                onPress={() => router.back()}
+                style={styles.backButton}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="arrow-back-circle" size={24} color="white" />
+                <Text style={styles.backButtonText}>Back</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </LinearGradient>
+      </ImageBackground>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#45B7D1',
+  },
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+  },
+  gradient: {
+    flex: 1,
+  },
+  keyboardAvoid: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: statusBarHeight + 16,
+    paddingBottom: 24,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  logo: {
+    width: 150,
+    height: 60,
+  },
+  formCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  formHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  formTitle: {
+    fontSize: 24,
+    fontFamily: 'montserratBold',
+    color: '#334155',
+    marginBottom: 8,
+  },
+  formSubtitle: {
+    fontSize: 14,
+    fontFamily: 'montserrat',
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  inputsContainer: {
+    marginBottom: 16,
+  },
+  inputWrapper: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontFamily: 'montserratMedium',
+    color: '#334155',
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 12,
+    height: 52,
+  },
+  iconContainer: {
+    marginRight: 12,
+  },
+  textInput: {
+    flex: 1,
+    height: '100%',
+    color: '#334155',
+    fontFamily: 'montserrat',
+    fontSize: 15,
+  },
+  eyeIcon: {
+    padding: 8,
+  },
+  forgotPasswordContainer: {
+    alignItems: 'flex-end',
+    marginTop: 4,
+  },
+  forgotPasswordText: {
+    fontFamily: 'montserratMedium',
+    fontSize: 14,
+    color: '#45B7D1',
+  },
+  errorContainer: {
+    backgroundColor: 'rgba(254, 226, 226, 0.8)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  errorText: {
+    color: '#DC2626',
+    fontFamily: 'montserratMedium',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  buttonContainer: {
+    marginTop: 8,
+    marginBottom: 24,
+  },
+  gradientButton: {
+    borderRadius: 12,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#4ECDC4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontFamily: 'montserratBold',
+  },
+  registerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  registerText: {
+    fontSize: 14,
+    fontFamily: 'montserrat',
+    color: '#64748B',
+  },
+  registerLink: {
+    fontSize: 14,
+    fontFamily: 'montserratBold',
+    color: '#45B7D1',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 24,
+  },
+  backButtonText: {
+    color: 'white',
+    marginLeft: 8,
+    fontSize: 16,
+    fontFamily: 'montserratMedium',
+  },
+});

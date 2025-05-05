@@ -10,8 +10,8 @@ export default function OnboardingLayout() {
       gestureEnabled: false
     }}>
       <Stack.Screen name="age" />
-      <Stack.Screen name="photos" />
       <Stack.Screen name="gender" />
+      <Stack.Screen name="photos" />
       <Stack.Screen name="location" />
       <Stack.Screen name="bio" />
       <Stack.Screen name="occupation" />

@@ -10,7 +10,8 @@ import {
   ActivityIndicator,
   Platform,
   ScrollView,
-  TextInput
+  TextInput,
+  Animated
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useToast } from "../../context/ToastContext";
@@ -25,49 +26,86 @@ interface Occupation {
   id: string;
   label: string;
   icon: string;
+  color: string;
 }
 
 const OCCUPATIONS: Occupation[] = [
-  { id: 'tech_dev', label: 'Tech / Developer', icon: 'code-slash-outline' },
-  { id: 'student_learner', label: 'Student / Learner', icon: 'school-outline' },
-  { id: 'traveler_explorer', label: 'Traveler / Explorer', icon: 'airplane-outline' },
-  { id: 'creative_designer', label: 'Creative / Designer', icon: 'color-palette-outline' },
-  { id: 'corporate_professional', label: 'Corporate / Professional', icon: 'briefcase-outline' },
-  { id: 'freelancer', label: 'Freelancer', icon: 'desktop-outline' }
+  { id: 'tech_dev', label: 'Tech / Developer', icon: 'code-slash-outline', color: '#FF6B6B' },
+  { id: 'student_learner', label: 'Student / Learner', icon: 'school-outline', color: '#4ECDC4' },
+  { id: 'traveler_explorer', label: 'Traveler / Explorer', icon: 'airplane-outline', color: '#FFB84C' },
+  { id: 'creative_designer', label: 'Creative / Designer', icon: 'color-palette-outline', color: '#FF8FB1' },
+  { id: 'corporate_professional', label: 'Corporate / Professional', icon: 'briefcase-outline', color: '#45B7D1' },
+  { id: 'freelancer', label: 'Freelancer', icon: 'desktop-outline', color: '#4ECDC4' }
 ];
 
 export default function OccupationScreen() {
   const router = useRouter();
   const toast = useToast();
   const { updateOccupation, isLoading } = useOnboarding();
-  const [selectedOccupations, setSelectedOccupations] = React.useState<string[]>([]);
+  const [selectedOccupation, setSelectedOccupation] = React.useState<string | null>(null);
   const [customOccupation, setCustomOccupation] = React.useState<string>('');
   const [showError, setShowError] = React.useState<boolean>(false);
+  
+  // Animation values for button presses
+  const buttonAnimations = React.useRef(
+    OCCUPATIONS.map(() => new Animated.Value(0))
+  ).current;
 
-  const toggleOccupation = (id: string) => {
+  const handleSelectOccupation = (id: string, index: number) => {
     setShowError(false);
-    if (selectedOccupations.includes(id)) {
-      setSelectedOccupations(selectedOccupations.filter(item => item !== id));
-    } else {
-      setSelectedOccupations([...selectedOccupations, id]);
-    }
+    setSelectedOccupation(id);
+    
+    // Reset all animations
+    buttonAnimations.forEach((anim) => {
+      Animated.timing(anim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: false
+      }).start();
+    });
+    
+    // Animate the selected button
+    Animated.timing(buttonAnimations[index], {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: false
+    }).start();
+    
+    // Clear custom occupation when a predefined one is selected
+    setCustomOccupation('');
+  };
+  
+  const handleSelectCustom = () => {
+    // Clear standard occupation selection when custom is being used
+    setSelectedOccupation(null);
+    
+    // Reset all animations
+    buttonAnimations.forEach((anim) => {
+      Animated.timing(anim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: false
+      }).start();
+    });
   };
 
   const handleContinue = async () => {
     // Check if any occupation is selected or custom occupation is provided
-    if (selectedOccupations.length === 0 && !customOccupation.trim()) {
+    if (!selectedOccupation && !customOccupation.trim()) {
       setShowError(true);
       return;
     }
 
     try {
-      // Format occupations - combine selected with custom
-      let occupationData = selectedOccupations;
-      if (customOccupation.trim()) {
-        occupationData = [...occupationData, `custom:${customOccupation.trim()}`];
+      // Format occupation data
+      let occupationData = "";
+      if (selectedOccupation) {
+        occupationData = selectedOccupation;
+      } else if (customOccupation.trim()) {
+        occupationData = `custom:${customOccupation.trim()}`;
       }
       
-      const success = await updateOccupation(occupationData.join(','));
+      const success = await updateOccupation(occupationData);
       if (success) {
         router.push('/onboarding/location');
       } else {
@@ -78,10 +116,23 @@ export default function OccupationScreen() {
       toast.show("An error occurred. Please try again.", "error");
     }
   };
+  
+  // Generate background pattern elements
+  const renderPatternElements = () => {
+    return (
+      <View style={styles.patternContainer} pointerEvents="none">
+        <View style={[styles.patternElement, styles.patternElement1]} />
+        <View style={[styles.patternElement, styles.patternElement2]} />
+        <View style={[styles.patternElement, styles.patternElement3]} />
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
+      
+      {renderPatternElements()}
       
       <View style={styles.header}>
         <Image 
@@ -97,70 +148,126 @@ export default function OccupationScreen() {
       >
         <Text style={styles.title}>What's your occupation?</Text>
         
-        <View style={styles.infoContainer}>
-          <Ionicons name="information-circle-outline" size={20} color="#6B7280" />
-          <Text style={styles.infoText}>
-            Sharing your job helps people connect over common interests
-          </Text>
-        </View>
+        <Text style={styles.subtitle}>
+          Let us know what you do for work or study
+        </Text>
         
         <View style={styles.occupationsGrid}>
-          {OCCUPATIONS.map((occupation) => (
-            <TouchableOpacity
-              key={occupation.id}
-              style={[
-                styles.occupationButton,
-                selectedOccupations.includes(occupation.id) && styles.selectedButton
-              ]}
-              onPress={() => toggleOccupation(occupation.id)}
-              activeOpacity={0.7}
-            >
-              <Ionicons 
-                name={occupation.icon as any} 
-                size={20} 
-                color={selectedOccupations.includes(occupation.id) ? "#00CEC9" : "#374151"} 
-                style={styles.occupationIcon}
-              />
-              <Text style={[
-                styles.occupationText,
-                selectedOccupations.includes(occupation.id) && styles.selectedText
-              ]}>
-                {occupation.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {OCCUPATIONS.map((occupation, index) => {
+            // Create animated styles
+            const backgroundColor = buttonAnimations[index].interpolate({
+              inputRange: [0, 1],
+              outputRange: ['#FFFFFF', `${occupation.color}10`] // 10% opacity version of the color
+            });
+            
+            const borderColor = buttonAnimations[index].interpolate({
+              inputRange: [0, 1],
+              outputRange: ['#E5E7EB', occupation.color]
+            });
+            
+            const scale = buttonAnimations[index].interpolate({
+              inputRange: [0, 0.5, 1],
+              outputRange: [1, 1.05, 1]
+            });
+            
+            return (
+              <TouchableOpacity
+                key={occupation.id}
+                onPress={() => handleSelectOccupation(occupation.id, index)}
+                activeOpacity={0.9}
+                style={styles.occupationTouchable}
+              >
+                <Animated.View
+                  style={[
+                    styles.occupationButton,
+                    { 
+                      backgroundColor,
+                      borderColor,
+                      transform: [{ scale }]
+                    }
+                  ]}
+                >
+                  <View 
+                    style={[
+                      styles.iconCircle,
+                      { backgroundColor: `${occupation.color}20` } // 20% opacity
+                    ]}
+                  >
+                    <Ionicons 
+                      name={occupation.icon as any} 
+                      size={20} 
+                      color={occupation.color}
+                    />
+                  </View>
+                  <Text style={[
+                    styles.occupationText,
+                    selectedOccupation === occupation.id && { color: occupation.color, fontFamily: 'montserratBold' }
+                  ]}>
+                    {occupation.label}
+                  </Text>
+                  {selectedOccupation === occupation.id && (
+                    <Ionicons name="checkmark-circle" size={20} color={occupation.color} style={styles.checkIcon} />
+                  )}
+                </Animated.View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        
+        <View style={styles.dividerContainer}>
+          <View style={styles.divider} />
+          <Text style={styles.dividerText}>or</Text>
+          <View style={styles.divider} />
         </View>
         
         <TouchableOpacity 
-          style={styles.customOccupationButton}
-          activeOpacity={0.7}
+          style={[
+            styles.customOccupationButton,
+            customOccupation.trim() !== '' && styles.activeCustomButton
+          ]}
+          activeOpacity={0.9}
+          onPress={() => handleSelectCustom()}
         >
-          <Ionicons name="add" size={20} color="#374151" style={styles.customIcon} />
+          <View style={styles.customIconContainer}>
+            <Ionicons name="add-circle" size={22} color="#00CEC9" />
+          </View>
           <TextInput
             style={styles.customInput}
-            placeholder="Don't see your role? Add your own"
+            placeholder="Add your own occupation"
             placeholderTextColor="#6B7280"
             value={customOccupation}
             onChangeText={(text) => {
               setCustomOccupation(text);
+              if (text.trim() !== '') {
+                handleSelectCustom();
+              }
               setShowError(false);
             }}
           />
         </TouchableOpacity>
         
+        {/* Tooltip */}
+        <View style={styles.tooltipContainer}>
+          <Ionicons name="information-circle" size={22} color="#00CEC9" />
+          <Text style={styles.tooltipText}>
+            Your occupation helps match you with travelers who share similar interests and backgrounds.
+          </Text>
+        </View>
+        
         {showError && (
           <Text style={styles.errorText}>
-            Please select or enter at least one occupation to continue
+            Please select or enter an occupation to continue
           </Text>
         )}
         
         <TouchableOpacity
           style={[
             styles.continueButton,
-            (selectedOccupations.length === 0 && !customOccupation.trim()) && styles.disabledButton
+            (!selectedOccupation && !customOccupation.trim()) && styles.disabledButton
           ]}
           onPress={handleContinue}
-          disabled={isLoading}
+          activeOpacity={0.9}
+          disabled={isLoading || (!selectedOccupation && !customOccupation.trim())}
         >
           {isLoading ? (
             <ActivityIndicator color="#FFFFFF" size="small" />
@@ -168,6 +275,14 @@ export default function OccupationScreen() {
             <Text style={styles.continueButtonText}>Continue</Text>
           )}
         </TouchableOpacity>
+        
+        {/* Page Indicators */}
+        <View style={styles.pageIndicators}>
+          <View style={styles.indicator} />
+          <View style={styles.indicator} />
+          <View style={styles.indicator} />
+          <View style={[styles.indicator, styles.activeIndicator]} />
+        </View>
       </ScrollView>
       
       <View style={styles.homeIndicator} />
@@ -180,14 +295,48 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#FFFFFF",
   },
+  patternContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: 'hidden',
+  },
+  patternElement: {
+    position: 'absolute',
+    borderRadius: 100,
+    opacity: 0.05,
+  },
+  patternElement1: {
+    backgroundColor: '#00CEC9',
+    width: 300,
+    height: 300,
+    top: -150,
+    right: -100,
+  },
+  patternElement2: {
+    backgroundColor: '#00CEC9',
+    width: 200,
+    height: 200,
+    bottom: 100,
+    left: -100,
+  },
+  patternElement3: {
+    backgroundColor: '#FF7675',
+    width: 150,
+    height: 150,
+    bottom: -50,
+    right: -30,
+  },
   header: {
     alignItems: 'center',
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingTop: 20,
+    paddingBottom: 16,
   },
   logo: {
-    width: 120,
-    height: 30,
+    width: 100,
+    height: 100,
   },
   scrollContent: {
     paddingHorizontal: 24,
@@ -196,24 +345,18 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontFamily: 'montserratBold',
-    color: '#111827',
-    marginTop: 16,
-    marginBottom: 20,
+    fontWeight: 'bold',
+    color: '#00CEC9',
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 8,
   },
-  infoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 24,
-  },
-  infoText: {
+  subtitle: {
+    fontSize: 16,
     fontFamily: 'montserrat',
-    fontSize: 14,
-    color: '#6B7280',
-    marginLeft: 12,
-    flex: 1,
+    color: 'grey',
+    textAlign: 'center',
+    marginBottom: 24,
   },
   occupationsGrid: {
     flexDirection: 'row',
@@ -221,69 +364,110 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 16,
   },
-  occupationButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 50,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginBottom: 16,
+  occupationTouchable: {
     width: '48%',
+    marginBottom: 16,
   },
-  selectedButton: {
-    borderColor: '#00CEC9',
-    backgroundColor: '#F0FDFD',
+  occupationButton: {
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
   },
-  occupationIcon: {
-    marginRight: 8,
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0, 206, 201, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   occupationText: {
     fontFamily: 'montserrat',
     fontSize: 14,
     color: '#374151',
+    marginRight: 20, // Space for check icon
   },
-  selectedText: {
-    color: '#00CEC9',
-    fontFamily: 'montserratBold',
+  checkIcon: {
+    position: 'absolute',
+    right: 12,
+    top: 12,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  dividerText: {
+    paddingHorizontal: 16,
+    color: '#6B7280',
+    fontFamily: 'montserrat',
   },
   customOccupationButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#E5E7EB',
-    borderRadius: 50,
-    paddingVertical: 12,
+    borderRadius: 16,
+    paddingVertical: 16,
     paddingHorizontal: 16,
     marginBottom: 24,
-    width: '100%',
   },
-  customIcon: {
-    marginRight: 8,
+  activeCustomButton: {
+    borderColor: '#00CEC9',
+    backgroundColor: 'rgba(0, 206, 201, 0.05)',
+  },
+  customIconContainer: {
+    marginRight: 12,
   },
   customInput: {
     flex: 1,
     fontFamily: 'montserrat',
-    fontSize: 14,
+    fontSize: 15,
     color: '#374151',
     padding: 0,
+  },
+  tooltipContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(0, 206, 201, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+  },
+  tooltipText: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 14,
+    fontFamily: 'montserrat',
+    color: '#374151',
+    lineHeight: 20,
   },
   errorText: {
     fontFamily: 'montserrat',
     fontSize: 14,
     color: '#EF4444',
     marginBottom: 16,
+    textAlign: 'center',
   },
   continueButton: {
     backgroundColor: '#00CEC9',
-    borderRadius: 50,
+    borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 16,
+    marginTop: 8,
+    marginBottom: 24,
   },
   disabledButton: {
     backgroundColor: '#E5E7EB',
@@ -292,6 +476,22 @@ const styles = StyleSheet.create({
     fontFamily: 'montserratBold',
     fontSize: 16,
     color: '#FFFFFF',
+  },
+  pageIndicators: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  indicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#CBD5E1',
+    marginHorizontal: 4,
+  },
+  activeIndicator: {
+    backgroundColor: '#00CEC9',
+    width: 16,
   },
   homeIndicator: {
     width: 36,
