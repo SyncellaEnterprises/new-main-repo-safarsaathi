@@ -5,38 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d6080ac8-7173-4192-944d-77feefd4c71d" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/global.css" beforeDir="false" afterPath="$PROJECT_DIR$/client/global.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/client/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/client/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/screensUI.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/(tabs)/explore.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/(tabs)/explore.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/auth/login.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/auth/login.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/auth/register.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/auth/register.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/onboarding/age.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/onboarding/age.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/onboarding/bio.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/onboarding/bio.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/onboarding/gender.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/onboarding/gender.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/onboarding/interests.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/onboarding/interests.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/onboarding/location.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/onboarding/location.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/onboarding/occupation.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/onboarding/occupation.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/onboarding/photos.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/onboarding/photos.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/app/onboarding/prompts.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/onboarding/prompts.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/components/explore/UserCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/explore/UserCard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/types/axios-retry.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/types/axios-retry.d.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/tailwind.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/client/tailwind.config.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/server/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/chat/[id].tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/chat/[id].tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/group-chat/[id].tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/app/group-chat/[id].tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/server/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/app.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/controllers/user_auth_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/controllers/user_auth_controller.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/controllers/user_onboarding_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/controllers/user_onboarding_controller.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/database/recommendations_db_get_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/database/recommendations_db_get_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/database/user_db_get_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/database/user_db_get_model.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/server/model/socket_chat.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/model/socket_chat.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/server/model/user_auth_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/model/user_auth_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/model/user_onboarding_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/model/user_onboarding_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/server/requirements.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/utils/cloudinary.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/utils/cloudinary.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
