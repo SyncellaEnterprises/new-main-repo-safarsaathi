@@ -1,342 +1,435 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, TextInput } from 'react-native';
-import { useRouter } from 'expo-router';
-import Animated, { 
-  FadeInDown,
-  FadeIn,
-  SlideInRight,
-  useAnimatedStyle,
-  withSpring,
-  useSharedValue,
-  interpolate
-} from 'react-native-reanimated';
+import * as React from "react";
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  SafeAreaView,
+  StyleSheet,
+  StatusBar,
+  Image,
+  ActivityIndicator,
+  Platform,
+  ScrollView,
+  TextInput
+} from "react-native";
+import { useRouter } from "expo-router";
 import { useToast } from "../../context/ToastContext";
 import { useOnboarding } from "../../context/OnboardingContext";
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from "@expo/vector-icons";
-import { BlurView } from 'expo-blur';
+import IMAGES from "@/src/constants/images";
+
+// Fix for TypeScript error with StatusBar.currentHeight
+const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
 
 interface Prompt {
   id: string;
   question: string;
   placeholder: string;
-  icon: string;
-}
-
-interface SelectedPrompt {
-  id: string;
-  answer: string;
 }
 
 const PROMPT_OPTIONS: Prompt[] = [
-  {
-    id: "childhood",
-    question: "What's your favorite childhood memory?",
-    placeholder: "Share a heartwarming story from your childhood...",
-    icon: "happy"
+  { 
+    id: "dream_destination", 
+    question: "My dream destination is...",
+    placeholder: "Share where you'd love to travel next and why"
   },
-  {
-    id: "adventure",
-    question: "What's the most adventurous thing you've done?",
-    placeholder: "Tell us about your boldest adventure...",
-    icon: "compass"
+  { 
+    id: "best_trip", 
+    question: "The best trip I've ever had was...",
+    placeholder: "Tell us about your favorite travel experience"
   },
-  {
-    id: "passion",
-    question: "What are you passionate about?",
-    placeholder: "Share what drives you and makes you excited...",
-    icon: "flame"
+  { 
+    id: "travel_buddy", 
+    question: "I'm looking for a travel buddy who...",
+    placeholder: "Describe your ideal travel companion"
   },
-  {
-    id: "dream",
-    question: "What's your biggest dream in life?",
-    placeholder: "Tell us about your aspirations...",
-    icon: "star"
+  { 
+    id: "travel_style", 
+    question: "My travel style is...",
+    placeholder: "Are you an adventurer, luxury traveler, backpacker?"
   }
 ];
 
+const MAX_PROMPTS = 2;
 const MAX_ANSWER_LENGTH = 200;
 
 export default function PromptsScreen() {
   const router = useRouter();
   const toast = useToast();
   const { updatePrompts, isLoading } = useOnboarding();
-  const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null);
-  const [answer, setAnswer] = useState('');
-  const [isSkeletonVisible, setIsSkeletonVisible] = useState(true);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const scale = useSharedValue(1);
-  const scrollY = useSharedValue(0);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsSkeletonVisible(false);
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const headerStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        translateY: interpolate(
-          scrollY.value,
-          [0, 100],
-          [0, -20],
-          'clamp'
-        ),
-      },
-    ],
-    opacity: interpolate(
-      scrollY.value,
-      [0, 100],
-      [1, 0.9],
-      'clamp'
-    ),
-  }));
-
-  const handleSelect = (promptId: string) => {
-    setSelectedPrompt(promptId);
-    setSubmitError(null);
-    scale.value = withSpring(1.02, {}, () => {
-      scale.value = withSpring(1);
+  const [selectedPrompts, setSelectedPrompts] = React.useState<{[key: string]: string}>({});
+  
+  const handleSelectPrompt = (promptId: string) => {
+    if (selectedPrompts[promptId]) {
+      // If already selected, deselect it
+      const newSelectedPrompts = {...selectedPrompts};
+      delete newSelectedPrompts[promptId];
+      setSelectedPrompts(newSelectedPrompts);
+    } else {
+      // If not selected and we're at the limit, show error
+      if (Object.keys(selectedPrompts).length >= MAX_PROMPTS && !selectedPrompts[promptId]) {
+        toast.show(`You can only select ${MAX_PROMPTS} prompts`, "error");
+        return;
+      }
+      
+      // Otherwise, select it with empty answer
+      setSelectedPrompts({
+        ...selectedPrompts,
+        [promptId]: selectedPrompts[promptId] || ""
+      });
+    }
+  };
+  
+  const handleAnswerChange = (promptId: string, answer: string) => {
+    setSelectedPrompts({
+      ...selectedPrompts,
+      [promptId]: answer
     });
   };
 
-  const handleNext = async () => {
-    if (!selectedPrompt) {
-      setSubmitError("Please select a prompt");
-      toast.show("Please select a prompt", "error");
+  const handleContinue = async () => {
+    const selectedPromptEntries = Object.entries(selectedPrompts);
+    
+    if (selectedPromptEntries.length === 0) {
+      toast.show("Please select at least one prompt", "error");
       return;
     }
-
-    if (!answer.trim()) {
-      setSubmitError("Please write your answer");
-      toast.show("Please write your answer", "error");
+    
+    // Check if any selected prompt has an empty answer
+    const hasEmptyAnswer = selectedPromptEntries.some(([_, answer]) => !answer.trim());
+    if (hasEmptyAnswer) {
+      toast.show("Please complete all selected prompts", "error");
       return;
     }
 
     try {
-      setSubmitError(null);
-      const success = await updatePrompts([{ question: selectedPrompt, answer: answer.trim() }]);
+      const formattedPrompts = selectedPromptEntries.map(([promptId, answer]) => {
+        const promptData = PROMPT_OPTIONS.find(p => p.id === promptId);
+        return {
+          question: promptData?.question || promptId,
+          answer: answer.trim()
+        };
+      });
+      
+      const success = await updatePrompts(formattedPrompts);
       if (success) {
-        router.push('/onboarding/photos');
+        router.replace('/(tabs)/home');
       } else {
-        setSubmitError("Failed to save prompt");
-        toast.show("Failed to save prompt. Please try again.", "error");
+        toast.show("Failed to save prompts. Please try again.", "error");
       }
     } catch (error) {
       console.error('Prompt update error:', error);
-      setSubmitError("An error occurred");
       toast.show("An error occurred. Please try again.", "error");
     }
   };
 
-  const renderSkeletons = () => (
-    <View className="space-y-4">
-      {[1, 2, 3, 4].map((index) => (
-        <Animated.View
-          key={`skeleton-${index}`}
-          entering={FadeIn.delay(index * 100)}
-          className="bg-neutral-dark/30 rounded-2xl overflow-hidden"
-          style={{ height: 120 }}
-        >
-          <LinearGradient
-            colors={['rgba(255, 107, 107, 0.1)', 'rgba(255, 142, 142, 0.2)', 'rgba(255, 107, 107, 0.1)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            className="w-full h-full"
-          />
-        </Animated.View>
-      ))}
-    </View>
-  );
+  const isPromptSelected = (promptId: string) => {
+    return promptId in selectedPrompts;
+  };
 
-  const selectedPromptData = PROMPT_OPTIONS.find(p => p.id === selectedPrompt);
+  const getProgressDotsColors = () => {
+    const dots = [
+      '#E5E7EB', // Gray for unfinished steps
+      '#E5E7EB', 
+      '#E5E7EB',
+      '#00CEC9'  // Teal for current step
+    ];
+    return dots;
+  };
 
   return (
-    <View className="flex-1 bg-neutral-darkest">
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      
       <ScrollView 
-        className="flex-1"
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        onScroll={(e) => {
-          scrollY.value = e.nativeEvent.contentOffset.y;
-        }}
-        scrollEventThrottle={16}
       >
-        <Animated.View 
-          style={headerStyle}
-          className="px-6 pt-6"
-        >
-          {/* Romantic Journey Progress */}
-          <View className="flex-row items-center mb-4">
-            <View className="w-8 h-8 rounded-full bg-[#FF6B6B]/20 items-center justify-center">
-              <Ionicons name="heart" size={16} color="#FF6B6B" />
-            </View>
-            <View className="flex-1 h-1 bg-neutral-dark/50 rounded-full ml-2">
-              <View className="w-4/5 h-full bg-gradient-to-r from-[#FF6B6B] to-[#FF8E8E] rounded-full" />
-            </View>
-          </View>
-
-          {/* Header */}
-          <View className="mb-8">
-            <Text className="text-4xl font-youngSerif mb-3 text-white">
-              Share Your Story
-            </Text>
-            <Text className="text-lg text-neutral-light font-montserrat leading-relaxed">
-              Choose a prompt and let potential matches know what makes you unique
-            </Text>
-            
-            {submitError && (
-              <Animated.View 
-                entering={SlideInRight}
-                className="mt-4 bg-red-900/30 border border-red-500/30 rounded-xl p-4 flex-row items-center"
-              >
-                <Ionicons name="alert-circle" size={20} color="#f87171" />
-                <Text className="text-red-400 ml-2 font-montserrat">{submitError}</Text>
-              </Animated.View>
-            )}
-          </View>
-
+        {/* Logo */}
+        <View style={styles.logoContainer}>
+          <Image 
+            source={IMAGES.safarsaathi}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+        
+        {/* Progress Indicators */}
+        <View style={styles.progressContainer}>
+          {getProgressDotsColors().map((color, index) => (
+            <View
+              key={`dot-${index}`}
+              style={[styles.progressDot, { backgroundColor: color }]}
+            />
+          ))}
+        </View>
+        
+        {/* Main Content */}
+        <View style={styles.contentContainer}>
+          <Text style={styles.title}>Choose Prompts</Text>
+          
+          <Text style={styles.subtitle}>
+            Select up to {MAX_PROMPTS} prompts to share more about yourself.
+          </Text>
+          
           {/* Prompt Options */}
-          {isSkeletonVisible ? (
-            renderSkeletons()
-          ) : (
-            <View className="space-y-4">
-              {PROMPT_OPTIONS.map((prompt, index) => (
-                <Animated.View
-                  key={prompt.id}
-                  entering={FadeInDown.delay(index * 100)}
-                  style={[
-                    { transform: [{ scale: selectedPrompt === prompt.id ? scale : 1 }] }
-                  ]}
-                >
-                  <TouchableOpacity
-                    onPress={() => handleSelect(prompt.id)}
-                    disabled={isLoading}
-                    className={`rounded-2xl overflow-hidden ${
-                      selectedPrompt === prompt.id ? 'border-2 border-[#FF6B6B]' : ''
-                    }`}
-                  >
-                    <BlurView intensity={20} tint="dark">
-                      <LinearGradient
-                        colors={
-                          selectedPrompt === prompt.id
-                            ? ['rgba(255, 107, 107, 0.2)', 'rgba(255, 142, 142, 0.1)']
-                            : ['rgba(255, 107, 107, 0.1)', 'rgba(255, 142, 142, 0.05)']
-                        }
-                        className="p-5"
-                      >
-                        <View className="flex-row items-center mb-3">
-                          <View className={`w-12 h-12 rounded-full items-center justify-center ${
-                            selectedPrompt === prompt.id ? 'bg-[#FF6B6B]' : 'bg-[#FF6B6B]/20'
-                          }`}>
-                            <Ionicons 
-                              name={prompt.icon as any} 
-                              size={24} 
-                              color={selectedPrompt === prompt.id ? 'white' : '#FF6B6B'} 
-                            />
-                          </View>
-                          <Text className={`ml-4 text-xl flex-1 ${
-                            selectedPrompt === prompt.id 
-                              ? 'text-white font-montserratBold' 
-                              : 'text-neutral-light font-montserrat'
-                          }`}>
-                            {prompt.question}
-                          </Text>
-                          {selectedPrompt === prompt.id && (
-                            <View className="w-6 h-6 rounded-full bg-[#FF6B6B] items-center justify-center">
-                              <Ionicons name="checkmark" size={16} color="white" />
-                            </View>
-                          )}
-                        </View>
-                        
-                        {selectedPrompt === prompt.id && (
-                          <View className="mt-2">
-                            <TextInput
-                              value={answer}
-                              onChangeText={setAnswer}
-                              placeholder={prompt.placeholder}
-                              placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                              multiline
-                              className="bg-neutral-dark/30 rounded-xl p-4 text-white font-montserrat min-h-[100px]"
-                              maxLength={MAX_ANSWER_LENGTH}
-                            />
-                            <Text className="text-neutral-light text-right mt-2 font-montserrat">
-                              {answer.length}/{MAX_ANSWER_LENGTH}
-                            </Text>
-                          </View>
-                        )}
-                      </LinearGradient>
-                    </BlurView>
-                  </TouchableOpacity>
-                </Animated.View>
-              ))}
+          <View style={styles.promptsContainer}>
+            {PROMPT_OPTIONS.map((prompt) => (
+              <TouchableOpacity
+                key={prompt.id}
+                style={[
+                  styles.promptOption,
+                  isPromptSelected(prompt.id) && styles.selectedPrompt
+                ]}
+                onPress={() => handleSelectPrompt(prompt.id)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.promptText}>{prompt.question}</Text>
+                
+                <View style={[
+                  styles.promptCheckCircle,
+                  isPromptSelected(prompt.id) && styles.selectedCheckCircle
+                ]}>
+                  {isPromptSelected(prompt.id) && (
+                    <View style={styles.promptCheckInner} />
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+          
+          {/* Selected Prompts with Answers */}
+          {Object.entries(selectedPrompts).length > 0 && (
+            <View style={styles.selectedPromptsContainer}>
+              {Object.entries(selectedPrompts).map(([promptId, answer]) => {
+                const promptData = PROMPT_OPTIONS.find(p => p.id === promptId);
+                return (
+                  <View key={`answer-${promptId}`} style={styles.answerContainer}>
+                    <Text style={styles.answerLabel}>{promptData?.question}</Text>
+                    <TextInput
+                      value={answer}
+                      onChangeText={(text) => handleAnswerChange(promptId, text)}
+                      placeholder={promptData?.placeholder}
+                      placeholderTextColor="#9CA3AF"
+                      multiline
+                      style={styles.answerInput}
+                      maxLength={MAX_ANSWER_LENGTH}
+                    />
+                    <Text style={styles.characterCount}>
+                      {answer.length}/{MAX_ANSWER_LENGTH}
+                    </Text>
+                  </View>
+                );
+              })}
             </View>
           )}
-
-          {/* Pro Tips */}
-          <BlurView intensity={20} tint="dark" className="rounded-2xl mt-8 mb-6 overflow-hidden">
-            <LinearGradient
-              colors={['rgba(255, 107, 107, 0.1)', 'rgba(255, 142, 142, 0.05)']}
-              className="p-5 border border-[#FF6B6B]/20"
-            >
-              <View className="flex-row items-start">
-                <View className="w-12 h-12 rounded-full bg-[#FF6B6B]/20 items-center justify-center mr-4">
-                  <Ionicons name="sparkles" size={24} color="#FF6B6B" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-white font-montserratBold text-lg mb-2">Pro Tips</Text>
-                  <Text className="text-neutral-light font-montserrat leading-relaxed">
-                    • Be authentic and show your personality{'\n'}
-                    • Share specific stories or experiences{'\n'}
-                    • Keep it positive and engaging
-                  </Text>
-                </View>
-              </View>
-            </LinearGradient>
-          </BlurView>
-        </Animated.View>
-        <View className="h-32" />
+          
+          {/* Info Box */}
+          <View style={styles.infoContainer}>
+            <Ionicons name="information-circle" size={22} color="#00CEC9" style={styles.infoIcon} />
+            <Text style={styles.infoText}>
+              Prompts help others understand your travel style and preferences.
+            </Text>
+          </View>
+        </View>
       </ScrollView>
-
-      {/* Floating Action Button */}
-      <Animated.View 
-        entering={FadeInDown.delay(300)}
-        className="absolute bottom-0 left-0 right-0 p-6 bg-neutral-darkest/80 backdrop-blur-xl border-t border-white/5"
-      >
-        <LinearGradient
-          colors={selectedPrompt && answer.trim() 
-            ? ['#FF6B6B', '#FF8E8E']
-            : ['rgba(30, 27, 38, 0.8)', 'rgba(30, 27, 38, 0.6)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          className="rounded-xl overflow-hidden"
+      
+      {/* Continue Button */}
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={[
+            styles.continueButton,
+            (Object.keys(selectedPrompts).length === 0 ||
+              Object.values(selectedPrompts).some(answer => !answer.trim())) && styles.disabledButton
+          ]}
+          onPress={handleContinue}
+          disabled={isLoading || 
+                   Object.keys(selectedPrompts).length === 0 ||
+                   Object.values(selectedPrompts).some(answer => !answer.trim())}
+          activeOpacity={0.8}
         >
-          <TouchableOpacity
-            onPress={handleNext}
-            disabled={!selectedPrompt || !answer.trim() || isLoading}
-            className="py-4 px-6"
-          >
-            {isLoading ? (
-              <View className="flex-row items-center justify-center">
-                <ActivityIndicator color="white" size="small" />
-                <Text className="text-white ml-2 font-montserratBold">Saving your story...</Text>
-              </View>
-            ) : (
-              <View className="flex-row items-center justify-center">
-                <Text className={`text-center text-lg font-montserratBold ${
-                  selectedPrompt && answer.trim() ? 'text-white' : 'text-neutral-medium'
-                }`}>
-                  {selectedPrompt && answer.trim() ? 'Continue Your Journey' : 'Select & Answer a Prompt'}
-                </Text>
-                {selectedPrompt && answer.trim() && (
-                  <Ionicons name="arrow-forward" size={20} color="white" className="ml-2" />
-                )}
-              </View>
-            )}
-          </TouchableOpacity>
-        </LinearGradient>
-      </Animated.View>
-    </View>
+          {isLoading ? (
+            <ActivityIndicator color="white" size="small" />
+          ) : (
+            <Text style={styles.continueButtonText}>Continue</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+      
+      {/* Home Indicator */}
+      <View style={styles.homeIndicator} />
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 100, // Extra space for the fixed button
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  logo: {
+    width: 120,
+    height: 48,
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 40,
+  },
+  progressDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginHorizontal: 4,
+  },
+  contentContainer: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 28,
+    fontFamily: 'montserratBold',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  subtitle: {
+    fontSize: 16,
+    fontFamily: 'montserrat',
+    color: '#6B7280',
+    marginBottom: 32,
+  },
+  promptsContainer: {
+    marginBottom: 24,
+  },
+  promptOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  selectedPrompt: {
+    borderColor: '#00CEC9',
+    backgroundColor: '#F0FDFD',
+  },
+  promptText: {
+    fontSize: 16,
+    fontFamily: 'montserrat',
+    color: '#111827',
+    flex: 1,
+    paddingRight: 12,
+  },
+  promptCheckCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedCheckCircle: {
+    borderColor: '#00CEC9',
+  },
+  promptCheckInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#00CEC9',
+  },
+  selectedPromptsContainer: {
+    marginBottom: 24,
+  },
+  answerContainer: {
+    marginBottom: 24,
+  },
+  answerLabel: {
+    fontSize: 16,
+    fontFamily: 'montserratBold',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  answerInput: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    fontFamily: 'montserrat',
+    color: '#111827',
+    minHeight: 120,
+    textAlignVertical: 'top',
+  },
+  characterCount: {
+    fontSize: 12,
+    fontFamily: 'montserrat',
+    color: '#9CA3AF',
+    textAlign: 'right',
+    marginTop: 8,
+  },
+  infoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 206, 201, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginVertical: 16,
+  },
+  infoIcon: {
+    marginRight: 12,
+  },
+  infoText: {
+    fontSize: 14,
+    fontFamily: 'montserrat',
+    color: '#374151',
+    flex: 1,
+  },
+  buttonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+    paddingTop: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+  },
+  continueButton: {
+    backgroundColor: '#00CEC9',
+    borderRadius: 30,
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  disabledButton: {
+    backgroundColor: '#E5E7EB',
+  },
+  continueButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'montserratBold',
+  },
+  homeIndicator: {
+    width: 36,
+    height: 5,
+    backgroundColor: '#000000',
+    borderRadius: 2.5,
+    opacity: 0.2,
+    alignSelf: 'center',
+    marginBottom: 8,
+  },
+});

@@ -1,30 +1,26 @@
-import { View, Text, TouchableOpacity, Image, ActivityIndicator, Dimensions, ScrollView } from "react-native";
+import React, { useState } from "react";
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  Image, 
+  ActivityIndicator, 
+  SafeAreaView,
+  StyleSheet,
+  StatusBar,
+  ScrollView,
+  Dimensions
+} from "react-native";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import Animated, { 
-  FadeInDown, 
-  Layout, 
-  useAnimatedStyle,
-  withSpring,
-  useSharedValue,
-  FadeIn,
-  SlideInRight,
-  ZoomIn,
-  interpolate
-} from "react-native-reanimated";
-import { useState, useEffect } from "react";
 import { useToast } from "../../context/ToastContext";
 import { useOnboarding } from "../../context/OnboardingContext";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
 import * as FileSystem from "expo-file-system";
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from "expo-blur";
+import IMAGES from "@/src/constants/images";
 
 const { width } = Dimensions.get('window');
-const GRID_GAP = 12;
-const PHOTOS_PER_ROW = 2;
-const PHOTO_SIZE = (width - 48 - (PHOTOS_PER_ROW - 1) * GRID_GAP) / PHOTOS_PER_ROW;
+const PHOTO_SIZE = (width - 48 - 12) / 2; // Width minus horizontal padding minus gap
 
 export default function PhotosScreen() {
   const router = useRouter();
@@ -32,55 +28,14 @@ export default function PhotosScreen() {
   const { updatePhotos, isLoading } = useOnboarding();
   const [photos, setPhotos] = useState<{ id: string; uri: string }[]>([]);
   const [isPickerLoading, setIsPickerLoading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [isSkeletonVisible, setIsSkeletonVisible] = useState(true);
-  
-  const scale = useSharedValue(1);
-  const progressWidth = useSharedValue(0);
-  const scrollY = useSharedValue(0);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsSkeletonVisible(false);
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const headerStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        translateY: interpolate(
-          scrollY.value,
-          [0, 100],
-          [0, -20],
-          'clamp'
-        ),
-      },
-    ],
-    opacity: interpolate(
-      scrollY.value,
-      [0, 100],
-      [1, 0.9],
-      'clamp'
-    ),
-  }));
-
-  const progressStyle = useAnimatedStyle(() => ({
-    width: `${withSpring((100 * photos.length) / 6)}%`,
-    height: 4,
-    backgroundColor: photos.length >= 2 ? '#50A6A7' : '#FF6B6B',
-    borderRadius: 4,
-  }));
 
   const pickImage = async () => {
     try {
       setIsPickerLoading(true);
-      setUploadError(null);
       
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
       if (!permissionResult.granted) {
-        setUploadError("Camera roll permission denied");
         toast.show("Please allow access to your photos", "error");
         setIsPickerLoading(false);
         return;
@@ -89,7 +44,7 @@ export default function PhotosScreen() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
-        aspect: [4, 4],
+        aspect: [1, 1],
         quality: 0.8,
         allowsMultipleSelection: false,
       });
@@ -104,7 +59,6 @@ export default function PhotosScreen() {
         // Check file size
         const fileInfo = await FileSystem.getInfoAsync(result.assets[0].uri);
         if (!fileInfo.exists) {
-          setUploadError("Could not access the selected photo");
           toast.show("Could not access the selected photo", "error");
           setIsPickerLoading(false);
           return;
@@ -112,15 +66,10 @@ export default function PhotosScreen() {
 
         // Check if file size is too large (>5MB)
         if (fileInfo.size > 5 * 1024 * 1024) {
-          setUploadError("Photo size is too large (max 5MB)");
           toast.show("Photo size is too large (max 5MB)", "error");
           setIsPickerLoading(false);
           return;
         }
-
-        scale.value = withSpring(1.05, {}, () => {
-          scale.value = withSpring(1);
-        });
 
         setPhotos(prev => [...prev, {
           id: Date.now().toString(),
@@ -129,7 +78,6 @@ export default function PhotosScreen() {
       }
     } catch (error) {
       console.error('Photo selection error:', error);
-      setUploadError("Error selecting photo");
       toast.show("Error selecting photo", "error");
     } finally {
       setIsPickerLoading(false);
@@ -141,246 +89,278 @@ export default function PhotosScreen() {
   };
 
   const handleNext = async () => {
-    if (photos.length < 2) {
-      toast.show("Please add at least 2 photos", "error");
+    if (photos.length < 1) {
+      toast.show("Please add at least one photo", "error");
       return;
     }
 
     try {
-      setUploadError(null);
       const success = await updatePhotos(photos.map(p => p.uri));
       if (success) {
         router.push('/onboarding/gender');
       } else {
-        setUploadError("Failed to save photos");
         toast.show("Failed to save photos. Please try again.", "error");
       }
     } catch (error) {
       console.error('Photo upload error:', error);
-      setUploadError("Error uploading photos");
       toast.show("Error uploading photos. Please try again.", "error");
     }
   };
 
-  const renderSkeletons = () => {
-    return Array(4).fill(0).map((_, index) => (
-      <Animated.View
-        key={`skeleton-${index}`}
-        entering={FadeIn.delay(index * 200)}
-        className="bg-neutral-dark/50 rounded-2xl overflow-hidden"
-        style={{ width: PHOTO_SIZE, height: PHOTO_SIZE, marginBottom: GRID_GAP }}
-      >
-        <LinearGradient
-          colors={['rgba(255, 107, 107, 0.1)', 'rgba(255, 142, 142, 0.2)', 'rgba(255, 107, 107, 0.1)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          className="w-full h-full"
-        />
-      </Animated.View>
-    ));
-  };
-
   return (
-    <View className="flex-1 bg-neutral-darkest">
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      
       <ScrollView 
-        className="flex-1"
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        onScroll={(e) => {
-          scrollY.value = e.nativeEvent.contentOffset.y;
-        }}
-        scrollEventThrottle={16}
       >
-        <Animated.View 
-          style={headerStyle}
-          className="px-6 pt-6"
-        >
-          {/* Romantic Journey Progress */}
-          <View className="flex-row items-center mb-4">
-            <View className="w-8 h-8 rounded-full bg-[#FF6B6B]/20 items-center justify-center">
-              <Ionicons name="heart" size={16} color="#FF6B6B" />
-            </View>
-            <View className="flex-1 h-1 bg-neutral-dark/50 rounded-full ml-2">
-              <View className="w-4/5 h-full bg-gradient-to-r from-[#FF6B6B] to-[#FF8E8E] rounded-full" />
-            </View>
-          </View>
-
-          {/* Header */}
-          <View className="mb-6">
-            <Text className="text-4xl font-youngSerif mb-3 text-white">
-              Show Your Best Side
-            </Text>
-            <Text className="text-lg text-neutral-light font-montserrat leading-relaxed">
-              Share photos that tell your story and capture attention
-            </Text>
-            
-            {uploadError && (
-              <Animated.View 
-                entering={SlideInRight}
-                className="mt-4 bg-red-900/30 border border-red-500/30 rounded-xl p-4 flex-row items-center"
-              >
-                <Ionicons name="alert-circle" size={20} color="#f87171" />
-                <Text className="text-red-400 ml-2 font-montserrat">{uploadError}</Text>
-              </Animated.View>
-            )}
-          </View>
-
-          {/* Progress Indicator */}
-          <View className="mb-6">
-            <View className="bg-neutral-dark/50 h-4 rounded-full overflow-hidden">
-              <Animated.View style={progressStyle} />
-            </View>
-            <View className="flex-row items-center justify-between mt-3">
-              <View className="flex-row items-center">
-                <Ionicons name="images-outline" size={18} color="#FF6B6B" />
-                <Text className="text-white font-montserratMedium ml-2">
-                  {photos.length}/6 photos
-                </Text>
-              </View>
-              <Text className={`text-sm font-montserrat ${photos.length >= 2 ? 'text-[#50A6A7]' : 'text-neutral-medium'}`}>
-                {photos.length >= 2 ? '✓ Looking good!' : 'Add at least 2 photos'}
-              </Text>
-            </View>
-          </View>
-
-          {/* Photo Tips Card */}
-          <BlurView intensity={20} tint="dark" className="rounded-2xl mb-6 overflow-hidden">
-            <LinearGradient
-              colors={['rgba(255, 107, 107, 0.1)', 'rgba(255, 142, 142, 0.05)']}
-              className="p-5 border border-[#FF6B6B]/20"
-            >
-              <View className="flex-row items-start">
-                <View className="w-12 h-12 rounded-full bg-[#FF6B6B]/20 items-center justify-center mr-4">
-                  <Ionicons name="camera" size={24} color="#FF6B6B" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-white font-montserratBold text-lg mb-2">Photo Tips</Text>
-                  <Text className="text-neutral-light font-montserrat leading-relaxed">
-                    • Start with a clear face photo{'\n'}
-                    • Show your interests and travels{'\n'}
-                    • Add group photos with friends{'\n'}
-                    • Include action shots from adventures
-                  </Text>
-                </View>
-              </View>
-            </LinearGradient>
-          </BlurView>
-        </Animated.View>
-
-        {/* Photos Grid */}
-        <View className="px-6 pb-32">
-          <View className="flex-row flex-wrap justify-between">
-            {isSkeletonVisible ? (
-              renderSkeletons()
-            ) : (
-              <>
-                {photos.map((photo, index) => (
-                  <Animated.View
-                    key={photo.id}
-                    entering={ZoomIn.delay(index * 100)}
-                    layout={Layout.springify()}
-                    className="mb-3"
-                    style={{ width: PHOTO_SIZE, height: PHOTO_SIZE }}
-                  >
-                    <LinearGradient
-                      colors={['#FF6B6B', '#FF8E8E']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      className="rounded-2xl p-1 w-full h-full"
-                    >
-                      <Image
-                        source={{ uri: photo.uri }}
-                        style={{ width: '100%', height: '100%' }}
-                        className="rounded-xl"
-                      />
-                    </LinearGradient>
-                    
+        {/* Progress Indicators */}
+        <View style={styles.progressContainer}>
+          <View style={styles.progressDot} />
+          <View style={styles.progressDot} />
+          <View style={[styles.progressDot, styles.activeDot]} />
+        </View>
+        
+        {/* Logo */}
+        <View style={styles.logoContainer}>
+          <Image 
+            source={IMAGES.safarsaathi}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+        
+        {/* Main Content */}
+        <View style={styles.contentContainer}>
+          <Text style={styles.title}>Photos</Text>
+          
+          <Text style={styles.subtitle}>
+            Add your best photos to make your profile stand out.
+          </Text>
+          
+          {/* Photos Grid */}
+          <View style={styles.photoGrid}>
+            {[...photos, ...Array(Math.max(0, 6 - photos.length)).fill(null)].map((photo, index) => (
+              <View key={photo?.id || `empty-${index}`} style={styles.photoCell}>
+                {photo ? (
+                  // Photo Cell with Image
+                  <View style={styles.photoContainer}>
+                    <Image
+                      source={{ uri: photo.uri }}
+                      style={styles.photo}
+                    />
                     <TouchableOpacity
+                      style={styles.removeButton}
                       onPress={() => removePhoto(photo.id)}
-                      className="absolute -top-2 -right-2 bg-neutral-darkest border-2 border-red-500 rounded-full p-1.5 shadow-lg"
                     >
-                      <Ionicons name="close" size={16} color="#f87171" />
+                      <Ionicons name="close" size={16} color="#FFFFFF" />
                     </TouchableOpacity>
                     
                     {index === 0 && (
-                      <View className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-[#FF6B6B] rounded-full px-3 py-1 shadow-lg">
-                        <Text className="text-white text-xs font-montserratBold">Profile Photo</Text>
+                      <View style={styles.primaryPhotoLabel}>
+                        <Text style={styles.primaryPhotoText}>Primary</Text>
                       </View>
                     )}
-                  </Animated.View>
-                ))}
-
-                {photos.length < 6 && Array(6 - photos.length).fill(0).map((_, i) => (
-                  <Animated.View
-                    key={`empty-${i}`}
-                    entering={FadeIn.delay(photos.length * 100 + i * 100)}
-                    layout={Layout.springify()}
-                    className="mb-3"
-                    style={{ width: PHOTO_SIZE, height: PHOTO_SIZE }}
+                  </View>
+                ) : (
+                  // Empty Cell
+                  <TouchableOpacity
+                    style={styles.addPhotoContainer}
+                    onPress={pickImage}
+                    disabled={isPickerLoading}
                   >
-                    <TouchableOpacity
-                      onPress={pickImage}
-                      className="bg-neutral-dark/60 rounded-2xl items-center justify-center border border-[#FF6B6B]/20 w-full h-full"
-                      disabled={isPickerLoading || isLoading}
-                    >
-                      {isPickerLoading && i === 0 ? (
-                        <ActivityIndicator color="#FF6B6B" size="small" />
-                      ) : (
-                        <>
-                          <View className="w-12 h-12 rounded-full bg-[#FF6B6B]/10 items-center justify-center mb-2">
-                            <Ionicons name="add" size={24} color="#FF6B6B" />
-                          </View>
-                          <Text className="text-neutral-medium text-xs font-montserrat">
-                            {i === 0 ? 'Add Photo' : ''}
-                          </Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  </Animated.View>
-                ))}
-              </>
-            )}
-          </View>
-        </View>
-      </ScrollView>
-
-      {/* Floating Action Button */}
-      <Animated.View 
-        entering={FadeInDown.delay(300)}
-        className="absolute bottom-0 left-0 right-0 p-6 bg-neutral-darkest/80 backdrop-blur-xl border-t border-white/5"
-      >
-        <LinearGradient
-          colors={photos.length >= 2 
-            ? ['#FF6B6B', '#FF8E8E']
-            : ['rgba(30, 27, 38, 0.8)', 'rgba(30, 27, 38, 0.6)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          className="rounded-xl overflow-hidden"
-        >
-          <TouchableOpacity
-            onPress={handleNext}
-            disabled={photos.length < 2 || isLoading}
-            className="py-4 px-6"
-          >
-            {isLoading ? (
-              <View className="flex-row items-center justify-center">
-                <ActivityIndicator color="white" size="small" />
-                <Text className="text-white ml-2 font-montserratBold">Uploading your story...</Text>
-              </View>
-            ) : (
-              <View className="flex-row items-center justify-center">
-                <Text className={`text-center text-lg font-montserratBold ${
-                  photos.length >= 2 ? 'text-white' : 'text-neutral-medium'
-                }`}>
-                  {photos.length < 2 ? 'Add more photos to continue' : 'Continue Your Journey'}
-                </Text>
-                {photos.length >= 2 && (
-                  <Ionicons name="arrow-forward" size={20} color="white" className="ml-2" />
+                    {isPickerLoading && index === photos.length ? (
+                      <ActivityIndicator color="#00CEC9" size="small" />
+                    ) : (
+                      <Ionicons name="add" size={24} color="#00CEC9" />
+                    )}
+                  </TouchableOpacity>
                 )}
               </View>
+            ))}
+          </View>
+          
+          {/* Info Box */}
+          <View style={styles.tipContainer}>
+            <Ionicons name="information-circle" size={22} color="#00CEC9" />
+            <Text style={styles.tipText}>
+              Your first photo will be shown as your primary photo. Please add at least one photo to continue.
+            </Text>
+          </View>
+          
+          {/* Next Button */}
+          <TouchableOpacity
+            style={[
+              styles.nextButton, 
+              photos.length === 0 && styles.disabledButton
+            ]}
+            onPress={handleNext}
+            disabled={photos.length === 0 || isLoading}
+            activeOpacity={0.8}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <Text style={styles.nextButtonText}>Next</Text>
             )}
           </TouchableOpacity>
-        </LinearGradient>
-      </Animated.View>
-    </View>
+        </View>
+        
+        {/* Home Indicator */}
+        <View style={styles.homeIndicator} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 24,
+    marginTop: 8,
+  },
+  progressDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#E5E7EB',
+    marginHorizontal: 4,
+  },
+  activeDot: {
+    backgroundColor: '#00CEC9',
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 56,
+  },
+  logo: {
+    width: 60,
+    height: 60,
+    tintColor: '#00CEC9',
+  },
+  contentContainer: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 28,
+    fontFamily: 'montserratBold',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    fontFamily: 'montserrat',
+    color: '#6B7280',
+    marginBottom: 24,
+  },
+  photoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  photoCell: {
+    width: PHOTO_SIZE,
+    height: PHOTO_SIZE,
+    marginBottom: 12,
+  },
+  photoContainer: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  photo: {
+    width: '100%',
+    height: '100%',
+  },
+  removeButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryPhotoLabel: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    backgroundColor: '#00CEC9',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  primaryPhotoText: {
+    color: 'white',
+    fontSize: 12,
+    fontFamily: 'montserratBold',
+  },
+  addPhotoContainer: {
+    width: '100%',
+    height: '100%',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F9FAFB',
+  },
+  tipContainer: {
+    backgroundColor: 'rgba(0, 206, 201, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 32,
+  },
+  tipText: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 14,
+    fontFamily: 'montserrat',
+    color: '#374151',
+  },
+  nextButton: {
+    backgroundColor: '#00CEC9',
+    borderRadius: 12,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 'auto',
+  },
+  disabledButton: {
+    backgroundColor: '#E5E7EB',
+  },
+  nextButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'montserratBold',
+  },
+  homeIndicator: {
+    width: 36,
+    height: 5,
+    backgroundColor: '#000000',
+    borderRadius: 2.5,
+    opacity: 0.2,
+    alignSelf: 'center',
+    marginTop: 24,
+  },
+});

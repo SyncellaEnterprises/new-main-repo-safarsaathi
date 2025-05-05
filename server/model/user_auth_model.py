@@ -7,6 +7,7 @@ from utils.exception import CustomException
 from config.verifyEmail import VerifyEmail
 import sys
 from config.config import *
+from datetime import timedelta
 
 class UserAuthModel:
     def __init__(self):
@@ -54,7 +55,7 @@ class UserAuthModel:
             self.connection.commit()
             
             # Generate JWT token for the new user
-            access_token = create_access_token(identity=username)
+            access_token = create_access_token(identity=username, expires_delta=timedelta(days=100))
             logging.info("Registration successful")
             return {
                 "status": "success",
@@ -78,7 +79,7 @@ class UserAuthModel:
 
             
             if user and bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
-                access_token = create_access_token(identity=user['username'])
+                access_token = create_access_token(identity=user['username'], expires_delta=timedelta(days=100))
                 return {
                     "status": "success",
                     "message": "Login successful",

@@ -101,7 +101,7 @@ export function UserCard({ profile, onSwipeLeft, onSwipeRight }: UserCardProps) 
         <View style={styles.imageContainer}>
           {imageLoading && (
             <View style={styles.loaderContainer}>
-              <ActivityIndicator size="large" color="#f05158" />
+              <ActivityIndicator size="large" color="#7D5BA6" />
             </View>
           )}
           <Image
@@ -127,7 +127,7 @@ export function UserCard({ profile, onSwipeLeft, onSwipeRight }: UserCardProps) 
           {/* Verified badge */}
           <View style={styles.verifiedBadge}>
             <BlurView intensity={90} tint="dark" style={styles.badgeContent}>
-              <Ionicons name="checkmark-circle" size={14} color="#07dfd4" />
+              <Ionicons name="checkmark-circle" size={14} color="#50A6A7" />
               <Text style={styles.badgeText}>Verified</Text>
             </BlurView>
           </View>
@@ -145,17 +145,17 @@ export function UserCard({ profile, onSwipeLeft, onSwipeRight }: UserCardProps) 
           {/* Basic Info with Icons */}
           <View style={styles.basicInfoContainer}>
             <View style={styles.infoRow}>
-              <Ionicons name="location-outline" size={16} color="#f05158" style={styles.infoIcon} />
+              <Ionicons name="location-outline" size={16} color="#7D5BA6" style={styles.infoIcon} />
               <Text style={styles.infoText}>{profile.location || 'Location not specified'}</Text>
             </View>
             
             <View style={styles.infoRow}>
-              <Ionicons name="briefcase-outline" size={16} color="#f05158" style={styles.infoIcon} />
+              <Ionicons name="briefcase-outline" size={16} color="#7D5BA6" style={styles.infoIcon} />
               <Text style={styles.infoText}>{profile.occupation || 'Occupation not specified'}</Text>
             </View>
             
             <View style={styles.infoRow}>
-              <Ionicons name="person-outline" size={16} color="#f05158" style={styles.infoIcon} />
+              <Ionicons name="person-outline" size={16} color="#7D5BA6" style={styles.infoIcon} />
               <Text style={styles.infoText}>{profile.gender || 'Gender not specified'}</Text>
             </View>
           </View>
@@ -163,7 +163,7 @@ export function UserCard({ profile, onSwipeLeft, onSwipeRight }: UserCardProps) 
           {/* Match Score */}
           <View style={styles.matchScoreContainer}>
             <LinearGradient
-              colors={matchScore > 70 ? ['#07dfd4', '#0cb2a9'] : ['#ca99b9', '#a45f8f']}
+              colors={matchScore > 70 ? ['#7D5BA6', '#50A6A7'] : ['#7D5BA6', '#7D5BA6']}
               style={styles.matchScoreGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -187,7 +187,7 @@ export function UserCard({ profile, onSwipeLeft, onSwipeRight }: UserCardProps) 
             {profile.bio && (
               <View style={styles.sectionContainer}>
                 <View style={styles.sectionHeader}>
-                  <Ionicons name="information-circle-outline" size={18} color="#f05158" />
+                  <Ionicons name="information-circle-outline" size={18} color="#7D5BA6" />
                   <Text style={styles.sectionTitle}>About</Text>
                 </View>
                 <Text style={styles.bioText}>{profile.bio}</Text>
@@ -198,7 +198,7 @@ export function UserCard({ profile, onSwipeLeft, onSwipeRight }: UserCardProps) 
             {interestsArray.length > 0 && (
               <View style={styles.sectionContainer}>
                 <View style={styles.sectionHeader}>
-                  <Ionicons name="heart-outline" size={18} color="#f05158" />
+                  <Ionicons name="heart-outline" size={18} color="#7D5BA6" />
                   <Text style={styles.sectionTitle}>Interests</Text>
                 </View>
                 <View style={styles.interestTags}>
@@ -215,7 +215,7 @@ export function UserCard({ profile, onSwipeLeft, onSwipeRight }: UserCardProps) 
             {profile.prompts?.prompts?.length > 0 && (
               <View style={styles.sectionContainer}>
                 <View style={styles.sectionHeader}>
-                  <Ionicons name="chatbubble-outline" size={18} color="#f05158" />
+                  <Ionicons name="chatbubble-outline" size={18} color="#7D5BA6" />
                   <Text style={styles.sectionTitle}>Prompts</Text>
                 </View>
                 {profile.prompts.prompts.map((prompt, index) => (
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: 'hidden',
     backgroundColor: 'white',
-    shadowColor: '#ca99b9',
+    shadowColor: '#7D5BA6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 24,
     padding: 24,
-    shadowColor: '#ca99b9',
+    shadowColor: '#7D5BA6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -379,10 +379,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: -2,
   },
-  scrollWrapper: {
-    flex: 1,
-    width: '100%',
-  },
   scrollContainer: {
     flex: 1,
   },
@@ -413,31 +409,31 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   interestTag: {
-    backgroundColor: 'rgba(7, 223, 212, 0.12)',
+    backgroundColor: 'rgba(125, 91, 166, 0.08)',
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingVertical: 7,
+    borderRadius: 20,
     marginRight: 8,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: 'rgba(7, 223, 212, 0.2)',
+    borderColor: 'rgba(125, 91, 166, 0.1)',
   },
   interestText: {
-    color: '#07dfd4',
+    color: '#7D5BA6',
     fontSize: 13,
     fontWeight: '500',
   },
   promptCard: {
-    padding: 12,
-    backgroundColor: 'rgba(202, 153, 185, 0.08)',
-    borderRadius: 12,
-    marginBottom: 8,
+    padding: 14,
+    backgroundColor: 'rgba(80, 166, 167, 0.06)',
+    borderRadius: 14,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: 'rgba(202, 153, 185, 0.15)',
+    borderColor: 'rgba(80, 166, 167, 0.1)',
   },
   promptQuestion: {
     fontSize: 14,
-    color: '#ca99b9',
+    color: '#7D5BA6',
     fontWeight: '600',
     marginBottom: 6,
   },
@@ -446,5 +442,8 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 20,
   },
+  scrollWrapper: {
+    flex: 1,
+    width: '100%',
+  },
 });
-
