@@ -210,12 +210,25 @@ export default function VerificationScreen() {
         handleCloseModal();
       } else {
         let errorMessage = "Failed to upload video. Please try again.";
+        let errorData = null;
+        
         try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
+          errorData = await response.json();
           console.log("Error response:", errorData);
+          
+          // Check for specific Cloudinary error
+          if (errorData.message && errorData.message.includes("Cloudinary")) {
+            errorMessage = "Error uploading to cloud storage. Please try a shorter video (under 5 seconds) or check your internet connection.";
+          } else {
+            errorMessage = errorData.message || errorMessage;
+          }
         } catch (e) {
           console.log("Error response not JSON:", response.status, response.statusText);
+        }
+        
+        // Check if it's a server error (500)
+        if (response.status === 500) {
+          errorMessage = "Server error. The video might be too large or our storage service is temporarily unavailable. Please try a shorter video.";
         }
         
         toast.show(errorMessage, "error");
