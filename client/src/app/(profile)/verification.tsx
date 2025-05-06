@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import * as ImagePicker from 'expo-image-picker';
+import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 
 interface VerificationStep {
   id: string;
@@ -23,6 +24,7 @@ export default function VerificationScreen() {
   const insets = useSafeAreaInsets();
   const { accessToken } = useAuth();
   const toast = useToast();
+  const videoRef = useRef<Video>(null);
   
   const [cameraVisible, setCameraVisible] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
@@ -31,6 +33,7 @@ export default function VerificationScreen() {
   const [countdown, setCountdown] = useState(5);
   const [loading, setLoading] = useState(false);
   const [videoUri, setVideoUri] = useState<string | null>(null);
+  const [tutorialVisible, setTutorialVisible] = useState(true);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -53,125 +56,85 @@ export default function VerificationScreen() {
 
   // Animation for modal
   const modalPosition = useSharedValue(100);
-  const progressValue = useSharedValue(0);
   
   const modalStyle = useAnimatedStyle(() => {
     return {
       transform: [{ translateY: `${modalPosition.value}%` }],
     };
   });
-  
-  const progressStyle = useAnimatedStyle(() => {
-    return {
-      width: `${progressValue.value * 100}%`,
-    };
-  });
 
   useEffect(() => {
-    if (isRecording && countdown > 0) {
-      progressValue.value = withTiming((5 - countdown + 1) / 5, { duration: 1000 });
-      timerRef.current = setTimeout(() => {
-        setCountdown(prev => prev - 1);
-      }, 1000);
-    } else if (isRecording && countdown === 0) {
-      completeRecording();
+    // Auto-play the tutorial video when the modal opens
+    if (cameraVisible && videoRef.current) {
+      playTutorialVideo();
     }
-    
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
+  }, [cameraVisible]);
+
+  const playTutorialVideo = async () => {
+    if (videoRef.current) {
+      try {
+        await videoRef.current.playAsync();
+        await videoRef.current.setIsLoopingAsync(true);
+      } catch (error) {
+        console.error("Could not play tutorial video:", error);
       }
-    };
-  }, [isRecording, countdown]);
+    }
+  };
 
   const handleStartVerification = async () => {
     // Request camera permissions if not already granted
     if (!permission?.granted) {
-      await requestPermission();
+      const newPermission = await requestPermission();
+      if (!newPermission.granted) {
+        toast.show("Camera permission is required for verification", "error");
+        return;
+      }
     }
     
-    if (permission?.granted) {
-      // Reset states
-      setRecordingCompleted(false);
-      setVideoUri(null);
-      setCameraVisible(true);
-      modalPosition.value = withTiming(0, { duration: 300 });
-    } else {
-      toast.show("Camera permission is required for verification", "error");
-    }
-  };
-
-  const handleCloseModal = () => {
-    if (isRecording) {
-      stopRecording();
-    }
-    modalPosition.value = withTiming(100, { duration: 300 });
-    setTimeout(() => {
-      setCameraVisible(false);
-      setRecordingCompleted(false);
-      setVideoUri(null);
-    }, 300);
+    // Show tutorial screen before recording
+    setCameraVisible(true);
+    modalPosition.value = withTiming(0, { duration: 300 });
   };
   
   const startRecording = async () => {
-    setIsRecording(true);
-    setCountdown(5);
-    progressValue.value = 0;
-    
-    // In a real implementation, we would record using the camera here
-    // For now, we'll simulate recording and directly capture a video from the camera roll
+    // Open camera directly to record video
     try {
-      setTimeout(async () => {
-        await captureVideoFromCameraRoll();
-      }, 5000); // Simulating 5-second recording
-    } catch (error) {
-      console.error("Recording error:", error);
-      toast.show("Failed to record video", "error");
-      stopRecording();
-    }
-  };
-  
-  const captureVideoFromCameraRoll = async () => {
-    try {
-      // Open camera roll to select a video
-      const result = await ImagePicker.launchImageLibraryAsync({
+      const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-        allowsEditing: true,
-        aspect: [4, 3],
+        allowsEditing: false,
+        aspect: [9, 16],
         quality: 1,
+        videoMaxDuration: 5, // Auto-stop after 5 seconds
       });
       
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const videoAsset = result.assets[0];
+        console.log("Video recorded:", videoAsset);
         setVideoUri(videoAsset.uri);
+        
+        // Show the review screen with OK/Retry options
+        setRecordingCompleted(true);
       } else {
-        // User canceled, simulate success anyway for demo
-        setVideoUri('file:///data/user/0/host.exp.exponent/cache/ExperienceData/sample-video.mp4');
+        console.log("Camera was canceled");
       }
     } catch (error) {
-      console.error("Image picker error:", error);
-      // Fallback to a simulated video URI
-      setVideoUri('file:///data/user/0/host.exp.exponent/cache/ExperienceData/sample-video.mp4');
+      console.error("Camera error:", error);
+      toast.show("Failed to open camera. Please try again.", "error");
     }
   };
-  
-  const stopRecording = () => {
-    setIsRecording(false);
-    setCountdown(5);
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-  };
-  
-  const completeRecording = () => {
-    stopRecording();
-    setRecordingCompleted(true);
+
+  const handleCloseModal = () => {
+    modalPosition.value = withTiming(100, { duration: 300 });
+    setTimeout(() => {
+      setCameraVisible(false);
+      setRecordingCompleted(false);
+    }, 300);
   };
   
   const retryRecording = () => {
-    setRecordingCompleted(false);
     setVideoUri(null);
+    setRecordingCompleted(false);
+    startRecording();
   };
   
   const submitVerification = async () => {
@@ -190,9 +153,11 @@ export default function VerificationScreen() {
     try {
       // Create form data with the video file
       const formData = new FormData();
+      
+      // Add the actual video file from camera
       formData.append('video', {
         uri: videoUri,
-        type: 'video/mp4',
+        type: 'video/mp4', 
         name: 'verification.mp4',
       } as any);
       
@@ -204,6 +169,9 @@ export default function VerificationScreen() {
         })
         : 'http://192.168.0.108:5000/api';
       
+      console.log("Submitting actual video to API:", `${API_BASE}/onboarding/videos`);
+      console.log("Video URI:", videoUri);
+      
       // Make API request with bearer token from AuthContext
       const response = await fetch(`${API_BASE}/onboarding/videos`, {
         method: 'POST',
@@ -213,9 +181,17 @@ export default function VerificationScreen() {
         body: formData,
       });
       
-      const data = await response.json();
+      console.log("Response status:", response.status);
       
       if (response.ok) {
+        let data;
+        try {
+          data = await response.json();
+          console.log("Upload success, response:", data);
+        } catch (e) {
+          console.log("Response received but not JSON:", response.status, response.statusText);
+        }
+        
         // Show success toast
         toast.show("Video uploaded successfully!", "success");
         
@@ -233,11 +209,20 @@ export default function VerificationScreen() {
         // Close modal
         handleCloseModal();
       } else {
-        toast.show(data.message || "Failed to upload video", "error");
+        let errorMessage = "Failed to upload video. Please try again.";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+          console.log("Error response:", errorData);
+        } catch (e) {
+          console.log("Error response not JSON:", response.status, response.statusText);
+        }
+        
+        toast.show(errorMessage, "error");
       }
     } catch (error) {
       console.error("Upload error:", error);
-      toast.show("Network error. Please check your connection", "error");
+      toast.show("Network error. Please check your connection and try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -356,114 +341,80 @@ export default function VerificationScreen() {
             </View>
 
             <View className="flex-1 items-center justify-center bg-black">
-              {permission?.granted ? (
-                <View className="w-full items-center">
-                  {/* Progress bar */}
-                  <View className="w-11/12 h-2 bg-gray-700 rounded-full overflow-hidden mb-6">
-                    <Animated.View 
-                      className="h-full bg-[#1a237e]"
-                      style={progressStyle}
-                    />
+              {!recordingCompleted ? (
+                <View className="items-center w-full">
+                  {/* Tutorial instructions */}
+                  <Video
+                    ref={videoRef}
+                    source={require('../../../assets/images/tutorialVerification.mp4')}
+                    style={{ width: 280, height: 280, borderRadius: 12, marginBottom: 20 }}
+                    useNativeControls={false}
+                    resizeMode={ResizeMode.COVER}
+                  />
+                  
+                  <View className="px-6 mb-8">
+                    <Text className="text-white text-lg font-semibold mb-2 text-center">
+                      Recording Instructions:
+                    </Text>
+                    <Text className="text-gray-300 text-center mb-3">
+                      • Look directly at the camera
+                    </Text>
+                    <Text className="text-gray-300 text-center mb-3">
+                      • Make sure your face is clearly visible
+                    </Text>
+                    <Text className="text-gray-300 text-center mb-3">
+                      • Video will automatically stop after 5 seconds
+                    </Text>
                   </View>
                   
-                  {!recordingCompleted ? (
-                    <>
-                      <View 
-                        style={{ width: 280, height: 280, borderRadius: 140, overflow: 'hidden' }}
-                        className="bg-gray-800 items-center justify-center mb-4"
-                      >
-                        {isRecording ? (
-                          <View className="flex-1 items-center justify-center">
-                            <Text className="text-white text-5xl font-bold">{countdown}</Text>
-                            <View className="mt-4 w-20 h-20 rounded-full bg-red-500" />
-                          </View>
-                        ) : (
-                          <View className="items-center justify-center">
-                            <Ionicons name="videocam" size={120} color="#555" />
-                            <Text className="text-white text-xl mt-4">Camera Ready</Text>
-                          </View>
-                        )}
-                      </View>
-                      
-                      <Text className="text-white text-lg mt-6 mb-6">
-                        {isRecording 
-                          ? "Recording in progress..." 
-                          : "Record a 5-second video selfie"}
-                      </Text>
-                      
-                      {!isRecording ? (
-                        <TouchableOpacity 
-                          className="bg-[#1a237e] px-6 py-3 rounded-full"
-                          onPress={startRecording}
-                          disabled={loading}
-                        >
-                          <Text className="text-white font-semibold">
-                            {loading ? "Processing..." : "Start Recording"}
-                          </Text>
-                        </TouchableOpacity>
-                      ) : (
-                        <TouchableOpacity 
-                          className="bg-red-500 px-6 py-3 rounded-full"
-                          onPress={stopRecording}
-                        >
-                          <Text className="text-white font-semibold">Cancel</Text>
-                        </TouchableOpacity>
-                      )}
-                    </>
-                  ) : (
-                    <View className="items-center">
-                      <View className="w-72 h-72 rounded-full bg-gray-800 items-center justify-center mb-4 overflow-hidden">
-                        {videoUri ? (
-                          <Image 
-                            source={{ uri: videoUri }} 
-                            style={{ width: '100%', height: '100%' }}
-                            resizeMode="cover"
-                          />
-                        ) : (
-                          <Ionicons name="checkmark-circle" size={80} color="#1a237e" />
-                        )}
-                      </View>
-                      
-                      <Text className="text-white text-lg mb-4">Video recorded successfully!</Text>
-                      <Text className="text-gray-400 text-center mb-6">
-                        Would you like to submit this video or try again?
-                      </Text>
-                      
-                      <View className="flex-row justify-center space-x-4">
-                        <TouchableOpacity 
-                          className="bg-gray-700 px-6 py-3 rounded-full"
-                          onPress={retryRecording}
-                          disabled={loading}
-                        >
-                          <Text className="text-white font-semibold">Retry</Text>
-                        </TouchableOpacity>
-                        
-                        <TouchableOpacity 
-                          className="bg-[#1a237e] px-6 py-3 rounded-full"
-                          onPress={submitVerification}
-                          disabled={loading}
-                        >
-                          <Text className="text-white font-semibold">
-                            {loading ? "Uploading..." : "OK, Submit"}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  )}
+                  <TouchableOpacity 
+                    className="bg-[#1a237e] px-8 py-4 rounded-full"
+                    onPress={startRecording}
+                  >
+                    <Text className="text-white font-semibold text-lg">
+                      Start Recording
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               ) : (
-                <View className="items-center p-6">
-                  <Ionicons name="camera-outline" size={64} color="white" className="mb-4" />
-                  <Text className="text-white text-xl font-semibold mb-2">Camera Permission Required</Text>
-                  <Text className="text-gray-400 text-center mb-6">
-                    We need camera access to record your verification video
+                <View className="items-center w-full">
+                  <View className="w-80 h-80 rounded-xl bg-gray-800 items-center justify-center mb-4 overflow-hidden">
+                    {videoUri ? (
+                      <Video
+                        source={{ uri: videoUri }}
+                        style={{ width: '100%', height: '100%' }}
+                        useNativeControls={true}
+                        resizeMode={ResizeMode.COVER}
+                      />
+                    ) : (
+                      <Ionicons name="checkmark-circle" size={80} color="#1a237e" />
+                    )}
+                  </View>
+                  
+                  <Text className="text-white text-lg mb-4">Video recorded successfully!</Text>
+                  <Text className="text-gray-400 text-center mb-6 px-4">
+                    Would you like to submit this video or try again?
                   </Text>
-                  <TouchableOpacity 
-                    className="bg-[#1a237e] px-6 py-3 rounded-full"
-                    onPress={handleStartVerification}
-                  >
-                    <Text className="text-white font-semibold">Grant Permission</Text>
-                  </TouchableOpacity>
+                  
+                  <View className="flex-row justify-center space-x-4">
+                    <TouchableOpacity 
+                      className="bg-gray-700 px-6 py-3 rounded-full"
+                      onPress={retryRecording}
+                      disabled={loading}
+                    >
+                      <Text className="text-white font-semibold">Retry</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                      className="bg-[#1a237e] px-6 py-3 rounded-full"
+                      onPress={submitVerification}
+                      disabled={loading}
+                    >
+                      <Text className="text-white font-semibold">
+                        {loading ? "Uploading..." : "OK, Submit"}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               )}
             </View>
