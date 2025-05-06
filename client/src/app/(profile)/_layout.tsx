@@ -10,6 +10,8 @@ export default function ProfileLayout() {
       }}
     >
       <Stack.Screen name="index" />
+      <Stack.Screen name="verification" />
+      <Stack.Screen name="verification-camera" options={{ animation: "slide_from_bottom" }} />
     </Stack>
   );
 } 
