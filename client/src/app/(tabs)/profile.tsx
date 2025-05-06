@@ -594,7 +594,7 @@ export default function ProfileScreen() {
                   className="bg-neutral-light/80 rounded-full overflow-hidden"
                 >
                   <TouchableOpacity 
-                    onPress={() => router.push('/(settings)/app-permissions' as any)}
+                    onPress={() => router.push('/(profile)/verification' as any)}
                     className="flex-row items-center px-4 py-2 space-x-2"
                   >
                     <MaterialCommunityIcons name="shield-alert" size={18} color="#F97316" />
@@ -604,6 +604,29 @@ export default function ProfileScreen() {
                   </TouchableOpacity>
                 </Animated.View>
               )}
+
+              {/* Level Badge */}
+              <Animated.View
+                entering={FadeInRight.delay(800).springify()}
+                className="bg-neutral-light rounded-full overflow-hidden"
+              >
+                <View className="flex-row items-center px-4 py-2 space-x-2">
+                  <MaterialCommunityIcons 
+                    name={
+                      profile?.level === 2 ? "diamond" :
+                      profile?.level === 1 ? "star" : 
+                      "rocket"
+                    } 
+                    size={18} 
+                    color="#7C3AED" 
+                  />
+                  <Text className="text-sm font-montserratMedium text-neutral-darkest">
+                    {profile?.level === 2 ? "Experienced" :
+                     profile?.level === 1 ? "Regular" :
+                     "New"}
+                  </Text>
+                </View>
+              </Animated.View>
             </View>
           </View>
 
