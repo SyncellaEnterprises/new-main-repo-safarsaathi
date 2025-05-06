@@ -119,7 +119,7 @@ export function UserCard({ profile, onSwipeLeft, onSwipeRight }: UserCardProps) 
         <View style={styles.imageContainer}>
           {imageLoading && (
             <View style={styles.loaderContainer}>
-              <ActivityIndicator size="large" color="#7D5BA6" />
+              <ActivityIndicator size="large" color="#FF8FB1" />
             </View>
           )}
           <Image
@@ -132,45 +132,45 @@ export function UserCard({ profile, onSwipeLeft, onSwipeRight }: UserCardProps) 
             }}
           />
           
-          {/* Gradient overlays for better text visibility */}
+          {/* Enhanced gradient overlays */}
           <LinearGradient
-            colors={['rgba(0,0,0,0.7)', 'rgba(0,0,0,0.3)', 'transparent']}
-            style={[styles.imageOverlay, { height: 100 }]}
-          />
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.6)']}
-            style={[styles.imageOverlay, { bottom: 0, height: 120 }]}
+            colors={['rgba(177, 42, 42, 0.7)', 'rgba(0, 45, 244, 0.3)', 'transparent']}
+            style={[styles.imageOverlay, { height: 160 }]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
           />
           
-          {/* Verification badge - Show different styles based on verification status */}
+          {/* Verification badge with improved styling */}
           <View style={styles.verifiedBadge}>
             <BlurView intensity={90} tint="dark" style={[
               styles.badgeContent,
-              profile.isVerified ? styles.verifiedBadgeContent : styles.unverifiedBadgeContent
+              { backgroundColor: 'rgba(0, 0, 0, 0.75)' }
             ]}>
               <Ionicons 
                 name={profile.isVerified ? "checkmark-circle" : "alert-circle"} 
-                size={14} 
-                color={profile.isVerified ? "#50A6A7" : "#FF6B6B"} 
+                size={16} 
+                color="#FFFFFF" 
               />
-              <Text style={[
-                styles.badgeText,
-                profile.isVerified ? styles.verifiedText : styles.unverifiedText
-              ]}>
+              <Text style={[styles.badgeText, { color: '#FFFFFF' }]}>
                 {profile.isVerified ? "Verified" : "Not Verified"}
               </Text>
             </BlurView>
           </View>
           
-          {/* User level badge */}
+          {/* Level badge with modern styling */}
           <View style={styles.levelBadge}>
-            <BlurView intensity={90} tint="dark" style={styles.badgeContent}>
-              <Ionicons name={levelInfo.icon as any} size={14} color="#E9A04C" />
-              <Text style={styles.badgeText}>{levelInfo.label}</Text>
+            <BlurView intensity={90} tint="dark" style={[
+              styles.badgeContent,
+              { backgroundColor: 'rgba(0, 0, 0, 0.75)' }
+            ]}>
+              <Ionicons name={levelInfo.icon as any} size={16} color="#FFFFFF" />
+              <Text style={[styles.badgeText, { color: '#FFFFFF' }]}>
+                {levelInfo.label}
+              </Text>
             </BlurView>
           </View>
           
-          {/* Username overlay on image */}
+          {/* Username with enhanced styling */}
           <View style={styles.imageUsernameContainer}>
             <Text style={styles.imageUsername}>
               {profile.username.replace('user_', '')}, {profile.age || 'N/A'}
@@ -313,9 +313,12 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   imageContainer: {
-    height: 380,
+    height: 460,
     width: '100%',
     position: 'relative',
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    overflow: 'hidden',
   },
   loaderContainer: {
     ...StyleSheet.absoluteFillObject,
@@ -337,48 +340,40 @@ const styles = StyleSheet.create({
   },
   imageUsernameContainer: {
     position: 'absolute',
-    bottom: 16,
-    left: 16,
-    right: 16,
+    bottom: 24,
+    left: 24,
+    right: 24,
   },
   imageUsername: {
     color: 'white',
-    fontSize: 22,
-    fontWeight: 'bold', 
-    textShadowColor: 'rgba(0,0,0,0.8)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    fontSize: 32,
+    fontWeight: '600',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
   },
   verifiedBadge: {
     position: 'absolute',
-    top: 16,
-    right: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
+    top: 20,
+    right: 20,
   },
   levelBadge: {
     position: 'absolute',
-    top: 16,
-    left: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
+    top: 20,
+    left: 20,
   },
   badgeContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    gap: 6,
   },
   badgeText: {
-    color: '#fff',
-    fontSize: 12,
-    marginLeft: 4,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#FFFFFF',
   },
   infoSection: {
     flexDirection: 'row',
@@ -386,8 +381,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
   },
   basicInfoContainer: {
     flex: 1,
@@ -492,21 +485,5 @@ const styles = StyleSheet.create({
   scrollWrapper: {
     flex: 1,
     width: '100%',
-  },
-  verifiedBadgeContent: {
-    backgroundColor: 'rgba(80, 166, 167, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(80, 166, 167, 0.3)',
-  },
-  unverifiedBadgeContent: {
-    backgroundColor: 'rgba(255, 107, 107, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 107, 0.3)',
-  },
-  verifiedText: {
-    color: '#50A6A7',
-  },
-  unverifiedText: {
-    color: '#FF6B6B',
   },
 });
