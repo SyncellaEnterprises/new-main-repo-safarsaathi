@@ -47,8 +47,11 @@ interface UserProfile {
   gender?: string;
   interest?: string[] | string;
   location?: string;
+  isverified?: boolean;
+  level?: number;
   occupation?: string;
   profile_photo?: string | null;
+  images?: string | null;
   prompts?: {
     prompts: Array<{
       question: string;
@@ -99,8 +102,6 @@ const MENU_OPTIONS: MenuOption[] = [
 
 const BADGES = [
   { id: 1, name: 'Verified', icon: 'shield-check', color: '#10B981' },
-  { id: 2, name: 'Premium', icon: 'crown', color: '#F59E0B' },
-  { id: 3, name: 'Top Rated', icon: 'star', color: '#7C3AED' },
 ];
 
 const QUICK_ACTIONS = [
@@ -171,6 +172,15 @@ export default function ProfileScreen() {
 
       if (response.data.status === 'success') {
         setProfile(response.data.user);
+        
+        // Log location data for debugging
+        if (response.data.user.location) {
+          console.log('Received location data:', response.data.user.location);
+          const locationString = getLocationString(response.data.user.location);
+          console.log('Processed location string:', locationString);
+        } else {
+          console.log('No location data received in profile');
+        }
       } else {
         throw new Error('Failed to fetch profile data');
       }
@@ -192,12 +202,90 @@ export default function ProfileScreen() {
     setRefreshing(false);
   }, []);
 
-  // Process interests to get count
-  const getInterestCount = () => {
-    if (!profile?.interest) return 0;
-    if (Array.isArray(profile.interest)) return profile.interest.length;
-    // If it's a string (comma-separated), count the number of items
-    return profile.interest.split(',').filter(item => item.trim().length > 0).length;
+  // Update the location display logic with better error handling and debugging
+  const getLocationString = (locationData: string | undefined): string => {
+    if (!locationData) return '';
+    
+    try {
+      console.log("Raw location data:", locationData);
+      
+      // Clean the location string if needed (remove escape characters)
+      let cleanedLocationData = locationData.replace(/\\/g, '');
+      
+      // Parse the JSON string into an object
+      const parsedLocation = JSON.parse(cleanedLocationData);
+      console.log("Parsed location:", parsedLocation);
+      
+      if (parsedLocation.city && parsedLocation.state) {
+        return `${parsedLocation.city}, ${parsedLocation.state}`;
+      } else if (parsedLocation.city) {
+        return parsedLocation.city;
+      } else if (parsedLocation.state) {
+        return parsedLocation.state;
+      }
+      
+      // If we have an object but no city/state props, stringify it for debugging
+      console.log("No city/state found in:", JSON.stringify(parsedLocation));
+      return '';
+    } catch (error) {
+      console.error('Error parsing location:', error, locationData);
+      // If JSON parsing fails, try to extract data using regex
+      try {
+        const cityMatch = locationData.match(/"city"\s*:\s*"([^"]+)"/);
+        const stateMatch = locationData.match(/"state"\s*:\s*"([^"]+)"/);
+        
+        const city = cityMatch ? cityMatch[1] : '';
+        const state = stateMatch ? stateMatch[1] : '';
+        
+        if (city && state) return `${city}, ${state}`;
+        if (city) return city;
+        if (state) return state;
+      } catch (e) {
+        console.error('Regex extraction failed:', e);
+      }
+      
+      return '';
+    }
+  };
+
+  // Process interests to get array
+  const getInterestsArray = (interests: string | string[] | undefined): string[] => {
+    if (!interests) return [];
+    if (Array.isArray(interests)) return interests;
+    
+    try {
+      // If it's a string that looks like a JSON array or object
+      if (typeof interests === 'string') {
+        // Remove curly braces if they exist
+        let cleanedString = interests;
+        if (cleanedString.startsWith('{') && cleanedString.endsWith('}')) {
+          cleanedString = cleanedString.substring(1, cleanedString.length - 1);
+        }
+        
+        // Check if it's now like a JSON array or just a comma-separated list
+        if (cleanedString.startsWith('[') && cleanedString.endsWith(']')) {
+          return JSON.parse(cleanedString);
+        } else {
+          // Split by commas, and clean each item
+          return cleanedString.split(',').map(item => {
+            let cleaned = item.trim();
+            // Remove any surrounding quotes
+            if ((cleaned.startsWith('"') && cleaned.endsWith('"')) || 
+                (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
+              cleaned = cleaned.substring(1, cleaned.length - 1);
+            }
+            return cleaned;
+          }).filter(item => item.length > 0); // Filter out any empty items
+        }
+      }
+      
+      // Fallback: just return as single item
+      return [interests];
+    } catch (error) {
+      console.error('Error parsing interests:', error);
+      // Fallback to simple string
+      return [interests];
+    }
   };
 
   const openSection = (section: string) => {
@@ -477,31 +565,45 @@ export default function ProfileScreen() {
             {profile?.location && (
               <Animated.View 
                 entering={FadeInDown.delay(600).springify()}
-                className="flex-row items-center mt-2 bg-neutral-light px-4 py-2 rounded-full"
+                className="flex-row items-center mt-3 bg-neutral-light px-4 py-2 rounded-full"
               >
                 <Feather name="map-pin" size={16} color="#7C3AED" />
                 <Text className="text-neutral-dark font-montserrat ml-2">
-                  {profile.location}
+                  {getLocationString(profile.location) || "Location not available"}
                 </Text>
               </Animated.View>
             )}
 
             {/* Badges */}
             <View className="flex-row mt-6 gap-3">
-              {BADGES.map((badge, index) => (
+              {profile?.isverified ? (
                 <Animated.View
-                  key={badge.id}
-                  entering={FadeInRight.delay(700 + index * 100).springify()}
+                  entering={FadeInRight.delay(700).springify()}
                   className="bg-neutral-light rounded-full overflow-hidden"
                 >
                   <View className="flex-row items-center px-4 py-2 space-x-2">
-                    <MaterialCommunityIcons name={badge.icon as any} size={18} color={badge.color} />
+                    <MaterialCommunityIcons name="shield-check" size={18} color="#10B981" />
                     <Text className="text-sm font-montserratMedium text-neutral-darkest">
-                      {badge.name}
+                      Verified
                     </Text>
                   </View>
                 </Animated.View>
-              ))}
+              ) : (
+                <Animated.View
+                  entering={FadeInRight.delay(700).springify()}
+                  className="bg-neutral-light/80 rounded-full overflow-hidden"
+                >
+                  <TouchableOpacity 
+                    onPress={() => router.push('/(settings)/app-permissions' as any)}
+                    className="flex-row items-center px-4 py-2 space-x-2"
+                  >
+                    <MaterialCommunityIcons name="shield-alert" size={18} color="#F97316" />
+                    <Text className="text-sm font-montserratMedium text-neutral-darkest">
+                      Get Verified
+                    </Text>
+                  </TouchableOpacity>
+                </Animated.View>
+              )}
             </View>
           </View>
 
@@ -546,7 +648,7 @@ export default function ProfileScreen() {
                       className="p-4 items-center"
                     >
                       <Text className="text-2xl font-youngSerif text-primary">
-                        {index === 0 ? getInterestCount() : '0'}
+                        {index === 0 ? getInterestsArray(profile?.interest).length : '0'}
                       </Text>
                       <Text className="text-sm font-montserratMedium text-neutral-dark mt-1">
                         {stat}
@@ -588,9 +690,55 @@ export default function ProfileScreen() {
                 entering={FadeIn.delay(100).springify()}
                 className="bg-white rounded-3xl p-6 shadow-sm"
               >
-                <Text className="text-neutral-dark leading-relaxed font-montserrat">
-                  {profile?.bio || 'No bio available yet. Tell others about yourself!'}
-                </Text>
+                {/* Bio Section */}
+                <View className="mb-6">
+                  <Text className="text-lg font-montserratBold text-neutral-dark mb-2">
+                    About Me
+                  </Text>
+                  <Text className="text-neutral-dark leading-relaxed font-montserrat">
+                    {profile?.bio || 'No bio available yet. Tell others about yourself!'}
+                  </Text>
+                </View>
+                
+                {/* Location Section */}
+                {profile?.location && (
+                  <View className="mb-4">
+                    <Text className="text-lg font-montserratBold text-neutral-dark mb-2">
+                      Location
+                    </Text>
+                    <View className="flex-row items-center">
+                      <Feather name="map-pin" size={18} color="#7C3AED" />
+                      <Text className="text-neutral-dark font-montserrat ml-2 text-base">
+                        {getLocationString(profile.location) || "Location not specified"}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+                
+                {/* Age and Gender Section (if available) */}
+                <View className="flex-row flex-wrap">
+                  {profile?.age && (
+                    <View className="mr-6 mb-2">
+                      <Text className="text-sm font-montserratBold text-neutral-dark mb-1">
+                        Age
+                      </Text>
+                      <Text className="text-neutral-dark font-montserrat">
+                        {profile.age} years
+                      </Text>
+                    </View>
+                  )}
+                  
+                  {profile?.gender && (
+                    <View>
+                      <Text className="text-sm font-montserratBold text-neutral-dark mb-1">
+                        Gender
+                      </Text>
+                      <Text className="text-neutral-dark font-montserrat capitalize">
+                        {profile.gender}
+                      </Text>
+                    </View>
+                  )}
+                </View>
               </Animated.View>
             )}
 
@@ -599,25 +747,38 @@ export default function ProfileScreen() {
                 entering={FadeIn.delay(100).springify()}
                 className="bg-white rounded-3xl p-6 shadow-sm"
               >
-                <View className="flex-row flex-wrap gap-2">
-                  {(Array.isArray(profile.interest) ? profile.interest : profile.interest.split(','))
-                    .map((interest, index) => (
-                      <Animated.View
-                        key={index}
-                        entering={FadeInDown.delay(200 + index * 50).springify()}
+                <Text className="text-lg font-montserratBold text-neutral-dark mb-4">
+                  Things I enjoy
+                </Text>
+                
+                <View className="flex-row flex-wrap gap-3">
+                  {getInterestsArray(profile.interest).map((interest, index) => (
+                    <Animated.View
+                      key={index}
+                      entering={FadeInDown.delay(200 + index * 50).springify()}
+                    >
+                      <LinearGradient
+                        colors={['rgba(124, 58, 237, 0.1)', 'rgba(6, 182, 212, 0.1)']}
+                        start={{x: 0, y: 0}}
+                        end={{x: 1, y: 0}}
+                        className="px-4 py-3 rounded-xl"
                       >
-                        <LinearGradient
-                          colors={['rgba(124, 58, 237, 0.1)', 'rgba(6, 182, 212, 0.1)']}
-                          className="px-4 py-2 rounded-xl"
-                        >
+                        <View className="flex-row items-center">
+                          <Feather name="heart" size={14} color="#7C3AED" style={{marginRight: 6}} />
                           <Text className="text-primary font-montserratMedium">
                             {interest.trim()}
                           </Text>
-                        </LinearGradient>
-                      </Animated.View>
-                    ))
-                  }
+                        </View>
+                      </LinearGradient>
+                    </Animated.View>
+                  ))}
                 </View>
+                
+                {getInterestsArray(profile.interest).length === 0 && (
+                  <Text className="text-neutral-dark font-montserrat text-center py-4">
+                    No interests added yet.
+                  </Text>
+                )}
               </Animated.View>
             )}
 

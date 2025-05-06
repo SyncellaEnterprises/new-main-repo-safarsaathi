@@ -55,7 +55,7 @@ interface RecommendationResponse {
   recommended_user_bio: string;
   recommended_user_created_at: string;
   recommended_user_gender: string;
-  recommended_user_interest: string;
+  recommended_user_interest: string | null;
   recommended_user_location: string | null;
   recommended_user_occupation: string;
   recommended_user_photo: string | null;
@@ -66,8 +66,10 @@ interface RecommendationResponse {
       question: string;
       answer: string;
     }>;
-  };
+  } | null;
   similarity_score: number;
+  recommended_user_isverified: boolean;
+  level?: number;
 }
 
 interface LocationData {
@@ -96,6 +98,8 @@ interface TransformedProfile {
   };
   similarity_score: number;
   recommended_user_profile_id: number;
+  isVerified: boolean;
+  level: number;
 }
 
 interface SwiperRef {
@@ -288,9 +292,16 @@ export default function ExploreScreen() {
             if (rec.recommended_user_location) {
               try {
                 const locationData: LocationData = JSON.parse(rec.recommended_user_location);
-                locationText = locationData.city || locationData.district || 
-                             locationData.state || locationData.address || 
-                             'Location not specified';
+                // Only show city and state as requested
+                if (locationData.city && locationData.state) {
+                  locationText = `${locationData.city}, ${locationData.state}`;
+                } else if (locationData.city) {
+                  locationText = locationData.city;
+                } else if (locationData.state) {
+                  locationText = locationData.state;
+                } else {
+                  locationText = 'Location not specified';
+                }
               } catch (e) {
                 console.error('Error parsing location:', e);
               }
@@ -298,11 +309,15 @@ export default function ExploreScreen() {
 
             // Parse interests
             const interestsStr = rec.recommended_user_interest || '';
-            const interests = interestsStr
-              .replace(/[{}"]/g, '') // Remove all braces and quotes
-              .split(',')
-              .map(i => i.trim())
-              .filter(i => i);
+            let interests: string[] = [];
+            
+            if (interestsStr) {
+              interests = interestsStr
+                .replace(/[{}"]/g, '') // Remove all braces and quotes
+                .split(',')
+                .map(i => i.trim())
+                .filter(i => i);
+            }
 
             // Get similarity score from the map
             const similarity_score = profileMap.get(profileId) || rec.similarity_score || 0;
@@ -312,14 +327,16 @@ export default function ExploreScreen() {
               username: rec.recommended_user_username,
               age: rec.recommended_user_age,
               bio: rec.recommended_user_bio,
-              gender: rec.recommended_user_gender,
+              gender: rec.recommended_user_gender || 'Not specified',
               interests: interests,
               location: locationText,
               occupation: rec.recommended_user_occupation,
               profile_photo: rec.recommended_user_photo,
               prompts: rec.recommended_user_prompts || { prompts: [] },
               similarity_score: similarity_score,
-              recommended_user_profile_id: profileId
+              recommended_user_profile_id: profileId,
+              isVerified: rec.recommended_user_isverified || false,
+              level: rec.level || 0
             };
           }
         );

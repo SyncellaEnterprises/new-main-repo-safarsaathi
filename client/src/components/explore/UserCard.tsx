@@ -28,6 +28,8 @@ export interface UserCardProps {
       }>;
     };
     recommended_user_profile_id: number;
+    isVerified: boolean;
+    level: number;
   };
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
@@ -91,6 +93,22 @@ export function UserCard({ profile, onSwipeLeft, onSwipeRight }: UserCardProps) 
   const interestsArray = processInterests();
   const matchScore = Math.round((profile.similarity_score || 0) * 100);
 
+  // Define icon based on user level
+  const getLevelIcon = () => {
+    switch(profile.level) {
+      case 0:
+        return { icon: "rocket", label: "New" };
+      case 1:
+        return { icon: "star", label: "Regular" };
+      case 2:
+        return { icon: "diamond", label: "Experienced" };
+      default:
+        return { icon: "rocket", label: "New" };
+    }
+  };
+
+  const levelInfo = getLevelIcon();
+
   return (
     <Animated.View 
       entering={FadeIn.duration(300)}
@@ -124,11 +142,31 @@ export function UserCard({ profile, onSwipeLeft, onSwipeRight }: UserCardProps) 
             style={[styles.imageOverlay, { bottom: 0, height: 120 }]}
           />
           
-          {/* Verified badge */}
+          {/* Verification badge - Show different styles based on verification status */}
           <View style={styles.verifiedBadge}>
+            <BlurView intensity={90} tint="dark" style={[
+              styles.badgeContent,
+              profile.isVerified ? styles.verifiedBadgeContent : styles.unverifiedBadgeContent
+            ]}>
+              <Ionicons 
+                name={profile.isVerified ? "checkmark-circle" : "alert-circle"} 
+                size={14} 
+                color={profile.isVerified ? "#50A6A7" : "#FF6B6B"} 
+              />
+              <Text style={[
+                styles.badgeText,
+                profile.isVerified ? styles.verifiedText : styles.unverifiedText
+              ]}>
+                {profile.isVerified ? "Verified" : "Not Verified"}
+              </Text>
+            </BlurView>
+          </View>
+          
+          {/* User level badge */}
+          <View style={styles.levelBadge}>
             <BlurView intensity={90} tint="dark" style={styles.badgeContent}>
-              <Ionicons name="checkmark-circle" size={14} color="#50A6A7" />
-              <Text style={styles.badgeText}>Verified</Text>
+              <Ionicons name={levelInfo.icon as any} size={14} color="#E9A04C" />
+              <Text style={styles.badgeText}>{levelInfo.label}</Text>
             </BlurView>
           </View>
           
@@ -320,6 +358,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 3,
   },
+  levelBadge: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+  },
   badgeContent: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -445,5 +492,21 @@ const styles = StyleSheet.create({
   scrollWrapper: {
     flex: 1,
     width: '100%',
+  },
+  verifiedBadgeContent: {
+    backgroundColor: 'rgba(80, 166, 167, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(80, 166, 167, 0.3)',
+  },
+  unverifiedBadgeContent: {
+    backgroundColor: 'rgba(255, 107, 107, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 107, 0.3)',
+  },
+  verifiedText: {
+    color: '#50A6A7',
+  },
+  unverifiedText: {
+    color: '#FF6B6B',
   },
 });
