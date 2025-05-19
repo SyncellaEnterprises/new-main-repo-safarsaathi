@@ -121,15 +121,28 @@ export default function PhotosScreen() {
     }
 
     try {
+      setIsPickerLoading(true);
       const success = await updatePhotos(photos.map(p => p.uri));
+      
       if (success) {
+        toast.show("Photos uploaded successfully!", "success");
         router.push('/onboarding/prompts');
       } else {
-        toast.show("Failed to save photos. Please try again.", "error");
+        toast.show("Failed to upload photos. Please try again.", "error");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Photo upload error:', error);
-      toast.show("Error uploading photos. Please try again.", "error");
+      
+      // Handle specific error cases
+      if (error.response?.data?.message) {
+        toast.show(error.response.data.message, "error");
+      } else if (error.message?.includes('Network Error')) {
+        toast.show("Network error. Please check your connection.", "error");
+      } else {
+        toast.show("Error uploading photos. Please try again.", "error");
+      }
+    } finally {
+      setIsPickerLoading(false);
     }
   };
 

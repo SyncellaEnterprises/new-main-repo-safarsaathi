@@ -168,74 +168,97 @@ export default function VerificationScreen() {
           android: 'http://10.0.2.2:5000/api',
         })
         : 'http://192.168.0.108:5000/api';
-      
-      console.log("Submitting actual video to API:", `${API_BASE}/onboarding/videos`);
-      console.log("Video URI:", videoUri);
-      
-      // Make API request with bearer token from AuthContext
-      const response = await fetch(`${API_BASE}/onboarding/videos`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        body: formData,
-      });
-      
-      console.log("Response status:", response.status);
-      
-      if (response.ok) {
-        let data;
+
+      // Add retry logic for network issues
+      const maxRetries = 3;
+      let retryCount = 0;
+      let lastError = null;
+
+      while (retryCount < maxRetries) {
         try {
-          data = await response.json();
-          console.log("Upload success, response:", data);
-        } catch (e) {
-          console.log("Response received but not JSON:", response.status, response.statusText);
-        }
-        
-        // Show success toast
-        toast.show("Video uploaded successfully!", "success");
-        
-        // Update steps status
-        setSteps(prev => 
-          prev.map(step => 
-            step.id === '1' 
-              ? {...step, status: 'completed'} 
-              : step.id === '2' 
-                ? {...step, status: 'current'} 
-                : step
-          )
-        );
-        
-        // Close modal
-        handleCloseModal();
-      } else {
-        let errorMessage = "Failed to upload video. Please try again.";
-        let errorData = null;
-        
-        try {
-          errorData = await response.json();
-          console.log("Error response:", errorData);
+          console.log(`Upload attempt ${retryCount + 1} of ${maxRetries}`);
           
-          // Check for specific Cloudinary error
-          if (errorData.message && errorData.message.includes("Cloudinary")) {
-            errorMessage = "Error uploading to cloud storage. Please try a shorter video (under 5 seconds) or check your internet connection.";
+          const response = await fetch(`${API_BASE}/onboarding/videos`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+            body: formData,
+          });
+          
+          console.log("Response status:", response.status);
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log("Upload success, response:", data);
+            
+            // Show success toast
+            toast.show("Video uploaded successfully!", "success");
+            
+            // Update steps status
+            setSteps(prev => 
+              prev.map(step => 
+                step.id === '1' 
+                  ? {...step, status: 'completed'} 
+                  : step.id === '2' 
+                    ? {...step, status: 'current'} 
+                    : step
+              )
+            );
+            
+            // Close modal
+            handleCloseModal();
+            return;
           } else {
-            errorMessage = errorData.message || errorMessage;
+            const errorData = await response.json();
+            console.log("Error response:", errorData);
+            
+            // Check for specific Cloudinary error
+            if (errorData.message?.includes("Cloudinary")) {
+              throw new Error("CLOUDINARY_ERROR");
+            }
+            
+            // If it's not a network error, throw immediately
+            throw new Error(errorData.message || "UPLOAD_ERROR");
           }
-        } catch (e) {
-          console.log("Error response not JSON:", response.status, response.statusText);
+        } catch (error: any) {
+          lastError = error;
+          console.error(`Upload attempt ${retryCount + 1} failed:`, error.message);
+          
+          // Check if it's a network/DNS error or Cloudinary error
+          if (error.message === "CLOUDINARY_ERROR" || 
+              error.message?.includes("Network Error") || 
+              error.message?.includes("NameResolutionError") ||
+              error.message?.includes("timeout")) {
+            
+            retryCount++;
+            if (retryCount < maxRetries) {
+              // Wait before retrying (exponential backoff)
+              await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount)));
+              continue;
+            }
+          }
+          
+          // If it's not a network error or we're out of retries, throw the error
+          throw error;
         }
-        
-        // Check if it's a server error (500)
-        if (response.status === 500) {
-          errorMessage = "Server error. The video might be too large or our storage service is temporarily unavailable. Please try a shorter video.";
-        }
-        
-        toast.show(errorMessage, "error");
       }
-    } catch (error) {
+      
+      // If we've exhausted all retries, throw the last error
+      throw lastError;
+      
+    } catch (error: any) {
       console.error("Upload error:", error);
-      toast.show("Network error. Please check your connection and try again.", "error");
+      
+      let errorMessage = "Network error. Please check your connection and try again.";
+      
+      if (error.message === "CLOUDINARY_ERROR") {
+        errorMessage = "Error uploading to cloud storage. Please try a shorter video (under 5 seconds) or check your internet connection.";
+      } else if (error.message === "UPLOAD_ERROR") {
+        errorMessage = "Failed to upload video. Please try again.";
+      }
+      
+      toast.show(errorMessage, "error");
     } finally {
       setLoading(false);
     }

@@ -23,6 +23,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView } from 'moti';
 import IMAGES from '@/src/constants/images';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 
@@ -169,6 +170,7 @@ const PLACES_OF_INTEREST = [
 export default function LocationScreen() {
   const router = useRouter();
   const mapRef = useRef<MapView>(null);
+  const insets = useSafeAreaInsets();
   const [currentLocation, setCurrentLocation] = useState({
     latitude: 19.0760,
     longitude: 72.8777,
@@ -605,7 +607,7 @@ export default function LocationScreen() {
 
         {/* SOS Modal - Keep existing functionality with updated style */}
         <Animated.View style={[styles.sosBottomSheet, sosBottomSheetStyle]}>
-          <View style={styles.sosContentNew}>
+          <View style={[styles.sosContentNew, { paddingBottom: 68 + insets.bottom, maxHeight: height * 0.95 }]}>
             <View style={styles.sosHeaderNew}>
               <View style={styles.sosHeaderBar} />
               <Text style={styles.sosTitleNew}>Emergency</Text>
@@ -617,7 +619,7 @@ export default function LocationScreen() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.sosOptionsNew}>
+            <ScrollView style={styles.sosOptionsNew} contentContainerStyle={{ paddingBottom: 16 }} showsVerticalScrollIndicator={false}>
               <TouchableOpacity
                 style={styles.sosOptionNew}
                 onPress={handleEmergencyCall}
@@ -656,7 +658,7 @@ export default function LocationScreen() {
                   <Text style={styles.sosOptionSubtitleNew}>Call 108</Text>
                 </View>
               </TouchableOpacity>
-            </View>
+            </ScrollView>
           </View>
         </Animated.View>
 

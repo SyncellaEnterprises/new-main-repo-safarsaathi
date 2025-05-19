@@ -147,26 +147,15 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       
       photos.forEach((uri, index) => {
         const filename = uri.split('/').pop() || `photo${index}.jpg`;
-        // Get file extension and validate
         const match = /\.(\w+)$/.exec(filename);
         const ext = match ? match[1].toLowerCase() : 'jpg';
-        
-        // Set proper mime type for supported formats
-        let type = 'image/jpeg';
-        if (ext === 'png') type = 'image/png';
-        if (ext === 'jpg' || ext === 'jpeg') type = 'image/jpeg';
+        const type = ext === 'png' ? 'image/png' : 'image/jpeg';
         
         formData.append('images', {
           uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
           type: type,
           name: filename,
         } as any);
-      });
-
-      // Log the FormData for debugging
-      console.log('Uploading photos:', {
-        numberOfPhotos: photos.length,
-        formData: JSON.stringify(formData)
       });
 
       const response = await axios.post(`${API_URL}/images`, formData, {
@@ -176,13 +165,19 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
           'Accept': 'application/json',
         },
         transformRequest: (data, headers) => {
-          return formData; // Prevent axios from trying to transform FormData
+          return formData;
         },
-        timeout: 30000, // Increase timeout for large uploads
+        timeout: 30000,
       });
 
-      console.log('Photo upload response:', response.data);
-      return response.data.status === 'success';
+      // Check if response matches expected structure
+      if (response.data.status === 'success' && response.data.data?.image_urls) {
+        console.log('Photos uploaded successfully:', response.data.data.image_urls);
+        return true;
+      }
+      
+      console.error('Unexpected response format:', response.data);
+      return false;
     } catch (error: any) {
       console.error('Update photos error:', {
         message: error.message,
