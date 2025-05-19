@@ -123,7 +123,7 @@ export default function PhotosScreen() {
     try {
       const success = await updatePhotos(photos.map(p => p.uri));
       if (success) {
-        router.push('/onboarding/gender');
+        router.push('/onboarding/prompts');
       } else {
         toast.show("Failed to save photos. Please try again.", "error");
       }

@@ -99,7 +99,7 @@ export default function InterestsScreen() {
     try {
       const success = await updateInterests(selectedInterests);
       if (success) {
-        router.push('/onboarding/prompts');
+        router.push('/onboarding/photos');
       } else {
         toast.show("Failed to save interests. Please try again.", "error");
       }
