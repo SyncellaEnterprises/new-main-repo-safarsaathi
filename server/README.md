@@ -191,17 +191,6 @@ All onboarding endpoints require JWT Token in header: `Authorization: Bearer <to
     }
     ```
 
-- `POST /api/onboarding/videos`
-  - Upload user video
-  - Body: Form-data with key "video" and file upload
-  - Response:
-    ```json
-    {
-        "status": "success",
-        "message": "Video uploaded successfully",
-        "video_url": "/static/uploads/username_video.extension"
-    }
-    ```
 
 - `POST /api/onboarding/prompts`
   - Update user prompts
@@ -216,6 +205,39 @@ All onboarding endpoints require JWT Token in header: `Authorization: Bearer <to
     {
         "status": "success",
         "message": "Prompt updated successfully"
+    }
+    ```
+
+- `POST /api/onboarding/videos`
+  - Upload user video
+  - Body: Form-data with key "video" and file upload
+  - Response:
+    ```json
+    {
+      "data": {
+          "video_url": "http://res.cloudinary.com/dsgwmx8vy/video/upload/v1747644723/mfuclxr0xbqzkdulckid.mp4"
+      },
+      "message": "Video uploaded successfully",
+      "status": "success"
+    }
+    ```
+
+- `POST /api/onboarding/images`
+  - Upload user images
+  - Body: Form-data with key "images" and file upload
+  - Response:
+    ```json
+    {
+      "data": {
+          "image_urls": [
+              "http://res.cloudinary.com/dsgwmx8vy/image/upload/v1747644986/xs9cjsd8lwqdc7gycjkm.jpg",
+              "http://res.cloudinary.com/dsgwmx8vy/image/upload/v1747644992/xwl6op4lqegq5nhdodgn.jpg",
+              "http://res.cloudinary.com/dsgwmx8vy/image/upload/v1747644994/l5y9bae8xmxwssbbzgbg.jpg",
+              "http://res.cloudinary.com/dsgwmx8vy/image/upload/v1747644998/adm4mqdawcgdnot5awrt.jpg"
+          ]
+      },
+      "message": "All images uploaded successfully",
+      "status": "success"
     }
     ```
 

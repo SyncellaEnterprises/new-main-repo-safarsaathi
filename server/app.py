@@ -89,7 +89,7 @@ def socket_info_handler():
     return jsonify(config)
 
 # Register the route for socket info
-app.add_url_rule('/api/socket/info', 'socket_info_endpoint', socket_info_handler, methods=['GET'])
+#app.add_url_rule('/api/socket/info', 'socket_info_endpoint', socket_info_handler, methods=['GET'])
 
 
 if __name__ == '__main__':
