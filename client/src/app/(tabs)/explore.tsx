@@ -730,44 +730,42 @@ export default function ExploreScreen() {
               animateOverlayLabelsOpacity
               overlayLabels={{
                 left: {
-                  title: 'NOPE',
-                  style: {
-                    label: {
-                      backgroundColor: 'rgba(233, 64, 87, 0.2)',
-                      color: '#E94057',
-                      fontSize: 24,
-                      borderWidth: 1,
-                      borderColor: '#E94057',
-                      borderRadius: 10
-                    },
-                    wrapper: {
-                      flexDirection: 'column',
-                      alignItems: 'flex-end',
-                      justifyContent: 'flex-start',
-                      marginTop: 30,
-                      marginLeft: -30,
-                    }
-                  }
+                  element: (
+                    <View style={{
+                      flex: 1,
+                      backgroundColor: 'rgba(233, 64, 87, 0.18)',
+                      borderRadius: 24,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '100%',
+                      height: '100%',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      zIndex: 10,
+                    }}>
+                      <Text style={{ fontSize: 64, marginBottom: 12 }}>😢</Text>
+                    </View>
+                  ),
                 },
                 right: {
-                  title: 'LIKE',
-                  style: {
-                    label: {
-                      backgroundColor: 'rgba(94, 186, 125, 0.2)',
-                      color: '#5EBA7D',
-                      fontSize: 24,
-                      borderWidth: 1,
-                      borderColor: '#5EBA7D',
-                      borderRadius: 10
-                    },
-                    wrapper: {
-                      flexDirection: 'column',
-                      alignItems: 'flex-start',
-                      justifyContent: 'flex-start',
-                      marginTop: 30,
-                      marginLeft: 30,
-                    }
-                  }
+                  element: (
+                    <View style={{
+                      flex: 1,
+                      backgroundColor: 'rgba(94, 186, 125, 0.16)',
+                      borderRadius: 24,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '100%',
+                      height: '100%',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      zIndex: 10,
+                    }}>
+                      <Text style={{ fontSize: 64, marginBottom: 12 }}>🧳</Text>
+                    </View>
+                  ),
                 }
               }}
               disableTopSwipe
@@ -925,57 +923,93 @@ export default function ExploreScreen() {
         {recommendations.length > 0 && !isLimited && (
           <Animated.View 
             entering={SlideInDown.delay(400)}
-            className="flex-row justify-center items-center"
             style={{
               position: 'absolute',
-              bottom: 80,
+              bottom: 110, // overlap the card stack a bit
               left: 0,
               right: 0,
-              zIndex: 99
+              zIndex: 99,
+              flexDirection: 'row',
+              justifyContent: 'center',
+              alignItems: 'center',
             }}
           >
-            <TouchableOpacity
-              onPress={() => swiperRef.current?.swipeLeft()}
-              className="w-16 h-16 rounded-full bg-white shadow-md items-center justify-center mx-4"
-              style={{
-                shadowColor: '#FF6B6B',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.15,
-                shadowRadius: 8,
-                elevation: 5,
-                borderWidth: 1,
-                borderColor: 'rgba(255,107,107,0.1)',
-              }}
-            >
-              <Ionicons name="close" size={28} color="#FF6B6B" />
-            </TouchableOpacity>
+            {/* Glassmorphism container for buttons */}
+            <BlurView intensity={30} tint="light" style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              borderRadius: 40,
+              paddingHorizontal: 18,
+              paddingVertical: 10,
+              backgroundColor: 'rgba(255,255,255,0.5)',
+              shadowColor: '#7D5BA6',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.10,
+              shadowRadius: 12,
+              elevation: 8,
+            }}>
+              {/* NOPE Button */}
+              <Animated.View entering={FadeInDown.delay(100)} style={{ marginHorizontal: 10 }}>
+                <TouchableOpacity
+                  onPress={() => swiperRef.current?.swipeLeft()}
+                  activeOpacity={0.85}
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: 32,
+                    backgroundColor: 'rgba(255,255,255,0.85)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    shadowColor: '#FF6B6B',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.18,
+                    shadowRadius: 10,
+                    elevation: 6,
+                    borderWidth: 2,
+                    borderColor: 'rgba(255,107,107,0.13)',
+                  }}
+                >
+                  <Ionicons name="close" size={32} color="#FF6B6B" />
+                </TouchableOpacity>
+              </Animated.View>
 
-            <TouchableOpacity
-              onPress={() => swiperRef.current?.swipeRight()}
-              className="w-20 h-20 rounded-full shadow-md items-center justify-center mx-4"
-              style={{
-                shadowColor: '#7D5BA6',
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.25,
-                shadowRadius: 10,
-                elevation: 8,
-              }}
-            >
-              <LinearGradient
-                colors={['#7D5BA6', '#50A6A7']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  borderRadius: 99,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Ionicons name="heart" size={32} color="white" />
-              </LinearGradient>
-            </TouchableOpacity>
+              {/* LIKE Button with gradient border */}
+              <Animated.View entering={FadeInDown.delay(200)} style={{ marginHorizontal: 10 }}>
+                <LinearGradient
+                  colors={["#7D5BA6", "#50A6A7"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{
+                    width: 76,
+                    height: 76,
+                    borderRadius: 38,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 3,
+                  }}
+                >
+                  <TouchableOpacity
+                    onPress={() => swiperRef.current?.swipeRight()}
+                    activeOpacity={0.85}
+                    style={{
+                      width: 70,
+                      height: 70,
+                      borderRadius: 35,
+                      backgroundColor: 'rgba(255,255,255,0.95)',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      shadowColor: '#7D5BA6',
+                      shadowOffset: { width: 0, height: 6 },
+                      shadowOpacity: 0.22,
+                      shadowRadius: 12,
+                      elevation: 10,
+                    }}
+                  >
+                    <Ionicons name="heart" size={36} color="#7D5BA6" />
+                  </TouchableOpacity>
+                </LinearGradient>
+              </Animated.View>
+            </BlurView>
           </Animated.View>
         )}
       </SafeAreaView>
