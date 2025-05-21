@@ -142,32 +142,79 @@ export function UserCard({ profile, onSwipeLeft, onSwipeRight }: UserCardProps) 
           
           {/* Verification badge with improved styling */}
           <View style={styles.verifiedBadge}>
-            <BlurView intensity={90} tint="dark" style={[
-              styles.badgeContent,
-              { backgroundColor: 'rgba(0, 0, 0, 0.75)' }
-            ]}>
-              <Ionicons 
-                name={profile.isVerified ? "checkmark-circle" : "alert-circle"} 
-                size={16} 
-                color="#FFFFFF" 
-              />
-              <Text style={[styles.badgeText, { color: '#FFFFFF' }]}>
-                {profile.isVerified ? "Verified" : "Not Verified"}
-              </Text>
-            </BlurView>
+            {profile.isVerified ? (
+              <LinearGradient
+                colors={["#43e97b", "#38f9d7"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[
+                  styles.badgeContent,
+                  {
+                    shadowColor: '#43e97b',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.18,
+                    shadowRadius: 8,
+                    elevation: 6,
+                  },
+                ]}
+              >
+                <Ionicons name="checkmark-circle" size={18} color="#fff" />
+                <Text style={[styles.badgeText, { color: '#fff', fontWeight: '700', letterSpacing: 0.2 }]}>Verified</Text>
+              </LinearGradient>
+            ) : (
+              <LinearGradient
+                colors={["#fceabb", "#f8b500"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[
+                  styles.badgeContent,
+                  {
+                    shadowColor: '#f8b500',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.18,
+                    shadowRadius: 8,
+                    elevation: 6,
+                  },
+                ]}
+              >
+                <Ionicons name="shield-outline" size={18} color="#b45309" />
+                <Text style={[styles.badgeText, { color: '#b45309', fontWeight: '700', letterSpacing: 0.2 }]}>Not Verified</Text>
+              </LinearGradient>
+            )}
           </View>
           
           {/* Level badge with modern styling */}
           <View style={styles.levelBadge}>
-            <BlurView intensity={90} tint="dark" style={[
-              styles.badgeContent,
-              { backgroundColor: 'rgba(0, 0, 0, 0.75)' }
-            ]}>
-              <Ionicons name={levelInfo.icon as any} size={16} color="#FFFFFF" />
-              <Text style={[styles.badgeText, { color: '#FFFFFF' }]}>
-                {levelInfo.label}
-              </Text>
-            </BlurView>
+            {levelInfo.label === 'New' ? (
+              <LinearGradient
+                colors={["#7F7FD5", "#86A8E7", "#91EAE4"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[
+                  styles.badgeContent,
+                  {
+                    shadowColor: '#7F7FD5',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.18,
+                    shadowRadius: 8,
+                    elevation: 6,
+                  },
+                ]}
+              >
+                <Ionicons name="rocket" size={18} color="#fff" />
+                <Text style={[styles.badgeText, { color: '#fff', fontWeight: '700', letterSpacing: 0.2 }]}>New</Text>
+              </LinearGradient>
+            ) : (
+              <BlurView intensity={90} tint="dark" style={[
+                styles.badgeContent,
+                { backgroundColor: 'rgba(0, 0, 0, 0.75)' }
+              ]}>
+                <Ionicons name={levelInfo.icon as any} size={16} color="#FFFFFF" />
+                <Text style={[styles.badgeText, { color: '#FFFFFF' }]}> 
+                  {levelInfo.label}
+                </Text>
+              </BlurView>
+            )}
           </View>
           
           {/* Username with enhanced styling */}
@@ -365,10 +412,10 @@ const styles = StyleSheet.create({
   badgeContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 8,
   },
   badgeText: {
     fontSize: 13,
