@@ -1,29 +1,14 @@
-# Use an official Python image as the base
+# Use official Python image
 FROM python:3.10-slim
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set working directory inside container
+# Set working directory inside the container
 WORKDIR /app
 
-# Copy requirements and install them
-COPY requirements.txt .
+# Copy contents of server folder into the container's /app directory
+COPY server/ .
+
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the app
-COPY . .
-COPY run_unified.py /app/
-
-# Expose the ports used by the application
-EXPOSE 5000 5002
-
-# Run the unified server
+# Start the app
 CMD ["python", "run_unified.py"]
