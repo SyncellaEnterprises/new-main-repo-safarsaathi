@@ -20,6 +20,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the app
 COPY . .
+COPY run_unified.py /app/
 
 # Expose the ports used by the application
 EXPOSE 5000 5002
