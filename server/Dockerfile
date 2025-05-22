@@ -1,14 +1,14 @@
 # Use official Python image
 FROM python:3.10-slim
 
-# Set working directory
+# Set working directory inside the container
 WORKDIR /app
 
-# Copy all files from server folder into the container
-COPY . .
+# Copy contents of server folder into the container's /app directory
+COPY server/ .
 
-# Install dependencies
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Command to run the app
+# Start the app
 CMD ["python", "run_unified.py"]
