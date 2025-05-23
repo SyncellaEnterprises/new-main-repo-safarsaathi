@@ -11,9 +11,11 @@ from socket_config import SOCKET_PORT
 # Add the server directory to the Python path to enable imports
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
+# Import the Flask app at the module level for Gunicorn
+from app import app
+
 def run_api_server():
     """Run the API server on port 5000"""
-    from app import app
     from utils.logger import logging
 
     # Log the server startup
@@ -37,14 +39,14 @@ def run_api_server():
 
 def run_socket_server():
     """Run the Socket.IO server on port 5002"""
-    from model.socket_chat import app, socketio, initialize_app
+    from model.socket_chat import app as socket_app, socketio, initialize_app
     
     # Initialize the Flask app
     initialize_app()
     
     # Run the socket server
     print(f"Socket server running on port {SOCKET_PORT}...")
-    socketio.run(app, host='0.0.0.0', port=SOCKET_PORT, debug=False, use_reloader=False)
+    socketio.run(socket_app, host='0.0.0.0', port=SOCKET_PORT, debug=False, use_reloader=False)
 
 if __name__ == "__main__":
     print("Starting unified server...")
